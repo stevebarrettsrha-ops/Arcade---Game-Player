@@ -1,0 +1,11 @@
+Real downloaded box-art lives here, one folder per system, e.g.
+   boxart/snes/Super Mario World (USA).png
+
+You don't fill this by hand. While online, double-click ONE of these in
+the ARCADE folder to fetch covers that match your games' file names:
+   Windows : download-boxart-windows.bat
+   macOS   : download-boxart-mac.command
+   Linux   : ./download-boxart-linux.sh
+
+Anything that can't be matched keeps the auto-generated cover tile.
+Tip: standard names like "Sonic the Hedgehog (USA, Europe).md" match best.

@@ -1,0 +1,1 @@
+Put SNES games here. Accepted: .sfc .smc .zip

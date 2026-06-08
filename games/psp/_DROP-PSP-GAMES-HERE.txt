@@ -1,0 +1,11 @@
+Put PlayStation Portable games here. Accepted: .iso .cso .pbp .chd
+
+** PSP is EXPERIMENTAL and OFF by default. **
+To use it you must start ARCADE in "PSP mode":
+   Windows : double-click  start-windows-psp.bat
+   macOS   : double-click  start-mac-psp.command
+   Linux   : ./start-linux-psp.sh
+PSP needs a powerful device + a desktop browser (Chrome/Edge/Firefox,
+NOT Safari) and a lot of memory. Many games crash or show a white
+screen - this core is beta upstream. The Java-phone feature still
+works in PSP mode.

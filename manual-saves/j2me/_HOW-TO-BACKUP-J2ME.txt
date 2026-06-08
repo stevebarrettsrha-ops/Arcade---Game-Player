@@ -1,0 +1,27 @@
+J2ME (Java phone) SAVES — backup folder
+=======================================
+
+The Java emulator (FreeJ2ME-web) stores your game saves AUTOMATICALLY in
+your web browser. They stay there between sessions on the SAME browser
+and are not lost in normal use.
+
+They are NOT kept in the per-player users/ folders that the cartridge
+systems use, because the Java emulator is a separate app that manages
+its own storage and doesn't expose a way for ARCADE to move saves out.
+
+TO KEEP A COPY HERE (do this if you reinstall, change browser, or switch
+devices):
+  1) Open the Java (J2ME) tab in ARCADE.
+  2) Use its "Export Data" button - it downloads ONE file containing all
+     your Java games and their saves.
+  3) Move that downloaded file into this folder for safekeeping.
+
+TO RESTORE on a new browser/computer:
+  - Open the Java emulator, use its "Import Data" button, and pick the
+    file you saved in this folder.
+
+Notes:
+  - The export is one file for ALL Java games at once (the emulator does
+    not split saves per game or per player).
+  - If several people share this machine, make a subfolder per person in
+    here (e.g. manual-saves/j2me/kayla/) and keep their export inside it.

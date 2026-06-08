@@ -1,0 +1,5 @@
+Put PlayStation 1 games here.
+Best format: .chd (single file) or .pbp. Also .iso and .zip work.
+For .cue + .bin games, convert to .chd or zip them together.
+Optional: a PS1 BIOS file in bios/psx/ improves compatibility
+(the default core runs most games without one).

@@ -1,0 +1,2 @@
+Put Nintendo 64 games here. Accepted: .n64 .z64 .v64 .zip
+Tip: N64 uses an analog stick - the phone thumbstick maps to it.

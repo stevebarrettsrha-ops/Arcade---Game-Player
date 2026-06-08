@@ -1,0 +1,21 @@
+A fully-offline copy of the real PPSSPP (the good PSP engine) goes here.
+
+EASIEST WAY (recommended) — let ARCADE fetch it for you:
+  While you have internet, double-click ONE of these in the ARCADE folder:
+     Windows : download-ppsspp-windows.bat
+     macOS   : download-ppsspp-mac.command
+     Linux   : ./download-ppsspp-linux.sh
+  It downloads the built PPSSPP app into this folder (tens of MB, one time).
+  When it finishes, this folder will contain index.html + its files, and
+  ARCADE's PSP tab button changes to "Open PPSSPP (offline copy)".
+  Start ARCADE in PSP mode (start-*-psp) for full speed.
+
+DON'T WANT A LOCAL COPY? Skip this folder entirely. Just click
+  "Open PPSSPP" in the PSP tab, then use your browser's "Install app"
+  option once online — it caches itself and runs offline afterward.
+
+DOING IT BY HAND (advanced): the app is built with a relative base href,
+  so any complete copy of https://root-hunter.github.io/ppsspp-web/
+  works from this folder as long as index.html sits directly in here.
+  Source + build: https://github.com/root-hunter/ppsspp-web
+  (PPSSPP by Henrik Rydgard, GPL-2.0+; HLE emulator — no BIOS needed.)

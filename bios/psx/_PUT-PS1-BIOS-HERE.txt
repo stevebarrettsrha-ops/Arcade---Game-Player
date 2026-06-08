@@ -1,0 +1,3 @@
+Optional: drop a PlayStation 1 BIOS file here (for example scph****.bin).
+ARCADE will hand it to the emulator automatically. Most games also run
+without a BIOS, so this is optional. Use a BIOS you are legally entitled to.

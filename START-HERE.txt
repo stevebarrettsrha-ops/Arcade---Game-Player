@@ -1,0 +1,36 @@
+==============================================================
+  ARCADE  -  your own home game server
+==============================================================
+
+WHAT IT IS
+  A tiny local server (like a home media server, but for games).
+  It serves a web page where you play your games, and it reaches
+  any phone, tablet or TV on the same WiFi.
+
+WHAT YOU NEED
+  Node.js installed once on the computer that runs the server.
+  Get it free from  https://nodejs.org  (the "LTS" button).
+  You do NOT need Node on the phones/TVs - just a web browser.
+
+HOW TO START (3 steps)
+  1. Put your games in the matching "games" folder, e.g.:
+        games/gba  games/nes  games/snes  games/genesis
+        games/gb   games/n64  games/psx   games/j2me
+     (each folder's _DROP-...txt note lists the file types)
+  2. Start the server by double-clicking the file for your system:
+        Windows ->  start-windows.bat
+        Mac     ->  start-mac.command
+        Linux   ->  start-linux.sh   (or: bash start-linux.sh)
+  3. A window opens and shows two web addresses, for example:
+        On THIS computer:           http://localhost:8080
+        On phones/TVs (same WiFi):  http://192.168.0.3:8080
+     Open one of those in any browser and start playing.
+
+  Leave that window OPEN while anyone is playing.
+  Close it (or press Ctrl+C) to stop the server.
+
+ADDING MORE GAMES LATER
+  Drop more files into games/gba or games/j2me, then press the
+  "Rescan folder" button on the web page. No restart needed.
+
+See README.txt for the details, controls, and troubleshooting.

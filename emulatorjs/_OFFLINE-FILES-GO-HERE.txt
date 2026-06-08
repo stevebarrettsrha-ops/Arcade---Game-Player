@@ -1,0 +1,12 @@
+This folder holds the EmulatorJS engine + cores for OFFLINE play.
+
+It starts empty. To fill it, run ONCE while you have internet:
+   Windows : double-click  download-offline-windows.bat
+   macOS   : double-click  download-offline-mac.command
+   Linux   : ./download-offline-linux.sh
+
+After that, ARCADE uses these local files and needs no internet.
+If this folder is empty, ARCADE falls back to the online CDN instead.
+
+(You can also copy an official EmulatorJS "data" folder's contents here
+ by hand - loader.js, emulator.min.js, emulator.min.css and cores/.)

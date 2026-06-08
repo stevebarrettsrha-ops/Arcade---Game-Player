@@ -1,0 +1,24 @@
+PSP (PPSSPP) SAVES — backup folder
+==================================
+
+PPSSPP keeps its PSP "memory stick" - your game saves AND save states -
+in your web browser's storage. They persist between sessions on the SAME
+browser and are not lost in normal use.
+
+BEST WAY TO KEEP THEM SAFE:
+  - Open PPSSPP once while online, then use your browser's "Install app"
+    / "Add to Home Screen" option. Once installed it keeps its data
+    reliably and also runs offline.
+  - Keep using the same browser for PPSSPP, and do NOT clear that site's
+    data, or the PSP saves will be lost.
+
+PPSSPP is a separate app with its own save system, so its saves are NOT
+stored in the per-player users/ folders the cartridge systems use, and
+ARCADE cannot move them automatically.
+
+TO KEEP A MANUAL COPY HERE:
+  - If PPSSPP's own menus offer a memory-stick / save-data export, save
+    the exported file into this folder. Otherwise your saves remain in
+    the browser as described above.
+  - If several people share this machine, make a subfolder per person
+    in here (e.g. manual-saves/ppsspp/zoe/).

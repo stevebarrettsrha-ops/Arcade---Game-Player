@@ -1,0 +1,4 @@
+Put your old phone Java games in this folder.
+Accepted: .jar  .jad
+Then open the web page and press "Rescan folder".
+Tip: set each game's screen size in the handset's Esc menu (e.g. 640x360).

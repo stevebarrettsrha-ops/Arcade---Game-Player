@@ -1,0 +1,1 @@
+Put Sega Genesis / Mega Drive games here. Accepted: .md .gen .smd .bin .zip

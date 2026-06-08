@@ -1,0 +1,11 @@
+Each player profile lives here in its own folder, created automatically
+when someone makes a profile on the ARCADE screen (name + 4-digit PIN):
+
+   users/<name>/profile.json     (name + PIN, PIN stored hashed)
+   users/<name>/saves/<system>/<game>.state   (their save states)
+   users/<name>/saves/<system>/<game>.srm      (their in-game battery saves)
+
+You don't edit these by hand. To remove a player, delete their folder.
+Note: the 4-digit PIN keeps players' saves separate on your home network;
+it is light protection, not strong security. Back up this folder to keep
+saves safe. Profiles/saves are NOT included in the download.

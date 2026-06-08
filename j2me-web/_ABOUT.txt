@@ -1,0 +1,22 @@
+JAVA (J2ME) HANDSET
+===================
+
+This folder holds the FreeJ2ME-web handset that lets ARCADE run old Java
+phone games (.jar) EMBEDDED inside the app.
+
+It starts out empty. To set it up, run ONCE (needs internet):
+
+    Windows : double-click  download-j2me-windows.bat
+    Mac     : double-click  download-j2me-mac.command
+    Linux   : ./download-j2me-linux.sh      (or:  node get-j2me.js)
+
+That downloads about 9 MB into this folder. After it finishes, restart
+ARCADE and your Java games will load straight into the handset in-app.
+
+IMPORTANT: Java is the one exception to "fully offline" - it needs an
+internet connection while playing, because its Java engine (CheerpJ) is
+loaded from the provider's servers at run time. NES/SNES/GBA/Genesis/
+Game Boy/N64/PS1 all run completely offline.
+
+If you DON'T set this up, Java games still work - ARCADE will open the
+handset in a separate browser tab and you load the game by hand.

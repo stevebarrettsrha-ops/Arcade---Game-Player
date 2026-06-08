@@ -1,0 +1,3 @@
+Put your GBA games in this folder.
+Accepted: .gba  .zip  (also .agb .bin)
+Then open the web page and press "Rescan folder".
