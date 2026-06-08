@@ -428,11 +428,46 @@ async function resolveThumb(kind, file) {
   return result;
 }
 
-/* ---- generic file serving with Range ---- */
+/* ---- caching policy -------------------------------------------------------
+   Big assets (the emulator engine, WASM cores, fonts, ROMs) almost never
+   change, yet the old server sent "no-cache" on everything — so every game
+   launch re-downloaded the whole core AND the whole ROM over the LAN. That is
+   the main cause of the slow, stuttery loads on TVs/phones. We now let the
+   browser keep these files and revalidate cheaply with an ETag (a 304 reply
+   sends no body), while keeping the app's HTML/JS fresh. A changed ROM gets a
+   new size/mtime, so its ETag changes and it is re-fetched automatically. */
+const IMMUTABLE_DIRS = ['/emulatorjs/', '/assets/', '/psp-ppsspp/', '/j2me-web/'];
+const LONG_CACHE_EXT = ['.wasm', '.data', '.mem', '.ttf', '.woff', '.woff2'];
+const COMPRESSIBLE   = new Set(['.html', '.js', '.css', '.json', '.svg', '.txt', '.map', '.jad']);
+
+function cacheControlFor(relPath, ext) {
+  if (ext === '.html') return 'no-cache';                       // app shell: always revalidate (cheap 304)
+  if (IMMUTABLE_DIRS.some(d => relPath.startsWith(d)) || LONG_CACHE_EXT.includes(ext))
+    return 'public, max-age=604800';                            // engine + cores + fonts: 7 days
+  if (relPath.startsWith('/games/') || relPath.startsWith('/bios/') || relPath.startsWith('/boxart/'))
+    return 'public, max-age=86400';                             // ROMs/BIOS/boxart: 1 day (ETag catches edits)
+  return 'public, max-age=300';                                 // other app files: short
+}
+
+/* ---- generic file serving with Range, conditional GET (304) and gzip ---- */
 function serveFile(req, res, filePath) {
   fs.stat(filePath, (err, st) => {
     if (err || !st.isFile()) { res.writeHead(404); return res.end('Not found'); }
-    const type = MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
+    const ext  = path.extname(filePath).toLowerCase();
+    const type = MIME[ext] || 'application/octet-stream';
+    const rel  = '/' + path.relative(ROOT, filePath).split(path.sep).join('/');
+    const mtime = Math.floor(+st.mtime / 1000) * 1000;          // second precision (matches HTTP dates)
+    const etag = '"' + st.size.toString(16) + '-' + mtime.toString(16) + '"';
+    const base = { 'ETag': etag, 'Last-Modified': new Date(mtime).toUTCString(),
+                   'Cache-Control': cacheControlFor(rel, ext), 'Accept-Ranges': 'bytes' };
+
+    // Not changed since the browser last fetched it? Skip the body entirely.
+    const inm = req.headers['if-none-match'];
+    const ims = req.headers['if-modified-since'];
+    const notModified = inm ? (inm === etag || inm === '*')
+                            : (ims && new Date(ims).getTime() >= mtime);
+    if (notModified && !req.headers.range) { res.writeHead(304, base); return res.end(); }
+
     const range = req.headers.range;
     if (range) {
       const m = /bytes=(\d*)-(\d*)/.exec(range) || [];
@@ -441,13 +476,20 @@ function serveFile(req, res, filePath) {
       if (isNaN(start)) start = 0;
       if (isNaN(end) || end >= st.size) end = st.size - 1;
       if (start > end || start >= st.size) { res.writeHead(416, { 'Content-Range': `bytes */${st.size}` }); return res.end(); }
-      res.writeHead(206, { 'Content-Range': `bytes ${start}-${end}/${st.size}`, 'Accept-Ranges': 'bytes',
-        'Content-Length': end - start + 1, 'Content-Type': type, 'Cache-Control': 'no-cache' });
-      fs.createReadStream(filePath, { start, end }).pipe(res);
-    } else {
-      res.writeHead(200, { 'Content-Length': st.size, 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-cache' });
-      fs.createReadStream(filePath).pipe(res);
+      res.writeHead(206, Object.assign({}, base, { 'Content-Range': `bytes ${start}-${end}/${st.size}`,
+        'Content-Length': end - start + 1, 'Content-Type': type }));
+      return fs.createReadStream(filePath, { start, end }).pipe(res);
     }
+
+    // gzip small text assets (HTML/JS/CSS/JSON/SVG); never the big binaries/cores
+    const ae = req.headers['accept-encoding'] || '';
+    if (COMPRESSIBLE.has(ext) && /\bgzip\b/.test(ae) && st.size > 256) {
+      res.writeHead(200, Object.assign({}, base, { 'Content-Type': type,
+        'Content-Encoding': 'gzip', 'Vary': 'Accept-Encoding' }));
+      return fs.createReadStream(filePath).pipe(zlib.createGzip()).pipe(res);
+    }
+    res.writeHead(200, Object.assign({}, base, { 'Content-Type': type, 'Content-Length': st.size }));
+    fs.createReadStream(filePath).pipe(res);
   });
 }
 
@@ -603,7 +645,15 @@ const server = http.createServer(async (req, res) => {
     try {
       const t = await resolveThumb(tm[1], file);
       if (!t) { res.writeHead(404); return res.end(); }
-      res.writeHead(200, { 'Content-Type': t.ct, 'Content-Length': t.data.length, 'Cache-Control': 'max-age=120' });
+      // Covers rarely change, so let the browser keep them and revalidate with an
+      // ETag instead of re-downloading every card's image every couple of minutes.
+      const etag = 'W/"' + crypto.createHash('sha1').update(t.data).digest('hex').slice(0, 16) + '"';
+      if (req.headers['if-none-match'] === etag) {
+        res.writeHead(304, { 'ETag': etag, 'Cache-Control': 'public, max-age=86400' });
+        return res.end();
+      }
+      res.writeHead(200, { 'Content-Type': t.ct, 'Content-Length': t.data.length,
+        'Cache-Control': 'public, max-age=86400', 'ETag': etag });
       return res.end(t.data);
     } catch (e) { res.writeHead(404); return res.end(); }
   }
