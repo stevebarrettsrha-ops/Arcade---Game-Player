@@ -32,6 +32,19 @@ const ENGINE = args.includes('--engine');
 const ENGINE_FILES = ['loader.js', 'emulator.min.js', 'emulator.min.css', 'version.json'];
 const LOCALES = ['en-US.json'];   // optional, best-effort
 
+// Decompression workers the engine needs to UNPACK a core at runtime. EmulatorJS
+// cores ship as 7z-compressed ".data" archives, so WITHOUT extract7z.js no core can
+// be unpacked when running locally — games silently work online (the engine falls
+// back to the CDN for these) but fail offline. This is the usual cause of
+// "ran get-offline.js, but offline no game loads". extractzip/libunrar are only for
+// .zip / .rar ROMs you add yourself.
+const SUPPORT_FILES = [
+  { f: 'compression/extract7z.js',  optional: false },   // REQUIRED: cores are 7z-compressed
+  { f: 'compression/extractzip.js', optional: false },   // for .zip ROMs
+  { f: 'compression/libunrar.js',   optional: true  },   // for .rar ROMs
+  { f: 'compression/libunrar.wasm', optional: true  },
+];
+
 // system -> candidate core basenames (we grab every candidate that exists so
 // it works no matter which default the browser ends up choosing)
 const CORES = {
@@ -103,6 +116,12 @@ function systemsWithGames() {
   let engineOk = true;
   for (const f of ENGINE_FILES) engineOk = (await fetchTo(f, f, { optional: f === 'version.json' })) && engineOk;
   for (const l of LOCALES) await fetchTo('localization/' + l, path.join('localization', l), { optional: true });
+
+  console.log('Decompression workers (needed to unpack cores):');
+  for (const s of SUPPORT_FILES) {
+    const ok = await fetchTo(s.f, s.f, { optional: s.optional });
+    if (!s.optional) engineOk = ok && engineOk;          // can't play offline without these
+  }
 
   if (!engineOk) {
     console.log('\n! Could not download the engine. Check your internet connection and that');
