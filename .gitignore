@@ -1,0 +1,10 @@
+# TLS private key + self-signed cert (generated locally by make-cert.js) — never commit
+certs/
+
+# per-player profiles + saved games (created at runtime; may contain hashed PINs)
+users/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+node_modules/

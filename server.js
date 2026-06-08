@@ -568,7 +568,7 @@ function wsParse(buf) {                                   // pull complete frame
   return { frames, rest: buf.slice(off) };
 }
 
-const server = http.createServer(async (req, res) => {
+const requestHandler = async (req, res) => {
   // PSP mode needs SharedArrayBuffer (multi-threading). Cross-origin isolation enables it;
   // COEP credentialless keeps the cross-origin Java-phone iframe and CDN loading.
   if (ISOLATE) {
@@ -710,7 +710,8 @@ const server = http.createServer(async (req, res) => {
     } catch (e) { res.writeHead(404); return res.end(); }
   }
 
-  if (url === '/users' || url.startsWith('/users/')) { res.writeHead(403); return res.end('Forbidden'); }
+  // never serve player data or the TLS private key over HTTP
+  if (url === '/users' || url.startsWith('/users/') || url === '/certs' || url.startsWith('/certs/')) { res.writeHead(403); return res.end('Forbidden'); }
   const filePath = safeResolve(url);
   if (!filePath) { res.writeHead(403); return res.end('Forbidden'); }
   let target = filePath;
@@ -722,10 +723,10 @@ const server = http.createServer(async (req, res) => {
     target = target + '.html';
   }
   serveFile(req, res, target);
-});
+};
 
 /* ---- WebSocket upgrade: /ws?room=CODE&role=tv|pad ---- */
-server.on('upgrade', (req, socket) => {
+const upgradeHandler = (req, socket) => {
   let url; try { url = new URL(req.url, 'http://localhost'); } catch (e) { return socket.destroy(); }
   const key = req.headers['sec-websocket-key'];
   if (url.pathname !== '/ws' || !key) { return socket.destroy(); }
@@ -753,7 +754,40 @@ server.on('upgrade', (req, socket) => {
   const cleanup = () => { const s = wsRooms.get(room); if (s) { s.delete(socket); if (!s.size) wsRooms.delete(room); } };
   socket.on('close', cleanup);
   socket.on('error', () => { cleanup(); try { socket.destroy(); } catch (e) {} });
-});
+};
+
+const server = http.createServer(requestHandler);
+server.on('upgrade', upgradeHandler);
+
+/* ---- optional HTTPS, so Java (CheerpJ) works over the LAN, not just localhost ----
+   CheerpJ only starts on a "secure" page. http://localhost counts; a plain
+   http://192.168.x.x LAN address does not — which is why Java fails on TVs/phones.
+   Serving HTTPS (even a self-signed cert the user accepts once) makes the page a
+   secure context everywhere, so Java works over the LAN too. Run `node make-cert.js`
+   once to create certs/, then start with ARCADE_HTTPS=1. */
+function startHttps() {
+  let key, cert;
+  try {
+    key  = fs.readFileSync(path.join(ROOT, 'certs', 'key.pem'));
+    cert = fs.readFileSync(path.join(ROOT, 'certs', 'cert.pem'));
+  } catch (e) {
+    console.log('\n  HTTPS requested (ARCADE_HTTPS=1) but certs/key.pem + certs/cert.pem are missing.');
+    console.log('  Create a self-signed cert once:  node make-cert.js   (needs openssl), then restart.\n');
+    return;
+  }
+  const hport = process.env.HTTPS_PORT || 8443;
+  const hsrv = https.createServer({ key, cert }, requestHandler);
+  hsrv.on('upgrade', upgradeHandler);
+  hsrv.on('error', e => console.error('  HTTPS server error: ' + e.message));
+  hsrv.listen(hport, '0.0.0.0', () => {
+    const ips = lanAddresses();
+    console.log('\n  HTTPS is ON (lets Java run over the LAN):');
+    console.log('    https://localhost:' + hport);
+    for (const ip of ips) console.log('    https://' + ip + ':' + hport + '   (open this on the TV/phone for Java)');
+    console.log('    self-signed: the browser warns once — accept it to continue.');
+  });
+}
+if (process.env.ARCADE_HTTPS === '1') startHttps();
 
 server.listen(PORT, '0.0.0.0', () => {
   try { fs.mkdirSync(USERS, { recursive: true }); } catch (e) {}
