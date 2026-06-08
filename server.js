@@ -32,6 +32,12 @@ const THREADS  = process.env.ARCADE_THREADS === '1'; // enable multi-threaded co
 // on Chrome/Edge/Firefox.
 const ISOLATE = PSP_MODE || THREADS;
 
+// Opt-in host-side streaming (run native emulators on the host, stream to clients).
+// Loaded only when enabled, so normal browser mode stays zero-dependency.
+const STREAM = process.env.ARCADE_STREAM === '1';
+let streamMod = null;
+if (STREAM) { try { streamMod = require('./stream.js'); } catch (e) { console.error('  Streaming module failed to load: ' + e.message); } }
+
 const MIME = {
   '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
   '.css':'text/css; charset=utf-8', '.json':'application/json; charset=utf-8',
@@ -581,6 +587,9 @@ const requestHandler = async (req, res) => {
   const q = new URL(req.url, 'http://localhost');
   const room = (q.searchParams.get('room') || '').toUpperCase().slice(0, 8);
 
+  /* ---- host-side streaming routes (opt-in) ---- */
+  if (streamMod && url.startsWith('/stream/')) { if (streamMod.handle(req, res, url, q.searchParams)) return; }
+
   /* ---- phone-as-controller relay (Server-Sent Events) ----
      The TV opens /events?room=CODE and keeps it open.
      A phone POSTs button presses to /input?room=CODE.
@@ -605,6 +614,7 @@ const requestHandler = async (req, res) => {
     req.on('end', () => {
       const r = processInbound(room, body);
       const n = relayToRoom(room, r.body);
+      if (streamMod && streamMod.active() && r.body) { try { streamMod.injectInput(JSON.parse(r.body)); } catch (e) {} }
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true, displays: n, player: r.player }));
     });
@@ -684,7 +694,8 @@ const requestHandler = async (req, res) => {
   if (url === '/api/library') {
     const lib = { boxart: BOXART, bios: {}, ejsLocal: fs.existsSync(path.join(ROOT, 'emulatorjs', 'loader.js')), isolated: ISOLATE,
                   pspWeb: fs.existsSync(path.join(ROOT, 'psp-ppsspp', 'index.html')),
-                  j2meWeb: fs.existsSync(path.join(ROOT, 'j2me-web', 'web', 'index.html')) };
+                  j2meWeb: fs.existsSync(path.join(ROOT, 'j2me-web', 'web', 'index.html')),
+                  stream: STREAM, emulators: (STREAM && streamMod) ? streamMod.listEmulators() : [] };
     for (const s of SYSTEMS) lib[s.key] = listGames(s.key, s.exts);
     for (const s of BIOS_SYSTEMS) lib.bios[s] = biosFor(s);
     res.writeHead(200, { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-cache' });
@@ -748,6 +759,7 @@ const upgradeHandler = (req, socket) => {
       if (f.op !== 0x1 || role !== 'pad') continue;               // only the phone sends messages
       const r = processInbound(room, f.data.toString('utf8'));
       relayToRoom(room, r.body);
+      if (streamMod && streamMod.active() && r.body) { try { streamMod.injectInput(JSON.parse(r.body)); } catch (e) {} }
       if (r.player !== null) { try { socket.write(wsFrame(JSON.stringify({ t: 'slot', p: r.player }))); } catch (e) {} }
     }
   });
@@ -816,10 +828,12 @@ server.listen(PORT, '0.0.0.0', () => {
   if (BOXART) console.log('  Online GBA box-art: ON');
   if (PSP_MODE) console.log('  PSP mode: ON (threads enabled — experimental; Java-phone still works)');
   else if (THREADS) console.log('  Threaded cores: ON (faster N64/PS1 on Chrome/Edge/Firefox; not Safari)');
+  if (STREAM) console.log('  Streaming mode: ON — host emulators in emulators/ stream to clients (see SETUP-STREAMING.txt)');
   console.log('  Phone remote: click "Phone", scan the code, browse & play.');
   console.log('  Players: pick a profile (name + 4-digit PIN) to keep saves separate.');
   console.log('  Then refresh the page in your browser.\n');
 });
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { if (streamMod) streamMod.shutdown(); process.exit(0); });
 server.on('error', e => {
   if (e.code === 'EADDRINUSE') {
     console.error('\n  Port ' + PORT + ' is already in use. Try another, e.g.:');

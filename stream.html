@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ARCADE · Stream</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden}
+  #view{width:100%;height:100%;object-fit:contain;display:block;background:#000}
+  #msg{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    color:#7fb9b0;font-family:system-ui,sans-serif;font-size:15px;text-align:center;padding:24px;line-height:1.5}
+  #msg[hidden]{display:none}
+</style>
+</head>
+<body>
+  <img id="view" alt="" hidden>
+  <div id="msg">Connecting to the host stream…</div>
+<script>
+  // Shows the host emulator's MJPEG stream. Embedded as an iframe inside ARCADE on
+  // the TV/phone. The actual emulator runs on the host with full power; this is
+  // just the picture. Controller input flows through ARCADE's pad relay and is
+  // injected host-side, so nothing extra is needed here.
+  const view = document.getElementById('view');
+  const msg  = document.getElementById('msg');
+  let tries = 0;
+  function connect(){
+    // cache-bust so a reconnect re-opens the multipart stream
+    view.src = '/stream/video?t=' + Date.now();
+  }
+  view.onload  = () => { view.hidden = false; msg.hidden = true; tries = 0; };
+  view.onerror = () => {
+    view.hidden = true; msg.hidden = false;
+    tries++;
+    msg.textContent = tries > 2
+      ? 'Waiting for the host to start a game… (pick one in ARCADE)'
+      : 'Connecting to the host stream…';
+    setTimeout(connect, 1500);
+  };
+  connect();
+</script>
+</body>
+</html>

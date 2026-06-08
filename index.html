@@ -315,6 +315,7 @@
       <button class="mini" id="userChip">👤 Guest</button>
       <button class="mini" id="phoneBtn">📱 Phone</button>
       <button class="mini" id="perfBtn" title="For slow TVs: disables shader, unsynced video, shows FPS so you can see the speed. Restart a game after toggling.">⚡ Performance: OFF</button>
+      <button class="mini" id="streamBtn" title="Run a real emulator on the host (e.g. Steam Deck) and stream it here." hidden>🖥️ Host emulators</button>
       <div class="status" id="status"><span class="led" id="led"></span><span id="statusTxt">connecting…</span></div>
     </div>
   </header>
@@ -411,6 +412,27 @@
       <div class="keys">
         <div><b>↑↓←→</b>D-pad</div><div><b>⏎</b>OK / action</div><div><b>Q / W</b>soft keys</div>
         <div><b>0–9</b>keypad</div><div><b>E / R</b>* / #</div><div><b>Esc</b>options · set screen size</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOST-STREAM STAGE (opt-in: native emulators running on the host, streamed here) -->
+  <section class="stage" id="streamStage">
+    <div class="stagebar">
+      <span class="title" style="color:#c3c7cf" id="streamTitle">HOST EMULATORS</span>
+      <div class="acts">
+        <button class="btn ghost" style="--accent:#c3c7cf" onclick="goFull('streamFrame')">⛶ Fullscreen</button>
+        <button class="btn ghost" style="--accent:#c3c7cf" id="streamBack">⏏ Back to library</button>
+      </div>
+    </div>
+    <div id="streamList" class="gridcards"></div>
+    <div class="bezel" id="streamFrameWrap" hidden>
+      <div class="screen" style="aspect-ratio:16/9">
+        <iframe id="streamFrame" title="Host stream" allow="autoplay; fullscreen"
+          style="width:100%;height:100%;border:0;display:block;background:#000"></iframe>
+      </div>
+      <div class="help" style="margin-top:14px"><h3>Streaming from the host</h3>
+        <div class="keys"><div>Pair a phone (📱 above) to use it as the controller — input is sent to the emulator on the host.</div></div>
       </div>
     </div>
   </section>
@@ -541,6 +563,7 @@
     SYS.forEach(s => { const p=$('#panel-'+s.key); if(p) p.classList.toggle('live', s.key===key); });
   }
   function render(){
+    const sb = $('#streamBtn'); if(sb) sb.hidden = !LIB.stream;   // show host-emulators entry only in streaming mode
     if(!$('#tabs').dataset.built){ buildTabs(); $('#tabs').dataset.built='1'; }
     SYS.forEach(s => {
       const items = LIB[s.key] || [];
@@ -797,6 +820,44 @@
     }
   }
 
+  /* ---- host-side streaming (opt-in): pick a native emulator on the host, stream it here ---- */
+  function openStreamPicker(){
+    if(!LIB.stream) return;
+    document.body.classList.add('playing');
+    showStage('streamStage');
+    $('#streamFrameWrap').hidden = true;
+    const list = $('#streamList'); list.hidden = false; list.style.display = 'grid';
+    $('#streamTitle').textContent = 'HOST EMULATORS';
+    const emus = LIB.emulators || [];
+    if(!emus.length){
+      list.style.display = 'block';
+      list.innerHTML = '<div class="empty"><div class="big">NO HOST EMULATORS</div>'+
+        'Add one on the host in <code>emulators/&lt;name&gt;/emulator.json</code> — see <b>emulators/_ABOUT.txt</b>.</div>';
+      return;
+    }
+    list.innerHTML = '';
+    emus.forEach(e => {
+      const c = document.createElement('button'); c.className = 'card'; c.style.setProperty('--accent', '#c3c7cf');
+      c.innerHTML = '<div class="art"><div class="glyph">🖥️</div>'+
+        (e.icon ? '<img class="cover show" src="'+esc(e.icon)+'" alt="">' : '')+
+        '<div class="play">▶</div></div><div class="meta"><div class="nm">'+esc(e.name)+'</div>'+
+        '<div class="sz">RUNS ON HOST</div></div>';
+      c.onclick = () => startStream(e);
+      list.appendChild(c);
+    });
+  }
+  async function startStream(e){
+    $('#streamTitle').textContent = (e.name||'HOST').toUpperCase();
+    try{
+      const r = await (await fetch('/stream/start?emu='+encodeURIComponent(e.id), {cache:'no-store'})).json();
+      if(!r || !r.ok) toast('Host couldn’t start it'+(r&&r.error?': '+r.error:''), true);
+    }catch(err){ toast('Could not reach the host', true); }
+    $('#streamList').hidden = true;
+    $('#streamFrameWrap').hidden = false;
+    $('#streamFrame').src = 'stream.html?t=' + Date.now();
+  }
+  async function stopStream(){ try{ await fetch('/stream/stop'); }catch(e){} const f=$('#streamFrame'); if(f) f.removeAttribute('src'); }
+
   // PPSSPP-Web: a separate, far more capable PSP engine (own UI/controls)
   function openPPSSPP(){
     const url = LIB.pspWeb ? 'psp-ppsspp/index.html' : 'https://root-hunter.github.io/ppsspp-web/';
@@ -960,7 +1021,7 @@
     $('#'+id).classList.add('live');
     window.scrollTo({top:0, behavior:'smooth'});
   }
-  async function ejectAll(){ stopAutoSave(); if(TOKEN && curGame){ try{ await saveToUser(true); }catch(e){} } location.reload(); }
+  async function ejectAll(){ stopAutoSave(); if(LIB.stream){ try{ await stopStream(); }catch(e){} } if(TOKEN && curGame){ try{ await saveToUser(true); }catch(e){} } location.reload(); }
   function goFull(id){
     const el = $('#'+id); const t = el.querySelector('canvas') || el;
     (t.requestFullscreen || t.webkitRequestFullscreen || (()=>{})).call(t);
@@ -1248,6 +1309,9 @@
   };
   function updatePerfBtn(){ const b=$('#perfBtn'); if(b){ b.textContent='⚡ Performance: '+(PERF?'ON':'OFF'); b.classList.toggle('on',PERF); } }
   (function(){ const b=$('#perfBtn'); if(b){ b.onclick=()=>{ PERF=!PERF; try{localStorage.setItem('arcade_perf',PERF?'1':'0');}catch(e){} updatePerfBtn(); toast('Performance mode '+(PERF?'ON':'OFF')+(document.body.classList.contains('playing')?' — restart the game to apply':'')); }; updatePerfBtn(); } })();
+  // host-side streaming entry points
+  if($('#streamBtn')) $('#streamBtn').onclick = openStreamPicker;
+  if($('#streamBack')) $('#streamBack').onclick = ejectAll;
   // player profiles
   $('#userChip').onclick = showLogin;
   $('#guestBtn').onclick = () => { setGuest(); hideLogin(); };
