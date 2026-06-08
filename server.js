@@ -70,8 +70,37 @@ const LIBRETRO = { gba:'Nintendo_-_Game_Boy_Advance', nes:'Nintendo_-_Nintendo_E
                    psp:'Sony_-_PlayStation_Portable' };
 const thumbCache = new Map();   // key -> {data,ct} | null
 const rooms = new Map();        // room code -> Set of TV (display) SSE responses
+const wsRooms = new Map();      // room code -> Set of TV (display) WebSocket sockets
 const roomPlayers = new Map();  // room code -> Map(controllerId -> {slot, ts})
 const PLAYER_TTL = 25000;       // a controller unseen this long frees its slot
+
+/* ---- shared input relay (used by both the POST+SSE and the WebSocket paths) ----
+   A controller message is stamped with its player slot (hello/claim/bye) and then
+   fanned out to every TV in the room, regardless of which transport each side uses. */
+function processInbound(room, body) {
+  let player = null;
+  if (body) {
+    try {
+      const msg = JSON.parse(body);
+      if (msg && msg.cid) {
+        if (msg.t === 'hello') { player = assignSlot(room, msg.cid); msg.p = player; }
+        else if (msg.t === 'claim' && Number.isInteger(msg.p) && msg.p >= 0 && msg.p < 4) { setSlot(room, msg.cid, msg.p); }
+        else if (msg.t === 'bye') { freeSlot(room, msg.cid); }
+      }
+      body = JSON.stringify(msg);     // re-serialize so the stamped player reaches the TV
+    } catch (e) { /* not JSON: relay as-is */ }
+  }
+  return { body, player };
+}
+function relayToRoom(room, body) {
+  let n = 0;
+  if (!body) return n;
+  const sse = rooms.get(room);
+  if (sse) { const out = 'data: ' + body.replace(/[\r\n]+/g, ' ') + '\n\n'; for (const r of sse) { try { r.write(out); n++; } catch (e) {} } }
+  const ws = wsRooms.get(room);
+  if (ws) { const frame = wsFrame(body); for (const s of ws) { try { s.write(frame); n++; } catch (e) {} } }
+  return n;
+}
 
 function assignSlot(room, cid) {
   let m = roomPlayers.get(room); if (!m) { m = new Map(); roomPlayers.set(room, m); }
@@ -507,6 +536,38 @@ function safeResolve(urlPath) {
   return resolved;
 }
 
+/* ===================  minimal WebSocket relay (zero-dependency)  ===================
+   A lower-latency controller path: instead of one HTTP POST per button/axis event,
+   the phone keeps a socket open and streams tiny frames; the TV keeps a socket open
+   to receive them. Both sides fall back to POST+SSE if the socket can't open, so
+   this is purely additive (see pad.html / index.html). */
+const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
+function wsAccept(key) { return crypto.createHash('sha1').update(key + WS_GUID).digest('base64'); }
+function wsFrame(str) {                                   // server->client text frame (unmasked)
+  const data = Buffer.from(str, 'utf8'), len = data.length;
+  let header;
+  if (len < 126) header = Buffer.from([0x81, len]);
+  else if (len < 65536) { header = Buffer.alloc(4); header[0] = 0x81; header[1] = 126; header.writeUInt16BE(len, 2); }
+  else { header = Buffer.alloc(10); header[0] = 0x81; header[1] = 127; header.writeUInt32BE(0, 2); header.writeUInt32BE(len, 6); }
+  return Buffer.concat([header, data]);
+}
+function wsParse(buf) {                                   // pull complete frames out of the buffer
+  const frames = []; let off = 0;
+  while (off + 2 <= buf.length) {
+    const op = buf[off] & 0x0f, masked = (buf[off + 1] & 0x80) !== 0;
+    let len = buf[off + 1] & 0x7f, p = off + 2;
+    if (len === 126) { if (p + 2 > buf.length) break; len = buf.readUInt16BE(p); p += 2; }
+    else if (len === 127) { if (p + 8 > buf.length) break; len = Number(buf.readBigUInt64BE(p)); p += 8; }
+    let mask = null;
+    if (masked) { if (p + 4 > buf.length) break; mask = buf.slice(p, p + 4); p += 4; }
+    if (p + len > buf.length) break;                     // frame not fully arrived yet
+    let payload = buf.slice(p, p + len);
+    if (masked && mask) { const out = Buffer.allocUnsafe(len); for (let i = 0; i < len; i++) out[i] = payload[i] ^ mask[i & 3]; payload = out; }
+    frames.push({ op, data: payload }); off = p + len;
+  }
+  return { frames, rest: buf.slice(off) };
+}
+
 const server = http.createServer(async (req, res) => {
   // PSP mode needs SharedArrayBuffer (multi-threading). Cross-origin isolation enables it;
   // COEP credentialless keeps the cross-origin Java-phone iframe and CDN loading.
@@ -542,26 +603,10 @@ const server = http.createServer(async (req, res) => {
     let body = '';
     req.on('data', c => { body += c; if (body.length > 2000) req.destroy(); });
     req.on('end', () => {
-      let player = null;
-      if (body) {
-        try {
-          const msg = JSON.parse(body);
-          if (msg && msg.cid) {
-            if (msg.t === 'hello') { player = assignSlot(room, msg.cid); msg.p = player; }
-            else if (msg.t === 'claim' && Number.isInteger(msg.p) && msg.p >= 0 && msg.p < 4) { setSlot(room, msg.cid, msg.p); }
-            else if (msg.t === 'bye') { freeSlot(room, msg.cid); }
-          }
-          body = JSON.stringify(msg);     // re-serialize so the stamped player reaches the TV
-        } catch (e) { /* not JSON: relay as-is */ }
-      }
-      const set = rooms.get(room);
-      let n = 0;
-      if (set && body) {
-        const out = 'data: ' + body.replace(/[\r\n]+/g, ' ') + '\n\n';
-        for (const r of set) { try { r.write(out); n++; } catch (e) {} }
-      }
+      const r = processInbound(room, body);
+      const n = relayToRoom(room, r.body);
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: true, displays: n, player }));
+      res.end(JSON.stringify({ ok: true, displays: n, player: r.player }));
     });
     return;
   }
@@ -677,6 +722,37 @@ const server = http.createServer(async (req, res) => {
     target = target + '.html';
   }
   serveFile(req, res, target);
+});
+
+/* ---- WebSocket upgrade: /ws?room=CODE&role=tv|pad ---- */
+server.on('upgrade', (req, socket) => {
+  let url; try { url = new URL(req.url, 'http://localhost'); } catch (e) { return socket.destroy(); }
+  const key = req.headers['sec-websocket-key'];
+  if (url.pathname !== '/ws' || !key) { return socket.destroy(); }
+  const room = (url.searchParams.get('room') || '').toUpperCase().slice(0, 8);
+  const role = url.searchParams.get('role') === 'tv' ? 'tv' : 'pad';
+  socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n' +
+               'Sec-WebSocket-Accept: ' + wsAccept(key) + '\r\n\r\n');
+  try { socket.setNoDelay(true); } catch (e) {}
+
+  if (role === 'tv') { let set = wsRooms.get(room); if (!set) { set = new Set(); wsRooms.set(room, set); } set.add(socket); }
+  let buf = Buffer.alloc(0);
+  socket.on('data', chunk => {
+    buf = Buffer.concat([buf, chunk]);
+    if (buf.length > 1 << 16) { buf = Buffer.alloc(0); return; }   // guard against junk
+    const parsed = wsParse(buf); buf = parsed.rest;
+    for (const f of parsed.frames) {
+      if (f.op === 0x8) { socket.end(); return; }                 // close
+      if (f.op === 0x9) { try { socket.write(Buffer.concat([Buffer.from([0x8A, f.data.length]), f.data])); } catch (e) {} continue; } // ping->pong
+      if (f.op !== 0x1 || role !== 'pad') continue;               // only the phone sends messages
+      const r = processInbound(room, f.data.toString('utf8'));
+      relayToRoom(room, r.body);
+      if (r.player !== null) { try { socket.write(wsFrame(JSON.stringify({ t: 'slot', p: r.player }))); } catch (e) {} }
+    }
+  });
+  const cleanup = () => { const s = wsRooms.get(room); if (s) { s.delete(socket); if (!s.size) wsRooms.delete(room); } };
+  socket.on('close', cleanup);
+  socket.on('error', () => { cleanup(); try { socket.destroy(); } catch (e) {} });
 });
 
 server.listen(PORT, '0.0.0.0', () => {

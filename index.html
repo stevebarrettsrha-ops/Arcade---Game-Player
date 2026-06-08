@@ -1029,23 +1029,40 @@
   }
 
   /* ---- TV / host side ---- */
-  let displayES = null;
+  let displayES = null, displayWS = null;
   function setPairStat(txt, good){ const s=$('#pairStat'); if(!s)return; s.textContent=txt; s.classList.toggle('good', !!good); }
-  function openDisplay(code){
+  function handleDisplayMsg(m){
+    if(!m) return;
+    if(m.t==='hello'){ markPlayer(m.p|0, true); return; }
+    if(m.t==='bye'){ markPlayer(m.p|0, false); return; }
+    if(m.t==='ping'){ if(typeof m.p==='number') markPlayer(m.p|0, true); return; }
+    if(m.t==='launch'){ handleLaunch(m); return; }
+    if(m.t==='mp'){ if((m.p|0)===0) setFourPlayer(m.on); return; }
+    if(m.t==='hk'){ emuHotkey(m.a); return; }
+    if(m.t==='axis'){ axis(m.x, m.y, m.p); return; }
+    inject(m.t, m.b, m.p);
+  }
+  function openDisplaySSE(code){
     if(displayES) return;
-    ROOM = code;
     displayES = new EventSource('/events?room='+encodeURIComponent(code));
-    displayES.onmessage = ev => {
-      let m; try{ m = JSON.parse(ev.data); }catch(e){ return; }
-      if(m.t==='hello'){ markPlayer(m.p|0, true); return; }
-      if(m.t==='bye'){ markPlayer(m.p|0, false); return; }
-      if(m.t==='ping'){ if(typeof m.p==='number') markPlayer(m.p|0, true); return; }
-      if(m.t==='launch'){ handleLaunch(m); return; }
-      if(m.t==='mp'){ if((m.p|0)===0) setFourPlayer(m.on); return; }
-      if(m.t==='hk'){ emuHotkey(m.a); return; }
-      if(m.t==='axis'){ axis(m.x, m.y, m.p); return; }
-      inject(m.t, m.b, m.p);
-    };
+    displayES.onmessage = ev => { let m; try{ m = JSON.parse(ev.data); }catch(e){ return; } handleDisplayMsg(m); };
+  }
+  // Prefer a WebSocket (lower-latency controller input); fall back to SSE if it
+  // can't open. Messages relay to both transports server-side, so a phone on WS
+  // still reaches a TV on SSE and vice-versa.
+  function openDisplay(code){
+    if(displayES || displayWS) return;
+    ROOM = code;
+    let opened = false;
+    try{
+      const proto = location.protocol==='https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(proto+'//'+location.host+'/ws?room='+encodeURIComponent(code)+'&role=tv');
+      ws.onopen = () => { opened = true; displayWS = ws; if(displayES){ try{ displayES.close(); }catch(e){} displayES = null; } };
+      ws.onmessage = ev => { let m; try{ m = JSON.parse(ev.data); }catch(e){ return; } handleDisplayMsg(m); };
+      ws.onclose = () => { displayWS = null; if(!displayES) openDisplaySSE(code); };
+      ws.onerror = () => {};
+      setTimeout(() => { if(!opened && !displayES) openDisplaySSE(code); }, 1500);
+    }catch(e){ openDisplaySSE(code); }
   }
   // which player slots have a live controller (for the pairing readout)
   const playerSeen = {};
