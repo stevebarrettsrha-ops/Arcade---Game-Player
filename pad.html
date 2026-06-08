@@ -295,15 +295,36 @@
   renderPlayer();
 
   // ---- send to the TV via the server relay ----
+  // Prefer a persistent WebSocket: one open socket streaming tiny frames has far
+  // less per-event overhead than a fresh HTTP POST per button/axis move, so the
+  // controller feels tighter. If the socket can't open (old browser / blocked),
+  // we fall back to the original HTTP-POST path automatically.
   function setLinked(on){ $('#dot').classList.toggle('on', !!on); }
-  async function sendMsg(o){
+  let padWS = null, wsReady = false, wsTried = false;
+  function openWS(){
     if(!ROOM) return;
+    try{
+      const proto = location.protocol==='https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(proto+'//'+location.host+'/ws?room='+encodeURIComponent(ROOM)+'&role=pad');
+      ws.onopen = () => { padWS = ws; wsReady = true; wsTried = true; setLinked(true); try{ ws.send(JSON.stringify({t:'hello', cid:CID})); }catch(e){} };
+      ws.onmessage = ev => { let m; try{ m = JSON.parse(ev.data); }catch(e){ return; }
+        if(m.t==='slot' && typeof m.p==='number' && !userPicked && m.p!==myPlayer) setPlayer(m.p, false); };
+      ws.onclose = () => { padWS = null; wsReady = false; setLinked(false); setTimeout(openWS, 1500); };
+      ws.onerror = () => { wsTried = true; try{ ws.close(); }catch(e){} };
+    }catch(e){ wsTried = true; }
+  }
+  async function postMsg(o){
     try{
       const r = await fetch('/input?room='+encodeURIComponent(ROOM), { method:'POST', body:JSON.stringify(o), keepalive:true });
       const j = await r.json().catch(()=>({}));
       setLinked(j && j.displays > 0);
       if(typeof j.player === 'number' && !userPicked && j.player !== myPlayer) setPlayer(j.player, false);
     }catch(e){ setLinked(false); }
+  }
+  function sendMsg(o){
+    if(!ROOM) return;
+    if(wsReady && padWS){ try{ padWS.send(JSON.stringify(o)); return; }catch(e){ wsReady = false; } }
+    postMsg(o);          // fall back to HTTP POST
   }
   const send = (t,b) => sendMsg({t, b, p:myPlayer});
 
@@ -516,6 +537,7 @@
   // ---- boot ----
   bindButtons(); bindStick(); bindDpad(); initLayoutEditor();
   if(!ROOM){ toast('No room code in the link — re-scan the QR on the TV.'); }
+  openWS();                                            // open the low-latency socket (falls back to POST)
   sendMsg({t:'hello', cid:CID});                       // tell the TV a controller is here + get a player slot
   setInterval(()=>{ sendMsg({t:'hello', cid:CID}); }, 12000);   // keep the link + slot fresh
   window.addEventListener('pagehide', ()=>{ try{ navigator.sendBeacon && navigator.sendBeacon('/input?room='+encodeURIComponent(ROOM), JSON.stringify({t:'bye', cid:CID})); }catch(e){} });

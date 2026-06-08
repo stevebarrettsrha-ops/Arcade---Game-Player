@@ -24,6 +24,13 @@ const ROOT  = __dirname;
 const GAMES = path.join(ROOT, 'games');
 const BOXART = process.env.ARCADE_BOXART === '1';   // optional online GBA covers
 const PSP_MODE = process.env.ARCADE_PSP === '1';    // experimental: enables threads (needed by the PSP core)
+const THREADS  = process.env.ARCADE_THREADS === '1'; // enable multi-threaded cores (faster N64/PS1) — Chrome/Edge/Firefox
+// Cross-origin isolation unlocks SharedArrayBuffer, which multi-threaded cores need.
+// PSP requires it; turning it on also lets N64/PS1 use their threaded builds. It's
+// opt-in because WebKit/Safari TVs lack COEP "credentialless" and would then block
+// the cross-origin Java iframe + CDN cores. credentialless keeps those working
+// on Chrome/Edge/Firefox.
+const ISOLATE = PSP_MODE || THREADS;
 
 const MIME = {
   '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
@@ -63,8 +70,37 @@ const LIBRETRO = { gba:'Nintendo_-_Game_Boy_Advance', nes:'Nintendo_-_Nintendo_E
                    psp:'Sony_-_PlayStation_Portable' };
 const thumbCache = new Map();   // key -> {data,ct} | null
 const rooms = new Map();        // room code -> Set of TV (display) SSE responses
+const wsRooms = new Map();      // room code -> Set of TV (display) WebSocket sockets
 const roomPlayers = new Map();  // room code -> Map(controllerId -> {slot, ts})
 const PLAYER_TTL = 25000;       // a controller unseen this long frees its slot
+
+/* ---- shared input relay (used by both the POST+SSE and the WebSocket paths) ----
+   A controller message is stamped with its player slot (hello/claim/bye) and then
+   fanned out to every TV in the room, regardless of which transport each side uses. */
+function processInbound(room, body) {
+  let player = null;
+  if (body) {
+    try {
+      const msg = JSON.parse(body);
+      if (msg && msg.cid) {
+        if (msg.t === 'hello') { player = assignSlot(room, msg.cid); msg.p = player; }
+        else if (msg.t === 'claim' && Number.isInteger(msg.p) && msg.p >= 0 && msg.p < 4) { setSlot(room, msg.cid, msg.p); }
+        else if (msg.t === 'bye') { freeSlot(room, msg.cid); }
+      }
+      body = JSON.stringify(msg);     // re-serialize so the stamped player reaches the TV
+    } catch (e) { /* not JSON: relay as-is */ }
+  }
+  return { body, player };
+}
+function relayToRoom(room, body) {
+  let n = 0;
+  if (!body) return n;
+  const sse = rooms.get(room);
+  if (sse) { const out = 'data: ' + body.replace(/[\r\n]+/g, ' ') + '\n\n'; for (const r of sse) { try { r.write(out); n++; } catch (e) {} } }
+  const ws = wsRooms.get(room);
+  if (ws) { const frame = wsFrame(body); for (const s of ws) { try { s.write(frame); n++; } catch (e) {} } }
+  return n;
+}
 
 function assignSlot(room, cid) {
   let m = roomPlayers.get(room); if (!m) { m = new Map(); roomPlayers.set(room, m); }
@@ -428,11 +464,46 @@ async function resolveThumb(kind, file) {
   return result;
 }
 
-/* ---- generic file serving with Range ---- */
+/* ---- caching policy -------------------------------------------------------
+   Big assets (the emulator engine, WASM cores, fonts, ROMs) almost never
+   change, yet the old server sent "no-cache" on everything — so every game
+   launch re-downloaded the whole core AND the whole ROM over the LAN. That is
+   the main cause of the slow, stuttery loads on TVs/phones. We now let the
+   browser keep these files and revalidate cheaply with an ETag (a 304 reply
+   sends no body), while keeping the app's HTML/JS fresh. A changed ROM gets a
+   new size/mtime, so its ETag changes and it is re-fetched automatically. */
+const IMMUTABLE_DIRS = ['/emulatorjs/', '/assets/', '/psp-ppsspp/', '/j2me-web/'];
+const LONG_CACHE_EXT = ['.wasm', '.data', '.mem', '.ttf', '.woff', '.woff2'];
+const COMPRESSIBLE   = new Set(['.html', '.js', '.css', '.json', '.svg', '.txt', '.map', '.jad']);
+
+function cacheControlFor(relPath, ext) {
+  if (ext === '.html') return 'no-cache';                       // app shell: always revalidate (cheap 304)
+  if (IMMUTABLE_DIRS.some(d => relPath.startsWith(d)) || LONG_CACHE_EXT.includes(ext))
+    return 'public, max-age=604800';                            // engine + cores + fonts: 7 days
+  if (relPath.startsWith('/games/') || relPath.startsWith('/bios/') || relPath.startsWith('/boxart/'))
+    return 'public, max-age=86400';                             // ROMs/BIOS/boxart: 1 day (ETag catches edits)
+  return 'public, max-age=300';                                 // other app files: short
+}
+
+/* ---- generic file serving with Range, conditional GET (304) and gzip ---- */
 function serveFile(req, res, filePath) {
   fs.stat(filePath, (err, st) => {
     if (err || !st.isFile()) { res.writeHead(404); return res.end('Not found'); }
-    const type = MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
+    const ext  = path.extname(filePath).toLowerCase();
+    const type = MIME[ext] || 'application/octet-stream';
+    const rel  = '/' + path.relative(ROOT, filePath).split(path.sep).join('/');
+    const mtime = Math.floor(+st.mtime / 1000) * 1000;          // second precision (matches HTTP dates)
+    const etag = '"' + st.size.toString(16) + '-' + mtime.toString(16) + '"';
+    const base = { 'ETag': etag, 'Last-Modified': new Date(mtime).toUTCString(),
+                   'Cache-Control': cacheControlFor(rel, ext), 'Accept-Ranges': 'bytes' };
+
+    // Not changed since the browser last fetched it? Skip the body entirely.
+    const inm = req.headers['if-none-match'];
+    const ims = req.headers['if-modified-since'];
+    const notModified = inm ? (inm === etag || inm === '*')
+                            : (ims && new Date(ims).getTime() >= mtime);
+    if (notModified && !req.headers.range) { res.writeHead(304, base); return res.end(); }
+
     const range = req.headers.range;
     if (range) {
       const m = /bytes=(\d*)-(\d*)/.exec(range) || [];
@@ -441,13 +512,20 @@ function serveFile(req, res, filePath) {
       if (isNaN(start)) start = 0;
       if (isNaN(end) || end >= st.size) end = st.size - 1;
       if (start > end || start >= st.size) { res.writeHead(416, { 'Content-Range': `bytes */${st.size}` }); return res.end(); }
-      res.writeHead(206, { 'Content-Range': `bytes ${start}-${end}/${st.size}`, 'Accept-Ranges': 'bytes',
-        'Content-Length': end - start + 1, 'Content-Type': type, 'Cache-Control': 'no-cache' });
-      fs.createReadStream(filePath, { start, end }).pipe(res);
-    } else {
-      res.writeHead(200, { 'Content-Length': st.size, 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-cache' });
-      fs.createReadStream(filePath).pipe(res);
+      res.writeHead(206, Object.assign({}, base, { 'Content-Range': `bytes ${start}-${end}/${st.size}`,
+        'Content-Length': end - start + 1, 'Content-Type': type }));
+      return fs.createReadStream(filePath, { start, end }).pipe(res);
     }
+
+    // gzip small text assets (HTML/JS/CSS/JSON/SVG); never the big binaries/cores
+    const ae = req.headers['accept-encoding'] || '';
+    if (COMPRESSIBLE.has(ext) && /\bgzip\b/.test(ae) && st.size > 256) {
+      res.writeHead(200, Object.assign({}, base, { 'Content-Type': type,
+        'Content-Encoding': 'gzip', 'Vary': 'Accept-Encoding' }));
+      return fs.createReadStream(filePath).pipe(zlib.createGzip()).pipe(res);
+    }
+    res.writeHead(200, Object.assign({}, base, { 'Content-Type': type, 'Content-Length': st.size }));
+    fs.createReadStream(filePath).pipe(res);
   });
 }
 
@@ -458,10 +536,42 @@ function safeResolve(urlPath) {
   return resolved;
 }
 
-const server = http.createServer(async (req, res) => {
+/* ===================  minimal WebSocket relay (zero-dependency)  ===================
+   A lower-latency controller path: instead of one HTTP POST per button/axis event,
+   the phone keeps a socket open and streams tiny frames; the TV keeps a socket open
+   to receive them. Both sides fall back to POST+SSE if the socket can't open, so
+   this is purely additive (see pad.html / index.html). */
+const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
+function wsAccept(key) { return crypto.createHash('sha1').update(key + WS_GUID).digest('base64'); }
+function wsFrame(str) {                                   // server->client text frame (unmasked)
+  const data = Buffer.from(str, 'utf8'), len = data.length;
+  let header;
+  if (len < 126) header = Buffer.from([0x81, len]);
+  else if (len < 65536) { header = Buffer.alloc(4); header[0] = 0x81; header[1] = 126; header.writeUInt16BE(len, 2); }
+  else { header = Buffer.alloc(10); header[0] = 0x81; header[1] = 127; header.writeUInt32BE(0, 2); header.writeUInt32BE(len, 6); }
+  return Buffer.concat([header, data]);
+}
+function wsParse(buf) {                                   // pull complete frames out of the buffer
+  const frames = []; let off = 0;
+  while (off + 2 <= buf.length) {
+    const op = buf[off] & 0x0f, masked = (buf[off + 1] & 0x80) !== 0;
+    let len = buf[off + 1] & 0x7f, p = off + 2;
+    if (len === 126) { if (p + 2 > buf.length) break; len = buf.readUInt16BE(p); p += 2; }
+    else if (len === 127) { if (p + 8 > buf.length) break; len = Number(buf.readBigUInt64BE(p)); p += 8; }
+    let mask = null;
+    if (masked) { if (p + 4 > buf.length) break; mask = buf.slice(p, p + 4); p += 4; }
+    if (p + len > buf.length) break;                     // frame not fully arrived yet
+    let payload = buf.slice(p, p + len);
+    if (masked && mask) { const out = Buffer.allocUnsafe(len); for (let i = 0; i < len; i++) out[i] = payload[i] ^ mask[i & 3]; payload = out; }
+    frames.push({ op, data: payload }); off = p + len;
+  }
+  return { frames, rest: buf.slice(off) };
+}
+
+const requestHandler = async (req, res) => {
   // PSP mode needs SharedArrayBuffer (multi-threading). Cross-origin isolation enables it;
   // COEP credentialless keeps the cross-origin Java-phone iframe and CDN loading.
-  if (PSP_MODE) {
+  if (ISOLATE) {
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
     res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
   }
@@ -493,26 +603,10 @@ const server = http.createServer(async (req, res) => {
     let body = '';
     req.on('data', c => { body += c; if (body.length > 2000) req.destroy(); });
     req.on('end', () => {
-      let player = null;
-      if (body) {
-        try {
-          const msg = JSON.parse(body);
-          if (msg && msg.cid) {
-            if (msg.t === 'hello') { player = assignSlot(room, msg.cid); msg.p = player; }
-            else if (msg.t === 'claim' && Number.isInteger(msg.p) && msg.p >= 0 && msg.p < 4) { setSlot(room, msg.cid, msg.p); }
-            else if (msg.t === 'bye') { freeSlot(room, msg.cid); }
-          }
-          body = JSON.stringify(msg);     // re-serialize so the stamped player reaches the TV
-        } catch (e) { /* not JSON: relay as-is */ }
-      }
-      const set = rooms.get(room);
-      let n = 0;
-      if (set && body) {
-        const out = 'data: ' + body.replace(/[\r\n]+/g, ' ') + '\n\n';
-        for (const r of set) { try { r.write(out); n++; } catch (e) {} }
-      }
+      const r = processInbound(room, body);
+      const n = relayToRoom(room, r.body);
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: true, displays: n, player }));
+      res.end(JSON.stringify({ ok: true, displays: n, player: r.player }));
     });
     return;
   }
@@ -588,7 +682,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url === '/api/library') {
-    const lib = { boxart: BOXART, bios: {}, ejsLocal: fs.existsSync(path.join(ROOT, 'emulatorjs', 'loader.js')), isolated: PSP_MODE,
+    const lib = { boxart: BOXART, bios: {}, ejsLocal: fs.existsSync(path.join(ROOT, 'emulatorjs', 'loader.js')), isolated: ISOLATE,
                   pspWeb: fs.existsSync(path.join(ROOT, 'psp-ppsspp', 'index.html')),
                   j2meWeb: fs.existsSync(path.join(ROOT, 'j2me-web', 'web', 'index.html')) };
     for (const s of SYSTEMS) lib[s.key] = listGames(s.key, s.exts);
@@ -603,12 +697,21 @@ const server = http.createServer(async (req, res) => {
     try {
       const t = await resolveThumb(tm[1], file);
       if (!t) { res.writeHead(404); return res.end(); }
-      res.writeHead(200, { 'Content-Type': t.ct, 'Content-Length': t.data.length, 'Cache-Control': 'max-age=120' });
+      // Covers rarely change, so let the browser keep them and revalidate with an
+      // ETag instead of re-downloading every card's image every couple of minutes.
+      const etag = 'W/"' + crypto.createHash('sha1').update(t.data).digest('hex').slice(0, 16) + '"';
+      if (req.headers['if-none-match'] === etag) {
+        res.writeHead(304, { 'ETag': etag, 'Cache-Control': 'public, max-age=86400' });
+        return res.end();
+      }
+      res.writeHead(200, { 'Content-Type': t.ct, 'Content-Length': t.data.length,
+        'Cache-Control': 'public, max-age=86400', 'ETag': etag });
       return res.end(t.data);
     } catch (e) { res.writeHead(404); return res.end(); }
   }
 
-  if (url === '/users' || url.startsWith('/users/')) { res.writeHead(403); return res.end('Forbidden'); }
+  // never serve player data or the TLS private key over HTTP
+  if (url === '/users' || url.startsWith('/users/') || url === '/certs' || url.startsWith('/certs/')) { res.writeHead(403); return res.end('Forbidden'); }
   const filePath = safeResolve(url);
   if (!filePath) { res.writeHead(403); return res.end('Forbidden'); }
   let target = filePath;
@@ -620,7 +723,71 @@ const server = http.createServer(async (req, res) => {
     target = target + '.html';
   }
   serveFile(req, res, target);
-});
+};
+
+/* ---- WebSocket upgrade: /ws?room=CODE&role=tv|pad ---- */
+const upgradeHandler = (req, socket) => {
+  let url; try { url = new URL(req.url, 'http://localhost'); } catch (e) { return socket.destroy(); }
+  const key = req.headers['sec-websocket-key'];
+  if (url.pathname !== '/ws' || !key) { return socket.destroy(); }
+  const room = (url.searchParams.get('room') || '').toUpperCase().slice(0, 8);
+  const role = url.searchParams.get('role') === 'tv' ? 'tv' : 'pad';
+  socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n' +
+               'Sec-WebSocket-Accept: ' + wsAccept(key) + '\r\n\r\n');
+  try { socket.setNoDelay(true); } catch (e) {}
+
+  if (role === 'tv') { let set = wsRooms.get(room); if (!set) { set = new Set(); wsRooms.set(room, set); } set.add(socket); }
+  let buf = Buffer.alloc(0);
+  socket.on('data', chunk => {
+    buf = Buffer.concat([buf, chunk]);
+    if (buf.length > 1 << 16) { buf = Buffer.alloc(0); return; }   // guard against junk
+    const parsed = wsParse(buf); buf = parsed.rest;
+    for (const f of parsed.frames) {
+      if (f.op === 0x8) { socket.end(); return; }                 // close
+      if (f.op === 0x9) { try { socket.write(Buffer.concat([Buffer.from([0x8A, f.data.length]), f.data])); } catch (e) {} continue; } // ping->pong
+      if (f.op !== 0x1 || role !== 'pad') continue;               // only the phone sends messages
+      const r = processInbound(room, f.data.toString('utf8'));
+      relayToRoom(room, r.body);
+      if (r.player !== null) { try { socket.write(wsFrame(JSON.stringify({ t: 'slot', p: r.player }))); } catch (e) {} }
+    }
+  });
+  const cleanup = () => { const s = wsRooms.get(room); if (s) { s.delete(socket); if (!s.size) wsRooms.delete(room); } };
+  socket.on('close', cleanup);
+  socket.on('error', () => { cleanup(); try { socket.destroy(); } catch (e) {} });
+};
+
+const server = http.createServer(requestHandler);
+server.on('upgrade', upgradeHandler);
+
+/* ---- optional HTTPS, so Java (CheerpJ) works over the LAN, not just localhost ----
+   CheerpJ only starts on a "secure" page. http://localhost counts; a plain
+   http://192.168.x.x LAN address does not — which is why Java fails on TVs/phones.
+   Serving HTTPS (even a self-signed cert the user accepts once) makes the page a
+   secure context everywhere, so Java works over the LAN too. Run `node make-cert.js`
+   once to create certs/, then start with ARCADE_HTTPS=1. */
+function startHttps() {
+  let key, cert;
+  try {
+    key  = fs.readFileSync(path.join(ROOT, 'certs', 'key.pem'));
+    cert = fs.readFileSync(path.join(ROOT, 'certs', 'cert.pem'));
+  } catch (e) {
+    console.log('\n  HTTPS requested (ARCADE_HTTPS=1) but certs/key.pem + certs/cert.pem are missing.');
+    console.log('  Create a self-signed cert once:  node make-cert.js   (needs openssl), then restart.\n');
+    return;
+  }
+  const hport = process.env.HTTPS_PORT || 8443;
+  const hsrv = https.createServer({ key, cert }, requestHandler);
+  hsrv.on('upgrade', upgradeHandler);
+  hsrv.on('error', e => console.error('  HTTPS server error: ' + e.message));
+  hsrv.listen(hport, '0.0.0.0', () => {
+    const ips = lanAddresses();
+    console.log('\n  HTTPS is ON (lets Java run over the LAN):');
+    console.log('    https://localhost:' + hport);
+    for (const ip of ips) console.log('    https://' + ip + ':' + hport + '   (open this on the TV/phone for Java)');
+    console.log('    self-signed: the browser warns once — accept it to continue.');
+  });
+}
+if (process.env.ARCADE_HTTPS === '1') startHttps();
 
 server.listen(PORT, '0.0.0.0', () => {
   try { fs.mkdirSync(USERS, { recursive: true }); } catch (e) {}
@@ -648,6 +815,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log('          download-boxart-* (online, once) to fetch real box-art.');
   if (BOXART) console.log('  Online GBA box-art: ON');
   if (PSP_MODE) console.log('  PSP mode: ON (threads enabled — experimental; Java-phone still works)');
+  else if (THREADS) console.log('  Threaded cores: ON (faster N64/PS1 on Chrome/Edge/Firefox; not Safari)');
   console.log('  Phone remote: click "Phone", scan the code, browse & play.');
   console.log('  Players: pick a profile (name + 4-digit PIN) to keep saves separate.');
   console.log('  Then refresh the page in your browser.\n');
