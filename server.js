@@ -24,6 +24,13 @@ const ROOT  = __dirname;
 const GAMES = path.join(ROOT, 'games');
 const BOXART = process.env.ARCADE_BOXART === '1';   // optional online GBA covers
 const PSP_MODE = process.env.ARCADE_PSP === '1';    // experimental: enables threads (needed by the PSP core)
+const THREADS  = process.env.ARCADE_THREADS === '1'; // enable multi-threaded cores (faster N64/PS1) — Chrome/Edge/Firefox
+// Cross-origin isolation unlocks SharedArrayBuffer, which multi-threaded cores need.
+// PSP requires it; turning it on also lets N64/PS1 use their threaded builds. It's
+// opt-in because WebKit/Safari TVs lack COEP "credentialless" and would then block
+// the cross-origin Java iframe + CDN cores. credentialless keeps those working
+// on Chrome/Edge/Firefox.
+const ISOLATE = PSP_MODE || THREADS;
 
 const MIME = {
   '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
@@ -503,7 +510,7 @@ function safeResolve(urlPath) {
 const server = http.createServer(async (req, res) => {
   // PSP mode needs SharedArrayBuffer (multi-threading). Cross-origin isolation enables it;
   // COEP credentialless keeps the cross-origin Java-phone iframe and CDN loading.
-  if (PSP_MODE) {
+  if (ISOLATE) {
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
     res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
   }
@@ -630,7 +637,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url === '/api/library') {
-    const lib = { boxart: BOXART, bios: {}, ejsLocal: fs.existsSync(path.join(ROOT, 'emulatorjs', 'loader.js')), isolated: PSP_MODE,
+    const lib = { boxart: BOXART, bios: {}, ejsLocal: fs.existsSync(path.join(ROOT, 'emulatorjs', 'loader.js')), isolated: ISOLATE,
                   pspWeb: fs.existsSync(path.join(ROOT, 'psp-ppsspp', 'index.html')),
                   j2meWeb: fs.existsSync(path.join(ROOT, 'j2me-web', 'web', 'index.html')) };
     for (const s of SYSTEMS) lib[s.key] = listGames(s.key, s.exts);
@@ -698,6 +705,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log('          download-boxart-* (online, once) to fetch real box-art.');
   if (BOXART) console.log('  Online GBA box-art: ON');
   if (PSP_MODE) console.log('  PSP mode: ON (threads enabled — experimental; Java-phone still works)');
+  else if (THREADS) console.log('  Threaded cores: ON (faster N64/PS1 on Chrome/Edge/Firefox; not Safari)');
   console.log('  Phone remote: click "Phone", scan the code, browse & play.');
   console.log('  Players: pick a profile (name + 4-digit PIN) to keep saves separate.');
   console.log('  Then refresh the page in your browser.\n');

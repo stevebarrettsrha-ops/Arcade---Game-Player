@@ -737,12 +737,20 @@
     const base = LIB.ejsLocal ? 'emulatorjs/' : 'https://cdn.emulatorjs.org/stable/data/';
     window.EJS_pathtodata = base;
     window.EJS_startOnLoaded = true;
-    window.EJS_threads = (system==='psp');     // PSP core requires threads
+    // Multi-threaded cores need SharedArrayBuffer, i.e. a cross-origin-isolated page
+    // (server started with threads/PSP mode). PSP requires it; N64 and PS1 run a lot
+    // smoother with it. We gate on crossOriginIsolated so a non-isolated page falls
+    // back to the single-threaded core instead of failing to load a threaded one.
+    const THREADED = { psp:1, n64:1, psx:1 };
+    window.EJS_threads = !!(window.crossOriginIsolated && THREADED[system]);
     window.EJS_color = '#3fe0cf';
     window.EJS_backgroundColor = '#000000';
     let _opts = {};
     if(fourPlayer && MULTITAP[system]) Object.assign(_opts, MULTITAP[system]);
-    if(PERF) Object.assign(_opts, PERF_OPTS);   // performance mode (slow TVs)
+    if(PERF){                                    // performance mode (slow TVs)
+      Object.assign(_opts, PERF_OPTS);
+      if(PERF_CORE_OPTS[system]) Object.assign(_opts, PERF_CORE_OPTS[system]);
+    }
     window.EJS_defaultOptions = Object.keys(_opts).length ? _opts : undefined;
     if(system==='psx' && LIB.bios && LIB.bios.psx) window.EJS_biosUrl = LIB.bios.psx;
     delete window.EJS_loadStateURL;
@@ -1210,7 +1218,15 @@
   if(new URLSearchParams(location.search).get('debug') === '1') window.EJS_DEBUG_XX = true;
   /* ---- performance mode (helps weak TVs): no shader, unsynced video, FPS shown ---- */
   let PERF = false; try{ PERF = localStorage.getItem('arcade_perf')==='1'; }catch(e){}
-  const PERF_OPTS = { shader:'disabled', vsync:'disabled', fps:'show' };
+  const PERF_OPTS = { shader:'disabled', vsync:'disabled', fps:'show', rewindEnabled:'disabled' };
+  // Per-system core options for weak TVs — lower internal resolution / add frameskip
+  // on the heavy systems. Unknown keys are harmlessly ignored by the core, so this is
+  // best-effort: it only kicks in when Performance mode is ON.
+  const PERF_CORE_OPTS = {
+    n64: { 'mupen64plus-43screensize':'320x240', 'mupen64plus-EnableFBEmulation':'False' },
+    psx: { 'pcsx_rearmed_frameskip':'1' },
+    psp: { 'ppsspp_internal_resolution':'1', 'ppsspp_frameskip':'1' },
+  };
   function updatePerfBtn(){ const b=$('#perfBtn'); if(b){ b.textContent='⚡ Performance: '+(PERF?'ON':'OFF'); b.classList.toggle('on',PERF); } }
   (function(){ const b=$('#perfBtn'); if(b){ b.onclick=()=>{ PERF=!PERF; try{localStorage.setItem('arcade_perf',PERF?'1':'0');}catch(e){} updatePerfBtn(); toast('Performance mode '+(PERF?'ON':'OFF')+(document.body.classList.contains('playing')?' — restart the game to apply':'')); }; updatePerfBtn(); } })();
   // player profiles
