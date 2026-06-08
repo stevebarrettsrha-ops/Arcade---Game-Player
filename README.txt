@@ -14,6 +14,8 @@
    get-offline.js ....... the script those launchers run (Node)
    download-j2me-* ...... ONE-TIME: set up the Java handset (runs in-app)
    get-j2me.js .......... the script those launchers run (Node)
+   make-cert.js ......... ONE-TIME: make an HTTPS certificate so Java works
+                          on TVs/phones over the LAN (see section 2)
    emulatorjs/ .......... where the offline engine + cores are stored
    j2me-web/ ............ where the Java handset is stored (see its _ABOUT)
    assets/ .............. bundled fonts + QR code library (already offline)
@@ -41,6 +43,18 @@
        device. N64 uses an analog stick (the phone thumbstick maps
        to it). PS1 wants disc images as .chd or .pbp (single file);
        for .cue+.bin, convert to .chd or zip them together.
+     - FASTER N64 / PS1 (multi-core devices, Chrome/Edge/Firefox - not
+       Safari): start with threaded cores enabled to use more CPU cores:
+            Windows :  set ARCADE_THREADS=1 && node server.js
+            Mac/Linux: ARCADE_THREADS=1 node server.js
+       (PSP mode already turns this on.) If a game won't load on an older
+       TV browser, start normally without it.
+     - SLOW TV? Use the "⚡ Performance" button (top right): it disables the
+       shader and turns on per-system speedups (lower N64/PS1/PSP resolution
+       and frame-skip) - restart the game after toggling it.
+     - Games load fast on repeat plays now: cores and game files are cached
+       by the browser after the first load instead of re-downloading each
+       time, so launching a game you've played is near-instant.
      - PS1 usually runs without a BIOS; for best compatibility drop
        a BIOS file in bios/psx/ (use one you're entitled to).
      - Control mapping per system can be fine-tuned in EmulatorJS's
@@ -74,6 +88,17 @@
    Java. Over the LAN address - including phones and TVs - the Java engine
    can't start without HTTPS; every OTHER system still works there as normal.
    If a Java game won't start, ARCADE tells you which of these is the cause.
+
+   WANT JAVA ON TVs / PHONES TOO? Turn on HTTPS once (makes every page a
+   "secure" page, so Java starts over the LAN):
+       1) node make-cert.js          (one time - needs openssl; makes a
+                                       self-signed certificate in certs/)
+       2) start ARCADE with HTTPS on:
+            Windows :  set ARCADE_HTTPS=1 && node server.js
+            Mac/Linux: ARCADE_HTTPS=1 node server.js
+       3) on the TV/phone open  https://<your-LAN-IP>:8443  and accept the
+          one-time "not private" warning (it's your own computer).
+   Plain http://...:8080 keeps working for every other system as before.
    J2ME saves: FreeJ2ME-web stores your saves in the browser, and they
    persist between sessions. They are NOT in the per-player folders (it's
    a separate app). To back them up, use its "Export Data" button and
