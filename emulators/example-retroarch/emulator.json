@@ -1,0 +1,7 @@
+{
+  "name": "RetroArch (example — edit me)",
+  "cmd": "retroarch",
+  "capture": "test",
+  "window": "RetroArch",
+  "needsRom": false
+}

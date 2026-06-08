@@ -1,0 +1,103 @@
+==============================================================
+  ARCADE — STREAMING MODE (run real emulators on the host)
+  Experimental · best on a Steam Deck or a Linux mini-PC
+==============================================================
+
+WHAT IT DOES
+  Normally every TV/phone runs the emulator itself (in the browser). In
+  streaming mode the HOST runs the REAL native emulator with full power (GPU +
+  JIT) and ARCADE streams the picture into an iframe on the clients. That gets
+  you the heavy / "impossible" systems a browser can't do — PS2 (PCSX2),
+  GameCube/Wii (Dolphin), PS3 (RPCS3), and flawless N64/PSP — while weak TVs
+  only have to show a video. Your phone is the controller (input is injected
+  into the emulator on the host).
+
+  This is OPT-IN. With it off, ARCADE behaves exactly as before.
+
+------------------------------------------------------------
+1. INSTALL THE TWO HOST HELPERS  (one time)
+------------------------------------------------------------
+  ffmpeg  — captures the screen and encodes the video
+  xdotool — sends controller buttons to the emulator (X11 desktop)
+
+  Steam Deck (Desktop Mode, in Konsole):
+     # ffmpeg via Flatpak is easiest, or use the system one if you've unlocked
+     # the read-only filesystem. Simplest: install both with pacman after
+     #   sudo steamos-readonly disable ; sudo pacman-key --init
+     sudo pacman -S ffmpeg xdotool
+  Debian/Ubuntu/most Linux:
+     sudo apt install ffmpeg xdotool
+
+  (Wayland/Gaming Mode note: xdotool is X11-only. Run the emulator from the
+   Deck's DESKTOP mode for v1. Wayland input via ydotool/uinput is a later step.)
+
+------------------------------------------------------------
+2. ADD YOUR EMULATORS
+------------------------------------------------------------
+  Make one folder per emulator in  emulators/<name>/  with an emulator.json.
+  (See emulators/_ABOUT.txt and the example-retroarch/ folder.)
+
+  Examples (edit the cmd to match how you launch it):
+
+  emulators/pcsx2/emulator.json
+     { "name":"PCSX2 (PS2)",
+       "cmd":"flatpak run net.pcsx2.PCSX2 {rom}",
+       "capture":"x11", "window":"PCSX2", "needsRom":true }
+
+  emulators/dolphin/emulator.json
+     { "name":"Dolphin (GC/Wii)",
+       "cmd":"dolphin-emu -b -e {rom}",
+       "capture":"x11", "window":"Dolphin", "needsRom":true }
+
+  emulators/rpcs3/emulator.json
+     { "name":"RPCS3 (PS3)",
+       "cmd":"/home/deck/Applications/rpcs3.AppImage",
+       "capture":"x11", "window":"RPCS3", "needsRom":false }
+
+  Fields: name (shown in ARCADE), cmd ({rom} = the game file), capture
+  (x11 | kms | test), window (title, for input focus), needsRom.
+  Optional icon.png in the folder is used as the cover.
+
+------------------------------------------------------------
+3. START ARCADE WITH STREAMING ON
+------------------------------------------------------------
+     ARCADE_STREAM=1 node server.js
+
+  Useful tuning (env vars, all optional):
+     ARCADE_STREAM_CAPTURE=x11     # x11 (desktop) | kms | test (default: test)
+     ARCADE_STREAM_DISPLAY=:0      # X display to capture
+     ARCADE_STREAM_SIZE=1280x720   # capture size
+     ARCADE_STREAM_FPS=30
+     ARCADE_STREAM_QUALITY=6       # JPEG quality 2(best)..31 (smaller/faster)
+     ARCADE_STREAM_INPUT=xdotool   # turn controller injection ON (default: none)
+     ARCADE_STREAM_FFMPEG=ffmpeg   # path/override, e.g. for the Flatpak ffmpeg
+
+  FIRST, TEST THE PIPELINE WITH NO EMULATOR:
+     leave CAPTURE on "test", open ARCADE, click "🖥️ Host emulators", pick the
+     example — you should see a moving test pattern in the iframe. That proves
+     ffmpeg + the stream path work. Then switch CAPTURE=x11 and add real
+     emulators.
+
+------------------------------------------------------------
+4. PLAY
+------------------------------------------------------------
+  - On the TV: open ARCADE, click "🖥️ Host emulators", pick one. It launches on
+    the host and the picture appears in the iframe.
+  - On a phone: tap "📱 Phone", scan the code — the phone is now the controller.
+    Buttons are sent to the emulator on the host (RetroArch's default keyboard
+    layout: arrows = D-pad, Z/X = B/A, A/S = Y/X, Q/W = L/R, Enter = Start,
+    Shift = Select; SAVE=F2, LOAD=F4, FF=Space). Rebind inside the emulator if
+    needed.
+
+------------------------------------------------------------
+LIMITS / NOTES (v1)
+------------------------------------------------------------
+  - Video is MJPEG (no audio yet, moderate latency) — simple and works in every
+    browser including TVs. Lower-latency H.264 + audio is the planned next step.
+  - Analog sticks aren't sent yet (digital buttons + hotkeys work). Full analog
+    needs a virtual gamepad (uinput) — planned.
+  - One host = one stream at a time (everyone watching the SAME game). Different
+    games at once would need multiple capture/encode pipelines.
+  - You supply your own legally-owned emulators, BIOS and games. Nothing is
+    bundled or downloaded by ARCADE.
+==============================================================
