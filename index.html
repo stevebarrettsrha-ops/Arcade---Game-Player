@@ -864,8 +864,10 @@
     try{
       if(window.isSecureContext === false)
         return 'the Java engine needs a <b>secure page</b>, and you’re on a plain <b>http://'+location.hostname+'</b> address. '+
-               'Open ARCADE as <b>http://localhost:'+(location.port||'80')+'</b> on the computer running the server. '+
-               'Java can’t start over a LAN IP or on phones/TVs without HTTPS (every other system still works there)';
+               'Either open ARCADE as <b>http://localhost:'+(location.port||'80')+'</b> on the host computer, '+
+               'or turn on HTTPS to play Java on TVs/phones over the LAN: run <b>node make-cert.js</b> once, then start with '+
+               '<b>ARCADE_HTTPS=1</b> and open <b>https://'+location.hostname+':8443</b> here (see the README). '+
+               'Every other system still works on the plain http address';
       const cw = frame.contentWindow;
       if(cw && typeof cw.cheerpjInit === 'undefined')
         return 'the Java engine (CheerpJ) didn’t download — it loads from the internet (<b>cjrtnc.leaningtech.com</b>). '+
