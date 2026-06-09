@@ -1,0 +1,7 @@
+# Keep Windows batch files as CRLF and Unix scripts as LF,
+# regardless of each contributor's git settings.
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.sh        text eol=lf
+*.command   text eol=lf
+READ ME FIRST.txt text eol=crlf

@@ -1,0 +1,82 @@
+============================================================
+  FULLY OFFLINE NETWORK  -  READ ME FIRST
+============================================================
+
+WHAT THIS DOES
+--------------
+When there is no internet, this turns your computer into a
+small WiFi network. Other phones, tablets and computers can
+then connect to it and share with each other - completely
+offline. No router and no internet are needed.
+
+Network name (WiFi to look for): REEL
+Password                       : YourPassword
+
+
+HOW TO USE IT  (pick your computer type)
+----------------------------------------
+Open the folder that matches your computer, then:
+
+   File "1 - START offline WiFi"   = turn the WiFi ON
+   File "2 - STOP offline WiFi"    = turn the WiFi OFF
+
+   *  WINDOWS  ->  open the  Windows  folder
+                   Double-click  "1 - START offline WiFi.bat"
+                   (Click "Yes" if Windows asks for permission.)
+
+   *  MAC      ->  open the  Mac  folder
+                   Double-click  "1 - START offline WiFi.command"
+                   (Follow the 3 on-screen steps. Apple requires
+                    the WiFi to be switched on in Settings.)
+
+   *  LINUX    ->  open the  Linux  folder
+                   Double-click  "1 - START offline WiFi.sh"
+                   (Choose "Run" / "Run in Terminal". Enter your
+                    password if asked.)
+
+To stop, run file 2 in the same folder.
+
+
+CONNECTING ANOTHER DEVICE
+-------------------------
+On the other phone/tablet/laptop, open its WiFi list, choose
+the network named  REEL , and enter the password  YourPassword .
+That device is now on the offline network.
+
+
+CHANGING THE NAME OR PASSWORD (optional)
+----------------------------------------
+Open the START file in a text editor (right-click > Edit /
+Open With > Notepad/TextEdit). Near the top you will see:
+
+      Windows:  set "SSID=REEL"   and  set "KEY=YourPassword"
+      Linux:    SSID="REEL"       and  PASS="YourPassword"
+
+Change the words inside the quotes, save, and run it again.
+Keep the password at least 8 characters.
+
+
+IS THIS SAFE?
+-------------
+Yes. These files only switch a local WiFi on or off using the
+tools already built into your operating system. They do not
+install anything, do not delete files, and do not change your
+normal internet settings. Stopping (file 2) fully undoes it.
+
+
+IF IT DOES NOT START
+--------------------
+WINDOWS: Some newer WiFi adapters no longer support the older
+   "hosted network" feature. If file 1 says it could not start,
+   use the built-in alternative instead:
+   Settings > Network & Internet > Mobile hotspot > turn it ON.
+   (Set "Share over" to Wi-Fi. You can rename it to REEL there.)
+
+MAC: macOS only allows the WiFi to be switched on inside
+   System Settings > General > Sharing > Internet Sharing.
+   File 1 opens that screen for you.
+
+LINUX: This uses NetworkManager (the "nmcli" command), which
+   comes with most desktop Linux. If it is missing, install it
+   with your package manager, e.g.  sudo apt install network-manager
+============================================================
