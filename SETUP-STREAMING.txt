@@ -1,103 +1,122 @@
 ==============================================================
   ARCADE — STREAMING MODE (run real emulators on the host)
-  Experimental · best on a Steam Deck or a Linux mini-PC
+  Works on Windows, macOS and Linux hosts
 ==============================================================
 
 WHAT IT DOES
   Normally every TV/phone runs the emulator itself (in the browser). In
   streaming mode the HOST runs the REAL native emulator with full power (GPU +
-  JIT) and ARCADE streams the picture into an iframe on the clients. That gets
+  JIT) and ARCADE streams the picture into the page on the clients. That gets
   you the heavy / "impossible" systems a browser can't do — PS2 (PCSX2),
-  GameCube/Wii (Dolphin), PS3 (RPCS3), and flawless N64/PSP — while weak TVs
-  only have to show a video. Your phone is the controller (input is injected
-  into the emulator on the host).
+  original XBOX (xemu), GameCube/Wii (Dolphin), PS3 (RPCS3), and full-speed
+  N64/PSP — while weak TVs only have to show a video. Your phone (pad.html)
+  is the controller: its buttons are injected into the emulator on the host.
 
   This is OPT-IN. With it off, ARCADE behaves exactly as before.
 
 ------------------------------------------------------------
-1. INSTALL THE TWO HOST HELPERS  (one time)
+1. INSTALL ffmpeg ON THE HOST  (one time)
 ------------------------------------------------------------
-  ffmpeg  — captures the screen and encodes the video
-  xdotool — sends controller buttons to the emulator (X11 desktop)
+  ffmpeg captures the screen and encodes the video.
 
-  Steam Deck (Desktop Mode, in Konsole):
-     # ffmpeg via Flatpak is easiest, or use the system one if you've unlocked
-     # the read-only filesystem. Simplest: install both with pacman after
-     #   sudo steamos-readonly disable ; sudo pacman-key --init
+  Windows :  winget install ffmpeg        (or download from ffmpeg.org)
+  macOS   :  brew install ffmpeg
+  Linux   :  sudo apt install ffmpeg xdotool
+  Steam Deck (Desktop Mode, Konsole):
+     sudo steamos-readonly disable ; sudo pacman-key --init
      sudo pacman -S ffmpeg xdotool
-  Debian/Ubuntu/most Linux:
-     sudo apt install ffmpeg xdotool
 
-  (Wayland/Gaming Mode note: xdotool is X11-only. Run the emulator from the
-   Deck's DESKTOP mode for v1. Wayland input via ydotool/uinput is a later step.)
+  Controller input needs ONE more thing per OS:
+    Windows : nothing — ARCADE injects keys itself (stream-input.ps1).
+    macOS   : nothing to install, but grant the Terminal/Node both
+              "Screen Recording" and "Accessibility" permission when asked
+              (System Settings > Privacy & Security).
+    Linux   : xdotool (installed above). X11 desktops only — on Wayland,
+              run the emulator from an X11 session.
 
 ------------------------------------------------------------
 2. ADD YOUR EMULATORS
 ------------------------------------------------------------
-  Make one folder per emulator in  emulators/<name>/  with an emulator.json.
-  (See emulators/_ABOUT.txt and the example-retroarch/ folder.)
+  Ready-made manifests for PCSX2 (PS2), xemu (XBOX), PPSSPP (PSP),
+  RetroArch-N64, Dolphin and RPCS3 are in  emulators/_examples/ .
+  Copy a folder one level up (e.g. emulators/_examples/pcsx2 ->
+  emulators/pcsx2), then edit its "cmd" line to match how the emulator is
+  launched on YOUR computer. See emulators/_examples/README.txt.
 
-  Examples (edit the cmd to match how you launch it):
+  Manifest format (emulators/<name>/emulator.json):
+     {
+       "name":    "PCSX2 (PS2)",
+       "cmd":     "\"C:\\Program Files\\PCSX2\\pcsx2-qt.exe\" -fullscreen {rom}",
+       "capture": "auto",
+       "window":  "PCSX2",
+       "needsRom": true,
+       "system":  "PS2",
+       "roms":    "games/ps2",
+       "exts":    [".iso", ".chd"]
+     }
 
-  emulators/pcsx2/emulator.json
-     { "name":"PCSX2 (PS2)",
-       "cmd":"flatpak run net.pcsx2.PCSX2 {rom}",
-       "capture":"x11", "window":"PCSX2", "needsRom":true }
+  Fields: name (shown in ARCADE) · cmd ({rom} = the game file; quote paths
+  with spaces) · capture (auto | x11 | gdigrab | avfoundation | kms | test)
+  · window (title, for input focus on X11) · needsRom · system (label on the
+  cards) · roms (a folder inside ARCADE whose files are listed as launchable
+  games) · exts (which files in that folder count). Optional icon.png in the
+  folder is used as the cover.
 
-  emulators/dolphin/emulator.json
-     { "name":"Dolphin (GC/Wii)",
-       "cmd":"dolphin-emu -b -e {rom}",
-       "capture":"x11", "window":"Dolphin", "needsRom":true }
-
-  emulators/rpcs3/emulator.json
-     { "name":"RPCS3 (PS3)",
-       "cmd":"/home/deck/Applications/rpcs3.AppImage",
-       "capture":"x11", "window":"RPCS3", "needsRom":false }
-
-  Fields: name (shown in ARCADE), cmd ({rom} = the game file), capture
-  (x11 | kms | test), window (title, for input focus), needsRom.
-  Optional icon.png in the folder is used as the cover.
+  With "roms" set, the games in that folder show up BOTH in ARCADE's
+  "Host emulators" picker AND in the phone pad's Games drawer — so a phone
+  can start a PS2/XBOX game on the TV directly.
 
 ------------------------------------------------------------
 3. START ARCADE WITH STREAMING ON
 ------------------------------------------------------------
-     ARCADE_STREAM=1 node server.js
+  Double-click the matching script:
+     Windows :  start-windows-stream.bat
+     macOS   :  start-mac-stream.command
+     Linux   :  ./start-linux-stream.sh
+  (Equivalent to:  ARCADE_STREAM=1 node server.js)
 
-  Useful tuning (env vars, all optional):
-     ARCADE_STREAM_CAPTURE=x11     # x11 (desktop) | kms | test (default: test)
-     ARCADE_STREAM_DISPLAY=:0      # X display to capture
-     ARCADE_STREAM_SIZE=1280x720   # capture size
+  Tuning (env vars, all optional):
+     ARCADE_STREAM_CAPTURE=auto    # auto picks per-OS: Windows gdigrab,
+                                   # macOS avfoundation, Linux x11 · or: test
+     ARCADE_STREAM_DISPLAY=:0      # X display (Linux) / screen device (macOS)
+     ARCADE_STREAM_SIZE=1280x720   # stream size (desktop grabs are scaled)
      ARCADE_STREAM_FPS=30
      ARCADE_STREAM_QUALITY=6       # JPEG quality 2(best)..31 (smaller/faster)
-     ARCADE_STREAM_INPUT=xdotool   # turn controller injection ON (default: none)
-     ARCADE_STREAM_FFMPEG=ffmpeg   # path/override, e.g. for the Flatpak ffmpeg
+     ARCADE_STREAM_INPUT=auto      # auto | xdotool | powershell | osascript | none
+     ARCADE_STREAM_FFMPEG=ffmpeg   # path/override, e.g. for a Flatpak ffmpeg
 
-  FIRST, TEST THE PIPELINE WITH NO EMULATOR:
-     leave CAPTURE on "test", open ARCADE, click "🖥️ Host emulators", pick the
-     example — you should see a moving test pattern in the iframe. That proves
-     ffmpeg + the stream path work. Then switch CAPTURE=x11 and add real
-     emulators.
+  WANT TO TEST THE PIPELINE WITH NO EMULATOR?  Start with
+     ARCADE_STREAM_CAPTURE=test — open ARCADE, click "🖥️ Host emulators",
+  pick anything: you should see a moving test pattern. That proves ffmpeg +
+  the stream path work; then switch back to auto.
 
 ------------------------------------------------------------
 4. PLAY
 ------------------------------------------------------------
-  - On the TV: open ARCADE, click "🖥️ Host emulators", pick one. It launches on
-    the host and the picture appears in the iframe.
-  - On a phone: tap "📱 Phone", scan the code — the phone is now the controller.
-    Buttons are sent to the emulator on the host (RetroArch's default keyboard
-    layout: arrows = D-pad, Z/X = B/A, A/S = Y/X, Q/W = L/R, Enter = Start,
-    Shift = Select; SAVE=F2, LOAD=F4, FF=Space). Rebind inside the emulator if
-    needed.
+  - On the TV: open ARCADE, click "🖥️ Host emulators", pick an emulator,
+    then a game. It launches on the host and the picture appears in the page.
+  - On a phone: tap "📱 Phone", scan the code — the phone is now the
+    controller, and its Games drawer also lists the host games (PS2, XBOX,
+    ...) so you can start them from the sofa.
+  - Buttons are sent to the emulator as keyboard presses (RetroArch's default
+    keyboard layout: arrows = D-pad, Z/X = B/A, A/S = Y/X, Q/W = L/R,
+    E/T = L2/R2, Enter = Start, Shift = Select; SAVE=F2, LOAD=F4, FF=Space).
+    Map those keys inside the emulator once (every emulator lets you bind
+    keyboard keys to its pads) and the phone pad drives it.
+      macOS host note: AppleScript can't hold arrow keys, so the D-pad sends
+      I/K/J/L there — bind those instead.
 
 ------------------------------------------------------------
-LIMITS / NOTES (v1)
+LIMITS / NOTES
 ------------------------------------------------------------
-  - Video is MJPEG (no audio yet, moderate latency) — simple and works in every
-    browser including TVs. Lower-latency H.264 + audio is the planned next step.
-  - Analog sticks aren't sent yet (digital buttons + hotkeys work). Full analog
-    needs a virtual gamepad (uinput) — planned.
-  - One host = one stream at a time (everyone watching the SAME game). Different
-    games at once would need multiple capture/encode pipelines.
-  - You supply your own legally-owned emulators, BIOS and games. Nothing is
-    bundled or downloaded by ARCADE.
+  - Video is MJPEG: simple, low-latency-ish, works in every browser including
+    TVs — but it has NO AUDIO yet. For sofa play the host's own speakers
+    usually cover it; H.264 + audio is the planned next step.
+  - The phone's analog stick arrives as 8-way digital presses (the same keys
+    as the D-pad). True analog needs a virtual gamepad (uinput) — planned.
+  - One host = one stream at a time (everyone watches the SAME game).
+  - Capture grabs the whole desktop, so run the emulator fullscreen on the
+    host for the cleanest picture.
+  - You supply your own legally-owned emulators, BIOS files and games.
+    Nothing is bundled or downloaded by ARCADE.
 ==============================================================

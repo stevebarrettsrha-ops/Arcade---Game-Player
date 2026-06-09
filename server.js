@@ -1,7 +1,7 @@
 /* ============================================================
    ARCADE home server
    A tiny, zero-dependency local server for your game library.
-   - Serves the ARCADE front-end (arcade.html)
+   - Serves the ARCADE front-end (index.html)
    - Serves your games from /games (with HTTP Range support)
    - Lists whatever you drop into games/gba and games/j2me
    - Builds a thumbnail for each game:
@@ -582,7 +582,8 @@ const requestHandler = async (req, res) => {
     res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
   }
   let url = req.url.split('?')[0];
-  if (url === '/') url = '/arcade.html';
+  // the front-end ships as index.html (older builds called it arcade.html)
+  if (url === '/') url = fs.existsSync(path.join(ROOT, 'index.html')) ? '/index.html' : '/arcade.html';
 
   const q = new URL(req.url, 'http://localhost');
   const room = (q.searchParams.get('room') || '').toUpperCase().slice(0, 8);
@@ -829,6 +830,9 @@ server.listen(PORT, '0.0.0.0', () => {
   if (PSP_MODE) console.log('  PSP mode: ON (threads enabled — experimental; Java-phone still works)');
   else if (THREADS) console.log('  Threaded cores: ON (faster N64/PS1 on Chrome/Edge/Firefox; not Safari)');
   if (STREAM) console.log('  Streaming mode: ON — host emulators in emulators/ stream to clients (see SETUP-STREAMING.txt)');
+  console.log('  No internet / no router? Run "1 - START offline WiFi" in the');
+  console.log('  "fully offline network" folder: this computer becomes the WiFi.');
+  console.log('  Other devices join it, then open the address above.');
   console.log('  Phone remote: click "Phone", scan the code, browse & play.');
   console.log('  Players: pick a profile (name + 4-digit PIN) to keep saves separate.');
   console.log('  Then refresh the page in your browser.\n');

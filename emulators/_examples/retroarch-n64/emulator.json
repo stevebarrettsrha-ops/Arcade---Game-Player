@@ -1,0 +1,10 @@
+{
+  "name": "RetroArch N64 (native)",
+  "cmd": "retroarch -f -L mupen64plus_next {rom}",
+  "capture": "auto",
+  "window": "RetroArch",
+  "needsRom": true,
+  "system": "N64",
+  "roms": "games/n64",
+  "exts": [".n64", ".z64", ".v64"]
+}

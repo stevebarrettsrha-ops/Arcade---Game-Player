@@ -1,0 +1,10 @@
+{
+  "name": "RPCS3 (PS3)",
+  "cmd": "rpcs3 --no-gui {rom}",
+  "capture": "auto",
+  "window": "RPCS3",
+  "needsRom": false,
+  "system": "PS3",
+  "roms": "games/ps3",
+  "exts": []
+}

@@ -3,20 +3,22 @@
 ==============================================================
 
 WHAT THIS IS
-  Drop native emulators here to run them ON THIS HOST (e.g. a Steam Deck or
-  mini-PC) and STREAM them into ARCADE on your TVs/phones. The host does all
-  the work with full power (real GPU + JIT), so you get the heavy / "impossible"
-  systems a browser can't do: PS2 (PCSX2), GameCube/Wii (Dolphin), PS3 (RPCS3),
-  and flawless N64/PSP — all shown in an iframe on the client devices, driven by
-  the ARCADE phone controller.
+  Drop native emulators here to run them ON THIS HOST (a gaming PC, laptop,
+  Steam Deck or mini-PC) and STREAM them into ARCADE on your TVs/phones. The
+  host does all the work with full power (real GPU + JIT), so you get the
+  heavy / "impossible" systems a browser can't do: PS2 (PCSX2), original
+  XBOX (xemu), GameCube/Wii (Dolphin), PS3 (RPCS3), and full-speed N64/PSP —
+  shown on the client devices and driven by the ARCADE phone pad.
 
-  This is OPT-IN and experimental. It only switches on when you start the server
-  with streaming enabled:
-      Linux/Deck :  ARCADE_STREAM=1 node server.js
+  This is OPT-IN. It only switches on when you start the server with
+  streaming enabled:
+      Windows :  start-windows-stream.bat
+      macOS   :  start-mac-stream.command
+      Linux   :  ./start-linux-stream.sh
   Normal browser mode (the rest of ARCADE) is completely unaffected otherwise.
 
-  Full setup (ffmpeg + xdotool + Steam Deck notes): see SETUP-STREAMING.txt
-  in the ARCADE folder.
+  Full setup (ffmpeg + per-OS notes): see SETUP-STREAMING.txt in the ARCADE
+  folder. Ready-made manifests to copy: see the _examples/ folder in here.
 
 HOW TO ADD AN EMULATOR
   Make ONE folder per emulator in here, each with an "emulator.json" manifest:
@@ -29,31 +31,37 @@ HOW TO ADD AN EMULATOR
   emulator.json fields:
       name      shown in ARCADE (e.g. "PCSX2 (PS2)")
       cmd       how to launch it on the host. Use {rom} where the game file
-                goes (optional). Examples:
-                  "flatpak run net.pcsx2.PCSX2 {rom}"
-                  "retroarch -L /path/to/core.so {rom}"
-                  "dolphin-emu -b -e {rom}"
-                  "/home/deck/Applications/rpcs3.AppImage {rom}"
-      capture   how ARCADE grabs the picture:  "x11" (desktop) | "kms" | "test"
-      window    (optional) the emulator window's title, so controller input is
-                focused on it (e.g. "PCSX2", "Dolphin", "RetroArch")
-      needsRom  true if cmd uses {rom}, false for emulators you point at a game
-                from their own menu
-
-  EXAMPLE (also see the example-retroarch/ folder):
-      {
-        "name":    "PCSX2 (PS2)",
-        "cmd":     "flatpak run net.pcsx2.PCSX2 {rom}",
-        "capture": "x11",
-        "window":  "PCSX2",
-        "needsRom": true
-      }
+                goes (optional). QUOTE paths that contain spaces. Examples:
+                  "\"C:\\Program Files\\PCSX2\\pcsx2-qt.exe\" -fullscreen {rom}"
+                  "flatpak run net.pcsx2.PCSX2 -fullscreen {rom}"
+                  "retroarch -f -L mupen64plus_next {rom}"
+                  "xemu -full-screen -dvd_path {rom}"
+      capture   how ARCADE grabs the picture. "auto" (recommended) picks the
+                right one for the host OS — Windows: gdigrab, macOS:
+                avfoundation, Linux: x11. Or force: x11 | gdigrab |
+                avfoundation | kms | test ("test" = a test pattern, no game).
+      window    (optional) the emulator window's title, so controller input
+                is focused on it on Linux/X11 (e.g. "PCSX2", "RetroArch")
+      needsRom  true if cmd uses {rom}; false for emulators you point at a
+                game from their own menu
+      system    (optional) short label shown on the cards, e.g. "PS2", "XBOX"
+      roms      (optional) a folder INSIDE the ARCADE folder whose files are
+                listed as launchable games, e.g. "games/ps2". Those games
+                then appear in the Host-emulators picker AND in the phone
+                pad's Games drawer.
+      exts      (optional) which file types in that folder count as games,
+                e.g. [".iso", ".chd"] — leave out to list every file.
 
 NOTES
-  - "test" capture streams a test pattern (no emulator) so you can confirm the
-    video pipeline works before wiring a real emulator.
-  - Controller input is sent as keyboard presses (RetroArch's default layout) to
-    the focused emulator window. Analog sticks need a virtual gamepad (uinput) —
-    that's a later step; digital buttons work now.
-  - You supply your own legally-owned emulators and games. Nothing is bundled.
+  - Controller input is sent as keyboard presses (RetroArch's default
+    layout: arrows, Z/X/A/S, Q/W/E/T, Enter, Shift; F2 save, F4 load,
+    Space fast-forward). Bind those keys inside the emulator once and the
+    phone pad drives it. macOS hosts: the D-pad arrives as I/K/J/L
+    (AppleScript can't hold arrow keys) — bind those instead.
+  - The phone's analog stick arrives as 8-way digital presses. True analog
+    needs a virtual gamepad (uinput) — that's a later step.
+  - Folders starting with "_" or "." are ignored (that's why _examples/
+    doesn't show up in ARCADE).
+  - You supply your own legally-owned emulators, BIOS files and games.
+    Nothing is bundled.
 ==============================================================

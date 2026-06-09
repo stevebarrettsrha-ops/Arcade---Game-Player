@@ -29,6 +29,16 @@ HOW TO START (3 steps)
   Leave that window OPEN while anyone is playing.
   Close it (or press Ctrl+C) to stop the server.
 
+NO INTERNET? NO ROUTER? NO PROBLEM
+  The "fully offline network" folder turns THIS computer into the
+  WiFi network: run its "1 - START offline WiFi" file, connect the
+  phones/TVs to that network, then do steps 2-3 above as normal.
+
+PS2 / XBOX / GAMECUBE / PS3 / FULL-SPEED N64+PSP
+  These can't run in a browser, but ARCADE can stream them from this
+  computer to every device (the phone stays the controller). Start
+  with start-*-stream instead - see SETUP-STREAMING.txt.
+
 ADDING MORE GAMES LATER
   Drop more files into games/gba or games/j2me, then press the
   "Rescan folder" button on the web page. No restart needed.

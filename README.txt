@@ -3,13 +3,20 @@
 ==============================================================
 
 1. WHAT'S IN THIS FOLDER
-   arcade.html .......... the web page you play on (the front-end)
+   index.html ........... the web page you play on (the front-end)
    pad.html ............. the phone controller page (opened via the QR code)
    server.js ............ the local server (needs Node.js to run)
    start-windows.bat .... start the server on Windows
    start-mac.command .... start the server on macOS
    start-linux.sh ....... start the server on Linux
    start-*-psp .......... start in PSP mode (experimental - see section 9)
+   start-*-stream ....... start with host-emulator STREAMING on: play
+                          PS2 / XBOX / GameCube / PS3 / native N64+PSP
+                          on every device (see SETUP-STREAMING.txt)
+   emulators/ ........... host emulators for streaming mode; ready-made
+                          manifests to copy are in emulators/_examples/
+   fully offline network/ no router? turn THIS computer into the WiFi
+                          network (see its READ ME FIRST.txt)
    download-offline-* ... ONE-TIME: download the emulator for offline use
    get-offline.js ....... the script those launchers run (Node)
    download-j2me-* ...... ONE-TIME: set up the Java handset (runs in-app)
@@ -24,6 +31,7 @@
         games/snes   .sfc .smc .zip      games/genesis .md .gen .zip
         games/gb     .gb .gbc .zip       games/n64    .n64 .z64 .zip
         games/psx    .chd .pbp .iso      games/j2me   .jar .jad
+        games/ps2 and games/xbox: used by STREAMING mode (section 9)
    bios/psx ............. optional PlayStation 1 BIOS file
    users/ ............... player profiles + their saved games (auto-made)
    manual-saves/ ........ where to keep Java & PPSSPP save backups
@@ -225,9 +233,12 @@
    specific button isn't where you want it (e.g. N64 C-buttons), open
    the gear menu in EmulatorJS on the TV and remap it per system.
 
-   Note: Java phone (J2ME) games can be launched on the TV from the
-   phone, but can't be controlled by it (they run in an external
-   frame) - use the TV's keyboard for those.
+   Note: Java phone (J2ME) games launched from the phone CAN now be
+   controlled by it when the handset runs embedded in ARCADE (the
+   one-time download-j2me-* setup): D-pad = arrows, A = OK/Enter,
+   B = 5 (fire), L/R or SELECT/START = soft keys, X/Y = * and #.
+   If the handset opens in a separate tab instead (no local copy),
+   use the TV's keyboard for those.
 
    Playing solo directly on a phone (no TV)? EmulatorJS shows its own
    on-screen buttons in the lower corners with the video pinned to the
@@ -243,7 +254,7 @@
           E/R = * / #, Esc = options (screen size / phone type).
 
 7. TROUBLESHOOTING
-   - Page shows "no server": you opened arcade.html directly with
+   - Page shows "no server": you opened index.html directly with
      file://. Start it with a start-* script instead so the folder
      can be listed and games can stream.
    - Phone/TV can't reach it: make sure it's on the SAME WiFi, and
@@ -303,16 +314,33 @@
       (Chrome/Edge/Firefox, NOT Safari). The Java-phone feature keeps
       working in PSP mode.
 
-   PS2 / PS3: NOT possible in a web browser. There is no working
-   browser emulator for these - the real ones (PCSX2 for PS2, RPCS3
-   for PS3) are native programs that need a desktop GPU and JIT, which
-   browsers don't allow. Use those native apps on a PC for PS2/PS3.
-   The same applies to GameCube/Wii (Dolphin) and Switch.
+   PS2 / XBOX / PS3 / GameCube / Wii: NOT possible in a web browser -
+   there is no working browser emulator for these; the real ones
+   (PCSX2, xemu, RPCS3, Dolphin) are native programs that need a
+   desktop GPU and JIT, which browsers don't allow.
+
+   BUT ARCADE can still get them onto your TVs and phones: STREAMING
+   MODE runs those native emulators on the host computer and streams
+   the picture to every device, with the phone pad as the controller.
+   Drop PS2 games in games/ps2 and XBOX games in games/xbox, set up
+   the matching emulator once, and start with start-*-stream.
+   Full instructions: SETUP-STREAMING.txt (ready-made emulator
+   manifests are in emulators/_examples/).
 
 10. TRULY OFFLINE (no internet)
    ARCADE's own UI is already 100% offline - the fonts and QR code
-   library are bundled in assets/. Two things normally come from the
-   internet, and here's how to handle each:
+   library are bundled in assets/.
+
+   NO ROUTER EITHER? You don't need one. The "fully offline network"
+   folder turns the host computer itself into the WiFi network:
+   run "1 - START offline WiFi" for your OS, connect the phones/TVs
+   to that network (name REEL by default), start ARCADE as usual and
+   open the WiFi address the server prints. Everything - games,
+   saves, the phone pad, streaming mode - works on that hotspot with
+   zero internet. See "READ ME FIRST.txt" in that folder.
+
+   Two things normally come from the internet, and here's how to
+   handle each:
 
    a) The emulator engine + cores (the actual NES/SNES/N64/PS1/...
       emulators). To make these offline:

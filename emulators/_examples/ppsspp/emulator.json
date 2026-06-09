@@ -1,0 +1,10 @@
+{
+  "name": "PPSSPP (PSP, native)",
+  "cmd": "PPSSPPSDL --fullscreen {rom}",
+  "capture": "auto",
+  "window": "PPSSPP",
+  "needsRom": true,
+  "system": "PSP",
+  "roms": "games/psp",
+  "exts": [".iso", ".cso", ".pbp", ".chd"]
+}
