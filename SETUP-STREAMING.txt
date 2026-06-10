@@ -76,17 +76,31 @@ WHAT IT DOES
   (Equivalent to:  ARCADE_STREAM=1 node server.js)
 
   Tuning (env vars, all optional):
+     ARCADE_STREAM_MODE=auto       # auto | mjpeg | h264  (see "Picture quality")
      ARCADE_STREAM_CAPTURE=auto    # auto picks per-OS: Windows gdigrab,
                                    # macOS avfoundation, Linux x11 · or: test
      ARCADE_STREAM_DISPLAY=:0      # X display (Linux) / screen device (macOS)
      ARCADE_STREAM_SIZE=1280x720   # stream size (desktop grabs are scaled)
      ARCADE_STREAM_FPS=30
-     ARCADE_STREAM_QUALITY=6       # JPEG quality 2(best)..31 (smaller/faster)
+     ARCADE_STREAM_QUALITY=6       # MJPEG quality 2(best)..31 (smaller/faster)
+     ARCADE_STREAM_VBITRATE=6M     # H.264 target bitrate (h264/auto mode)
      ARCADE_STREAM_INPUT=auto      # auto | xdotool | powershell | osascript | none
      ARCADE_STREAM_FFMPEG=ffmpeg   # path/override, e.g. for a Flatpak ffmpeg
      ARCADE_STREAM_AUDIO=auto       # auto | none | pulse|alsa|dshow|avfoundation
      ARCADE_STREAM_AUDIO_DEVICE=    # the sound source to capture (see below)
      ARCADE_STREAM_AUDIO_RATE=48000
+
+  PICTURE QUALITY — two transports, chosen per client automatically:
+     • H.264: the host encodes the screen + sound into ONE fragmented-MP4
+       stream (video and audio share a timeline, so they stay in sync) and the
+       client plays it in a <video> via Media Source Extensions. Sharper,
+       smoother and uses far less WiFi than MJPEG. Needs libx264 in ffmpeg
+       (almost all builds have it) and a reasonably modern browser.
+     • MJPEG + PCM: the original fallback — a stream of JPEG frames plus raw
+       audio — for old TV browsers that don't support MSE.
+     ARCADE_STREAM_MODE=auto (default) lets each device pick the best it can
+     play. Force one with =h264 or =mjpeg. In auto/h264 mode you'll see the
+     same "🔊 Tap for sound" button (it unmutes the muxed video).
 
   WANT TO TEST THE PIPELINE WITH NO EMULATOR?  Start with
      ARCADE_STREAM_CAPTURE=test — open ARCADE, click "🖥️ Host emulators",
@@ -149,12 +163,15 @@ WHAT IT DOES
 ------------------------------------------------------------
 LIMITS / NOTES
 ------------------------------------------------------------
-  - Video is MJPEG (works in every browser including old TVs); audio is raw
-    PCM played via the Web Audio API. Video and audio are separate streams,
-    so they aren't frame-locked — expect a small lip-sync offset, fine for
-    games. Web Audio needs a modern browser; very old TV browsers show the
-    picture but stay silent (tap "Tap for sound" to start audio where it's
-    supported). H.264 with muxed A/V is a possible future step.
+  - On modern browsers ARCADE streams H.264 + AAC muxed into one container,
+    so audio and video are in sync (true lip-sync) and bandwidth is low.
+    Old TV browsers without Media Source Extensions fall back to MJPEG video
+    + separate PCM audio; those two aren't frame-locked, so expect a small
+    lip-sync offset on that path (fine for games), and tap "Tap for sound"
+    to start audio where Web Audio is supported.
+  - H.264 needs an ffmpeg built with libx264 (the vast majority are). If it's
+    missing, the encoder won't start and clients drop back to MJPEG; check
+    /stream/status ("muxError") if H.264 never appears.
   - The phone's analog stick arrives as 8-way digital presses (the same keys
     as the D-pad). True analog needs a virtual gamepad (uinput) — planned.
   - One host = one stream at a time (everyone watches the SAME game).

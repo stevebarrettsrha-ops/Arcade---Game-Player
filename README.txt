@@ -321,8 +321,9 @@
 
    BUT ARCADE can still get them onto your TVs and phones: STREAMING
    MODE runs those native emulators on the host computer and streams
-   the picture AND the sound to every device, with the phone pad as the
-   controller (tap "🔊 Tap for sound" on the stream to hear audio).
+   the picture AND the sound to every device (synced H.264 on modern
+   browsers, with an MJPEG fallback for old TVs), with the phone pad as
+   the controller (tap "🔊 Tap for sound" on the stream to hear audio).
    Drop PS2 games in games/ps2 and XBOX games in games/xbox, set up
    the matching emulator once, and start with start-*-stream.
    Full instructions: SETUP-STREAMING.txt (ready-made emulator
