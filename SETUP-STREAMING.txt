@@ -84,11 +84,51 @@ WHAT IT DOES
      ARCADE_STREAM_QUALITY=6       # JPEG quality 2(best)..31 (smaller/faster)
      ARCADE_STREAM_INPUT=auto      # auto | xdotool | powershell | osascript | none
      ARCADE_STREAM_FFMPEG=ffmpeg   # path/override, e.g. for a Flatpak ffmpeg
+     ARCADE_STREAM_AUDIO=auto       # auto | none | pulse|alsa|dshow|avfoundation
+     ARCADE_STREAM_AUDIO_DEVICE=    # the sound source to capture (see below)
+     ARCADE_STREAM_AUDIO_RATE=48000
 
   WANT TO TEST THE PIPELINE WITH NO EMULATOR?  Start with
      ARCADE_STREAM_CAPTURE=test — open ARCADE, click "🖥️ Host emulators",
   pick anything: you should see a moving test pattern. That proves ffmpeg +
   the stream path work; then switch back to auto.
+
+------------------------------------------------------------
+3b. SOUND (the game's audio, streamed to every device)
+------------------------------------------------------------
+  ARCADE streams the host's audio next to the video. On the client, the
+  stream shows a "🔊 Tap for sound" button (browsers require one tap before
+  any audio can start) — tap it and you hear the game; tap again to mute.
+
+  You must tell ffmpeg WHICH sound source to capture — the speakers/game
+  output, not a microphone. Set ARCADE_STREAM_AUDIO_DEVICE per OS:
+
+    Linux (PulseAudio/PipeWire):
+        list sources:   pactl list sources short
+        pick the one ending in ".monitor" (that's the speaker output), e.g.
+        ARCADE_STREAM_AUDIO_DEVICE="alsa_output.pci-0000_00_1f.3.analog-stereo.monitor"
+
+    Windows (DirectShow):
+        enable "Stereo Mix" in  Settings > System > Sound > More sound
+        settings > Recording  (right-click > Show Disabled Devices). The
+        default already targets  audio=Stereo Mix . If your PC has no Stereo
+        Mix, install a virtual cable (e.g. VB-CABLE) and set:
+        set ARCADE_STREAM_AUDIO_DEVICE=audio=CABLE Output (VB-Audio Virtual Cable)
+
+    macOS (avfoundation):
+        macOS can't capture system audio on its own — install a loopback
+        device (e.g. BlackHole), set it as the output (or via a Multi-Output
+        device so you still hear it), then:
+        ARCADE_STREAM_AUDIO_DEVICE=":BlackHole 2ch"
+
+  To turn sound off entirely:  ARCADE_STREAM_AUDIO=none
+  Audio is independent of video — a wrong/missing device just means silence;
+  the picture keeps streaming. Check  /stream/status  ("audio" / "audioError")
+  if you're not hearing anything.
+
+  PRIVACY: "auto" captures the OS default source, which on some machines is a
+  microphone. Point ARCADE_STREAM_AUDIO_DEVICE at the speaker monitor/loopback
+  above (or set ARCADE_STREAM_AUDIO=none) so you only stream game sound.
 
 ------------------------------------------------------------
 4. PLAY
@@ -109,9 +149,12 @@ WHAT IT DOES
 ------------------------------------------------------------
 LIMITS / NOTES
 ------------------------------------------------------------
-  - Video is MJPEG: simple, low-latency-ish, works in every browser including
-    TVs — but it has NO AUDIO yet. For sofa play the host's own speakers
-    usually cover it; H.264 + audio is the planned next step.
+  - Video is MJPEG (works in every browser including old TVs); audio is raw
+    PCM played via the Web Audio API. Video and audio are separate streams,
+    so they aren't frame-locked — expect a small lip-sync offset, fine for
+    games. Web Audio needs a modern browser; very old TV browsers show the
+    picture but stay silent (tap "Tap for sound" to start audio where it's
+    supported). H.264 with muxed A/V is a possible future step.
   - The phone's analog stick arrives as 8-way digital presses (the same keys
     as the D-pad). True analog needs a virtual gamepad (uinput) — planned.
   - One host = one stream at a time (everyone watches the SAME game).

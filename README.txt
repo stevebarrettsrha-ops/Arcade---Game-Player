@@ -321,11 +321,12 @@
 
    BUT ARCADE can still get them onto your TVs and phones: STREAMING
    MODE runs those native emulators on the host computer and streams
-   the picture to every device, with the phone pad as the controller.
+   the picture AND the sound to every device, with the phone pad as the
+   controller (tap "🔊 Tap for sound" on the stream to hear audio).
    Drop PS2 games in games/ps2 and XBOX games in games/xbox, set up
    the matching emulator once, and start with start-*-stream.
    Full instructions: SETUP-STREAMING.txt (ready-made emulator
-   manifests are in emulators/_examples/).
+   manifests are in emulators/_examples/; sound setup is section 3b).
 
 10. TRULY OFFLINE (no internet)
    ARCADE's own UI is already 100% offline - the fonts and QR code
