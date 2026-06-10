@@ -427,6 +427,58 @@ function savePaths(u, system, game, kind){
   const ext = kind === 'srm' ? '.srm' : '.state';
   return { dir, file: path.join(dir, safeGame(game) + ext) };
 }
+/* ---- save-file compression -------------------------------------------------
+   Save states are a snapshot of the console's RAM, which is mostly zeroes and
+   repeats — so gzip shrinks them dramatically (a multi-MB N64/PS1 state usually
+   drops 5-10x). Files are stored gzipped on disk and transparently decompressed
+   on load, so the emulator (and the phone/TV) always sees the raw bytes and
+   nothing else changes. Old uncompressed saves still load: the gzip magic bytes
+   tell us which kind each file is, and a failed gunzip falls back to raw. */
+const isGzip = b => !!b && b.length > 2 && b[0] === 0x1f && b[1] === 0x8b;
+function writeSave(p, buf, cb){
+  zlib.gzip(buf, { level: 6 }, (err, gz) => {
+    const out = (!err && gz && gz.length < buf.length) ? gz : buf;   // keep raw if it won't shrink
+    try { fs.mkdirSync(p.dir, { recursive: true }); fs.writeFileSync(p.file, out); }
+    catch (e) { return cb(e); }
+    cb(null, out.length);
+  });
+}
+function readSave(file, cb){
+  fs.readFile(file, (err, data) => {
+    if (err || !data) return cb(err || new Error('empty'));
+    if (!isGzip(data)) return cb(null, data);
+    zlib.gunzip(data, (e, raw) => cb(null, (!e && raw) ? raw : data));
+  });
+}
+// one-time housekeeping: gzip any uncompressed saves left by older versions,
+// so existing users/ folders shrink too. Atomic (tmp + rename), lossless.
+function compressExistingSaves(){
+  let files = 0, before = 0, after = 0;
+  for (const u of listUsers()){
+    const stack = [path.join(userDir(u), 'saves')];
+    while (stack.length){
+      const dir = stack.pop();
+      let names = []; try { names = fs.readdirSync(dir); } catch (e) { continue; }
+      for (const n of names){
+        const full = path.join(dir, n);
+        let st; try { st = fs.statSync(full); } catch (e) { continue; }
+        if (st.isDirectory()) { stack.push(full); continue; }
+        if (!/\.(state|srm)$/.test(n) || st.size < 256) continue;
+        let buf; try { buf = fs.readFileSync(full); } catch (e) { continue; }
+        if (isGzip(buf)) continue;                       // already compressed
+        try {
+          const gz = zlib.gzipSync(buf, { level: 6 });
+          if (gz.length >= buf.length) continue;         // incompressible: leave it
+          fs.writeFileSync(full + '.tmp', gz);
+          fs.renameSync(full + '.tmp', full);
+          files++; before += buf.length; after += gz.length;
+        } catch (e) { try { fs.unlinkSync(full + '.tmp'); } catch (_) {} }
+      }
+    }
+  }
+  if (files) console.log('  Saves: compressed ' + files + ' existing file(s), '
+    + (before / 1048576).toFixed(1) + ' MB -> ' + (after / 1048576).toFixed(1) + ' MB');
+}
 function readJsonBody(req, cb){
   let b = ''; req.on('data', c => { b += c; if (b.length > 8192) req.destroy(); });
   req.on('end', () => { try { cb(JSON.parse(b || '{}')); } catch (e) { cb(null); } });
@@ -667,9 +719,10 @@ const requestHandler = async (req, res) => {
     return readRawBody(req, 64 * 1024 * 1024, buf => {       // states can be a few MB (PS1/N64)
       if (!buf || !buf.length) return jsonRes(res, { ok: false, error: 'empty' }, 400);
       const p = savePaths(user, system, game, kind);
-      try { fs.mkdirSync(p.dir, { recursive: true }); fs.writeFileSync(p.file, buf); }
-      catch (e) { return jsonRes(res, { ok: false, error: 'write failed' }, 500); }
-      return jsonRes(res, { ok: true, bytes: buf.length });
+      writeSave(p, buf, (err, stored) => {                   // gzipped on disk (see writeSave)
+        if (err) return jsonRes(res, { ok: false, error: 'write failed' }, 500);
+        return jsonRes(res, { ok: true, bytes: buf.length, stored });
+      });
     });
   }
   if (url === '/api/load') {
@@ -677,7 +730,7 @@ const requestHandler = async (req, res) => {
     if (!user) { res.writeHead(401); return res.end(); }
     const p = savePaths(user, q.searchParams.get('system'), q.searchParams.get('game'),
                         q.searchParams.get('kind') === 'srm' ? 'srm' : 'state');
-    fs.readFile(p.file, (err, data) => {
+    readSave(p.file, (err, data) => {                        // decompressed back to raw bytes
       if (err || !data) { res.writeHead(404); return res.end(); }
       res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Length': data.length, 'Cache-Control': 'no-store' });
       res.end(data);
@@ -804,6 +857,7 @@ if (process.env.ARCADE_HTTPS === '1') startHttps();
 
 server.listen(PORT, '0.0.0.0', () => {
   try { fs.mkdirSync(USERS, { recursive: true }); } catch (e) {}
+  setTimeout(() => { try { compressExistingSaves(); } catch (e) {} }, 500);  // shrink old saves once, off the startup path
   const ips = lanAddresses();
   const line = '------------------------------------------------------------';
   console.log('\n  Starting the ARCADE home server...');
