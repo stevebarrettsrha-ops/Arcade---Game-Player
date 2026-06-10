@@ -837,19 +837,44 @@
     }
     list.innerHTML = '';
     emus.forEach(e => {
+      const n = (e.games||[]).length;
       const c = document.createElement('button'); c.className = 'card'; c.style.setProperty('--accent', '#c3c7cf');
       c.innerHTML = '<div class="art"><div class="glyph">🖥️</div>'+
         (e.icon ? '<img class="cover show" src="'+esc(e.icon)+'" alt="">' : '')+
         '<div class="play">▶</div></div><div class="meta"><div class="nm">'+esc(e.name)+'</div>'+
-        '<div class="sz">RUNS ON HOST</div></div>';
-      c.onclick = () => startStream(e);
+        '<div class="sz">'+(e.system?esc(e.system)+' · ':'')+(n? n+(n===1?' GAME':' GAMES')+' · ':'')+'RUNS ON HOST</div></div>';
+      c.onclick = () => (n ? openStreamGames(e) : startStream(e));
       list.appendChild(c);
     });
   }
-  async function startStream(e){
+  // an emulator with a declared roms folder: pick which game the host should boot
+  function openStreamGames(e){
     $('#streamTitle').textContent = (e.name||'HOST').toUpperCase();
+    $('#streamFrameWrap').hidden = true;
+    const list = $('#streamList'); list.hidden = false; list.style.display = 'grid';
+    list.innerHTML = '';
+    const mk = (head, sub, onclick) => {
+      const c = document.createElement('button'); c.className = 'card'; c.style.setProperty('--accent', '#c3c7cf');
+      c.innerHTML = '<div class="art"><div class="glyph">'+head+'</div><div class="play">▶</div></div>'+
+        '<div class="meta"><div class="nm"></div><div class="sz">'+sub+'</div></div>';
+      c.querySelector('.nm').textContent = '';
+      c.onclick = onclick; list.appendChild(c); return c;
+    };
+    const back = mk('‹', 'BACK', openStreamPicker); back.querySelector('.nm').textContent = 'All emulators';
+    if(!e.needsRom){ const m = mk('🖥️', 'NO GAME — HOST MENU', () => startStream(e)); m.querySelector('.nm').textContent = 'Open '+e.name; }
+    (e.games||[]).forEach(g => {
+      const c = mk('🎮', (e.system?esc(e.system)+' · ':'')+'ON HOST', () => startStream(e, g.file));
+      c.querySelector('.nm').textContent = g.name;
+    });
+  }
+  async function startStream(e, rom){ return startStreamRemote({ emu: e.id, rom: rom || '', name: e.name }); }
+  // also used when a phone pad asks the TV to start a host game ({t:'launch', stream:1, ...})
+  async function startStreamRemote(m){
+    document.body.classList.add('playing');
+    showStage('streamStage');
+    $('#streamTitle').textContent = (m.name||'HOST').toUpperCase();
     try{
-      const r = await (await fetch('/stream/start?emu='+encodeURIComponent(e.id), {cache:'no-store'})).json();
+      const r = await (await fetch('/stream/start?emu='+encodeURIComponent(m.emu)+(m.rom?'&rom='+encodeURIComponent(m.rom):''), {cache:'no-store'})).json();
       if(!r || !r.ok) toast('Host couldn’t start it'+(r&&r.error?': '+r.error:''), true);
     }catch(err){ toast('Could not reach the host', true); }
     $('#streamList').hidden = true;
@@ -866,6 +891,7 @@
 
   /* ---- J2ME ---- */
   function launchJ2ME(g){
+    curGame = { system:'j2me', url:g.url, name:g.name };   // lets the phone pad route keys into the handset
     document.body.classList.add('playing');
     showStage('j2meStage');
     $('#j2meTitle').textContent = 'JAVA PHONE · ' + g.name.toUpperCase();
@@ -1050,6 +1076,33 @@
       em.gameManager.simulateInput(pl, 19, Y<0 ? -Y : 0);   // up
     }catch(e){}
   }
+  // Java (J2ME) games run in the embedded FreeJ2ME handset iframe, which reads the
+  // keyboard — so the phone pad drives it by dispatching key events into the frame
+  // (same-origin only, i.e. the local j2me-web copy). Mapping mirrors the handset:
+  // arrows = D-pad, Enter = OK, Q/W = soft keys, 5 = fire, E/R = * / #.
+  const J2ME_PAD_KEYS = {
+    up:['ArrowUp',38,'ArrowUp'], down:['ArrowDown',40,'ArrowDown'],
+    left:['ArrowLeft',37,'ArrowLeft'], right:['ArrowRight',39,'ArrowRight'],
+    a:['Enter',13,'Enter'], b:['5',53,'Digit5'],
+    x:['e',69,'KeyE'], y:['r',82,'KeyR'],
+    l:['q',81,'KeyQ'], r:['w',87,'KeyW'],
+    select:['q',81,'KeyQ'], start:['w',87,'KeyW'],
+  };
+  function j2meForward(t, b){
+    if(t!=='down' && t!=='up') return false;
+    const f = $('#j2meFrame'); if(!f || f.hidden || !f.src) return false;
+    let doc; try{ doc = f.contentDocument; }catch(e){ return false; }   // cross-origin handset: can't inject
+    if(!doc) return false;
+    const k = J2ME_PAD_KEYS[b]; if(!k) return false;
+    try{
+      const ev = new KeyboardEvent(t==='down'?'keydown':'keyup',
+        { key:k[0], code:k[2], keyCode:k[1], which:k[1], bubbles:true, cancelable:true });
+      try{ Object.defineProperty(ev,'keyCode',{value:k[1]}); Object.defineProperty(ev,'which',{value:k[1]}); }catch(e){}
+      (doc.activeElement || doc.body || doc).dispatchEvent(ev);
+    }catch(e){ return false; }
+    return true;
+  }
+
   // emulator hotkeys via EmulatorJS's own input path (24 save, 25 load, 27 fast-forward)
   function emuHotkey(action){
     const em = window.EJS_emulator;
@@ -1103,6 +1156,7 @@
     if(m.t==='mp'){ if((m.p|0)===0) setFourPlayer(m.on); return; }
     if(m.t==='hk'){ emuHotkey(m.a); return; }
     if(m.t==='axis'){ axis(m.x, m.y, m.p); return; }
+    if(curGame && curGame.system==='j2me' && j2meForward(m.t, m.b)) return;
     inject(m.t, m.b, m.p);
   }
   function openDisplaySSE(code){
@@ -1140,9 +1194,12 @@
     setPairStat(live.map(s => 'P'+(s+1)).join(' + ') + ' connected ✓', true);
   }
   setInterval(renderPlayers, 5000);   // expire stale controllers
-  function doLaunch(m){ const sys=m.system||m.kind||'gba'; if(sys==='j2me') launchJ2ME({name:m.name, url:m.url}); else if(sys==='psp') launchPSP({name:m.name, url:m.url}); else launchEmu(sys, m.url, m.name); }
+  function doLaunch(m){
+    if(m.stream){ startStreamRemote(m); return; }      // host-side emulator picked from a phone
+    const sys=m.system||m.kind||'gba'; if(sys==='j2me') launchJ2ME({name:m.name, url:m.url}); else if(sys==='psp') launchPSP({name:m.name, url:m.url}); else launchEmu(sys, m.url, m.name);
+  }
   function handleLaunch(m){
-    if(!m || !m.url) return;
+    if(!m || (!m.url && !m.stream)) return;
     if(document.body.classList.contains('playing')){
       try{ sessionStorage.setItem('arcade_launch', JSON.stringify(m)); }catch(e){}
       location.reload();              // room code persists, so the phone stays paired

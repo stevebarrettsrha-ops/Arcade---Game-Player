@@ -432,7 +432,14 @@
     try{
       const lib = await (await fetch('/api/library',{cache:'no-store'})).json();
       const items=[]; ORDER.forEach(k=>(lib[k]||[]).forEach(g=>items.push({...g,sys:k})));
-      if(!items.length){ list.innerHTML='<div class="gempty">No games yet.<br>Drop files into the games/* folders on the host computer.</div>'; return; }
+      // host-side (streamed) emulators: PS2 / XBOX / GameCube / native N64+PSP ... games run
+      // on the host computer and stream to the TV — this pad stays the controller.
+      const host=[];
+      (lib.emulators||[]).forEach(e=>{
+        (e.games||[]).forEach(g=>host.push({label:e.system||'HOST', name:g.name, msg:{t:'launch', stream:1, emu:e.id, rom:g.file, name:g.name}}));
+        if(!e.needsRom) host.push({label:e.system||'HOST', name:e.name+' (emulator menu)', msg:{t:'launch', stream:1, emu:e.id, rom:'', name:e.name}});
+      });
+      if(!items.length && !host.length){ list.innerHTML='<div class="gempty">No games yet.<br>Drop files into the games/* folders on the host computer.</div>'; return; }
       list.innerHTML='';
       items.forEach(g=>{
         const s=SYS[g.sys]||{label:g.sys.toUpperCase(),accent:'#3fe0cf'};
@@ -440,6 +447,14 @@
         row.innerHTML='<span class="gk">'+s.label+'</span><span class="gn"></span><span class="ggo">▶</span>';
         row.querySelector('.gn').textContent=g.name;
         row.onclick=()=>{ sendMsg({t:'launch', system:g.sys, url:g.url, name:g.name}); vibe(); closeGames(); toast('Launching on TV…'); };
+        list.appendChild(row);
+      });
+      host.forEach(h=>{
+        const row=document.createElement('button'); row.className='grow'; row.style.setProperty('--accent', '#c3c7cf');
+        row.innerHTML='<span class="gk"></span><span class="gn"></span><span class="ggo">▶</span>';
+        row.querySelector('.gk').textContent=h.label;
+        row.querySelector('.gn').textContent=h.name;
+        row.onclick=()=>{ sendMsg(h.msg); vibe(); closeGames(); toast('Starting on the host…'); };
         list.appendChild(row);
       });
     }catch(e){ list.innerHTML='<div class="gempty">Can\'t reach the host. Make sure the server is running and you\'re on the same Wi-Fi.</div>'; }

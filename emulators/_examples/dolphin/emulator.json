@@ -1,0 +1,10 @@
+{
+  "name": "Dolphin (GameCube / Wii)",
+  "cmd": "dolphin-emu -b -e {rom}",
+  "capture": "auto",
+  "window": "Dolphin",
+  "needsRom": true,
+  "system": "GC/WII",
+  "roms": "games/gamecube",
+  "exts": [".iso", ".rvz", ".gcz", ".wbfs"]
+}

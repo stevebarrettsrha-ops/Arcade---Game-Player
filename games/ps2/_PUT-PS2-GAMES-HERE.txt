@@ -1,0 +1,10 @@
+Drop PlayStation 2 disc images here (.iso .chd .cso .gz).
+
+PS2 games do NOT run in the browser — they run on the HOST computer
+through a native emulator (PCSX2) and STREAM to your devices, with the
+phone (pad.html) as the controller. To set that up:
+  1. Install PCSX2 on this computer.
+  2. Copy emulators/_examples/pcsx2 to emulators/pcsx2 and fix its
+     "cmd" line (see emulators/_examples/README.txt).
+  3. Start ARCADE with a start-*-stream script (see SETUP-STREAMING.txt).
+The games in this folder then appear in ARCADE and on the phone pad.

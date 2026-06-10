@@ -1,0 +1,11 @@
+Drop original XBOX disc images here (.iso .xiso).
+
+XBOX games do NOT run in the browser — they run on the HOST computer
+through a native emulator (xemu) and STREAM to your devices, with the
+phone (pad.html) as the controller. To set that up:
+  1. Install xemu on this computer (it also needs its BIOS/MCPX dumps —
+     see xemu's own docs).
+  2. Copy emulators/_examples/xemu to emulators/xemu and fix its
+     "cmd" line (see emulators/_examples/README.txt).
+  3. Start ARCADE with a start-*-stream script (see SETUP-STREAMING.txt).
+The games in this folder then appear in ARCADE and on the phone pad.
