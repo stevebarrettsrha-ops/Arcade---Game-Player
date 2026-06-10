@@ -3,12 +3,16 @@
    ------------------------------------------------------------
    Instead of every TV/phone running the emulator in its own browser (WASM),
    the HOST (a gaming PC / Steam Deck / mini-PC) runs the REAL native emulator
-   with all its capabilities, and ARCADE streams the picture to the clients as
-   MJPEG (plus the sound as raw PCM over a second stream), shown inside an
-   iframe. Clients just display the video, play the audio via Web Audio, and
-   send button presses from pad.html — so weak TVs do almost no work, and you
-   get the heavy / "impossible" systems (PS2, original XBOX, GameCube/Wii,
-   PS3, flawless N64/PSP) a browser can't do.
+   with all its capabilities, and ARCADE streams it to the clients inside an
+   iframe. Two transports, picked per client automatically:
+     • H.264 + AAC muxed into fragmented MP4, played via Media Source
+       Extensions in a <video> — one synced A/V stream (true lip-sync), low
+       bandwidth. The default on modern browsers.
+     • MJPEG (an <img>) + raw-PCM audio over a second stream, played via Web
+       Audio — the universal fallback for old TV browsers without MSE.
+   Clients just show the stream and send button presses from pad.html — so
+   weak TVs do almost no work, and you get the heavy / "impossible" systems
+   (PS2, original XBOX, GameCube/Wii, PS3, flawless N64/PSP) a browser can't do.
 
    HOW EMULATORS ARE REGISTERED
    Drop one folder per emulator into  emulators/<name>/  with a manifest:
@@ -83,7 +87,13 @@ function config() {
     quality:   e.ARCADE_STREAM_QUALITY || '6',        // ffmpeg mjpeg -q:v (2 best .. 31 worst)
     ffmpeg:    e.ARCADE_STREAM_FFMPEG  || 'ffmpeg',
     inputTool: e.ARCADE_STREAM_INPUT   || 'auto',     // auto | xdotool | powershell | osascript | none
-    // audio: capture the host's sound and stream it alongside the video (PCM over HTTP).
+    // transport: 'auto' lets each client pick — H.264 (synced A/V, MSE) on capable
+    //   browsers, MJPEG+PCM on old TVs. 'mjpeg' forces the legacy path; 'h264'
+    //   forces the muxed path (no MJPEG fallback served).
+    mode:        e.ARCADE_STREAM_MODE         || 'auto',  // auto | mjpeg | h264
+    vbitrate:    e.ARCADE_STREAM_VBITRATE     || '6M',    // H.264 target bitrate
+    // audio: capture the host's sound. In MJPEG mode it streams as raw PCM over
+    //   HTTP; in H.264 mode it's muxed into the video (true lip-sync).
     //   'auto' = the OS's default audio grabber, 'none' = silent, or a format name
     //   (pulse | alsa | dshow | avfoundation) — pair with ARCADE_STREAM_AUDIO_DEVICE.
     audio:       e.ARCADE_STREAM_AUDIO        || 'auto',
@@ -124,6 +134,52 @@ function audioCaptureArgs(cfg, platform) {
   if (!a) return null;
   return ['-loglevel', 'error', '-f', a.fmt, '-i', a.dev,
     '-ac', String(a.channels), '-ar', a.rate, '-f', 's16le', '-'];
+}
+
+/* ---- the video grabber input args, shared by MJPEG and the H.264 mux (pure) ---- */
+function videoInputArgs(cfg, capture) {
+  const a = [];
+  let scale = false;
+  if (capture === 'x11') {
+    a.push('-f', 'x11grab', '-video_size', cfg.size, '-framerate', cfg.fps, '-i', cfg.display);
+  } else if (capture === 'gdigrab') {
+    a.push('-f', 'gdigrab', '-framerate', cfg.fps, '-i', 'desktop'); scale = true;
+  } else if (capture === 'avfoundation') {
+    const dev = /^[:]/.test(cfg.display) ? 'Capture screen 0' : cfg.display;
+    a.push('-f', 'avfoundation', '-capture_cursor', '1', '-framerate', cfg.fps, '-i', dev + ':none'); scale = true;
+  } else if (capture === 'kms') {
+    a.push('-f', 'kmsgrab', '-framerate', cfg.fps, '-i', '-');
+  } else {
+    a.push('-f', 'lavfi', '-i', `testsrc=size=${cfg.size}:rate=${cfg.fps}`);
+  }
+  return { args: a, scale };
+}
+
+/* ---- H.264 + AAC muxed to fragmented MP4 on stdout (pure) ----
+   ONE ffmpeg grabs screen + sound and muxes them into a single low-latency fMP4
+   stream, so video and audio share a timeline (true lip-sync). Played in the
+   browser via Media Source Extensions. `noAudio` lets the session retry
+   video-only if the audio device wedges the encoder. The fragment settings
+   (empty_moov + frag_keyframe + default_base_moof, short frag_duration) are what
+   MSE needs to start instantly and stay near the live edge. */
+function muxArgs(cfg, capture, platform, noAudio) {
+  capture = resolveCapture(capture || cfg.capture, platform);
+  const vin = videoInputArgs(cfg, capture);
+  const a = ['-loglevel', 'error', '-fflags', 'nobuffer', ...vin.args];
+  const au = noAudio ? null : resolveAudio(cfg, platform);
+  if (au) a.push('-f', au.fmt, '-i', au.dev);
+  const fps = Math.max(1, parseInt(cfg.fps, 10) || 30);
+  const width = parseInt(cfg.size, 10) || 1280;
+  a.push('-map', '0:v:0');
+  if (au) a.push('-map', '1:a:0');
+  a.push('-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency',
+    '-profile:v', 'baseline', '-pix_fmt', 'yuv420p', '-g', String(fps),
+    '-b:v', cfg.vbitrate, '-maxrate', cfg.vbitrate, '-bufsize', cfg.vbitrate);
+  if (vin.scale) a.push('-vf', `scale=${width}:-2`);
+  if (au) a.push('-c:a', 'aac', '-b:a', '128k', '-ar', au.rate, '-ac', String(au.channels));
+  a.push('-f', 'mp4', '-movflags', '+frag_keyframe+empty_moov+default_base_moof',
+    '-frag_duration', '200000', 'pipe:1');
+  return a;
 }
 
 /* ---- scan a roms folder declared by a manifest ---- */
@@ -302,70 +358,108 @@ class JpegSplitter {
   }
 }
 
+/* ---- fragmented-MP4 box splitter: turns ffmpeg's fMP4 stdout into the init
+   segment (ftyp+moov) plus discrete media fragments (moof+mdat) ----
+   The init segment is cached so late joiners can be sent it first, then whole
+   fragments — which is exactly what an MSE SourceBuffer needs. (testable) */
+class Fmp4Splitter {
+  constructor(onInit, onFragment) {
+    this.buf = Buffer.alloc(0); this.onInit = onInit; this.onFragment = onFragment;
+    this.gotInit = false; this.initParts = []; this.frag = null;
+  }
+  push(chunk) {
+    this.buf = this.buf.length ? Buffer.concat([this.buf, chunk]) : chunk;
+    for (;;) {
+      if (this.buf.length < 8) return;
+      let size = this.buf.readUInt32BE(0), headerLen = 8;
+      const type = this.buf.toString('latin1', 4, 8);
+      if (size === 1) { if (this.buf.length < 16) return; size = Number(this.buf.readBigUInt64BE(8)); headerLen = 16; }
+      if (size < headerLen || size > (64 << 20)) { this.buf = Buffer.alloc(0); return; }   // corrupt: resync
+      if (this.buf.length < size) return;                       // wait for the whole box
+      const box = this.buf.slice(0, size);
+      this.buf = this.buf.slice(size);
+      this._box(type, box);
+    }
+  }
+  _box(type, box) {
+    if (!this.gotInit) {
+      if (type === 'moof') { this.gotInit = true; this.onInit(Buffer.concat(this.initParts)); this.initParts = null; this.frag = [box]; }
+      else this.initParts.push(box);                            // ftyp, moov, ...
+      return;
+    }
+    if (type === 'moof') { this.frag = [box]; }
+    else if (type === 'mdat') { if (this.frag) { this.frag.push(box); this.onFragment(Buffer.concat(this.frag)); this.frag = null; } }
+    else if (this.frag) { this.frag.push(box); }
+  }
+}
+/* the codecs string MSE needs, derived from what's actually in the init segment.
+   Video is forced to constrained-baseline H.264 (avc1.42E01E — the most widely
+   MSE-supported profile); audio is AAC-LC (mp4a.40.2) only if a track is present. */
+const VIDEO_CODEC = 'avc1.42E01E';
+function codecsFromInit(initBuf, videoCodec) {
+  videoCodec = videoCodec || VIDEO_CODEC;
+  const hasAudio = initBuf && initBuf.indexOf('mp4a', 0, 'latin1') >= 0;
+  return hasAudio ? videoCodec + ',mp4a.40.2' : videoCodec;
+}
+
 /* ---- one capture session, fanned out to many browser iframes via MJPEG ---- */
 const BOUNDARY = 'arcadeframe';
 class StreamSession {
   constructor(cfg) {
-    this.cfg = cfg; this.subscribers = new Set(); this.audioSubs = new Set();
-    this.lastFrame = null; this.ffmpeg = null; this.emulator = null; this.audio = null;
-    this.running = false; this.emu = null; this._err = null; this._audioErr = null;
+    this.cfg = cfg; this.emu = null; this.romPath = ''; this.active = false;
+    this._err = null; this._audioErr = null; this._muxErr = null;
+    // MJPEG video pipeline (started lazily by the first /stream/video viewer)
+    this.subscribers = new Set(); this.ffmpeg = null; this.lastFrame = null;
+    // raw-PCM audio pipeline (MJPEG fallback path)
+    this.audioSubs = new Set(); this.audio = null;
+    // muxed H.264+AAC fMP4 pipeline (MSE clients)
+    this.muxSubs = new Set(); this.mux = null; this.muxInit = null; this.muxCodecs = null;
+    this._muxWaiters = []; this._muxNoAudio = false;
   }
+  // start only LAUNCHES the emulator and arms the session; the capture pipelines
+  // spin up on demand when a client subscribes, and shut down when the last one
+  // leaves — so we never encode a format nobody is watching.
   start(emu, romPath) {
     this.stop();
-    this.emu = emu; this._err = null; this._audioErr = null;
+    this.emu = emu; this.romPath = romPath || '';
+    this._err = this._audioErr = this._muxErr = null;
     if (emu && emu.cmd) {
       const la = launchArgs(emu, romPath);
       if (la && la.length) { try { this.emulator = spawn(la[0], la.slice(1), { stdio: 'ignore' }); this.emulator.on('error', e => { this._err = 'emulator: ' + e.message; }); } catch (e) { this._err = 'emulator: ' + e.message; } }
     }
-    const splitter = new JpegSplitter(f => { this.lastFrame = f; this._broadcast(f); });
-    try {
-      this.ffmpeg = spawn(this.cfg.ffmpeg, captureArgs(this.cfg, emu && emu.capture), { stdio: ['ignore', 'pipe', 'pipe'] });
-    } catch (e) { this._err = 'ffmpeg: ' + e.message; return { ok: false, error: this._err }; }
-    this.ffmpeg.stdout.on('data', d => splitter.push(d));
-    this.ffmpeg.stderr.on('data', d => { this._err = (this._err ? this._err + ' ' : '') + d.toString().trim().slice(0, 160); });
-    this.ffmpeg.on('error', e => { this._err = 'ffmpeg: ' + e.message; this.running = false; });
-    this.ffmpeg.on('close', () => { this.running = false; });
-    this.running = true;
-    this._startAudio();          // audio is independent: if it fails, video keeps playing
+    this.active = true;
     return { ok: true };
   }
-  // a SECOND, separate ffmpeg grabs the sound card -> raw PCM, fanned out to
-  // audio subscribers. Kept apart from video so a missing/mis-named audio device
-  // can never take the picture down with it.
-  _startAudio() {
-    const args = audioCaptureArgs(this.cfg);
-    if (!args) return;           // audio disabled (ARCADE_STREAM_AUDIO=none)
-    try {
-      this.audio = spawn(this.cfg.ffmpeg, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-    } catch (e) { this._audioErr = 'audio: ' + e.message; this.audio = null; return; }
-    this.audio.stdout.on('data', d => this._broadcastAudio(d));
-    this.audio.stderr.on('data', d => { this._audioErr = d.toString().trim().slice(0, 160); });
-    this.audio.on('error', e => { this._audioErr = 'audio: ' + e.message; this.audio = null; });
-    this.audio.on('close', () => { this.audio = null; });
+  stop() {
+    this.active = false;
+    for (const p of [this.ffmpeg, this.emulator, this.audio, this.mux]) { if (p) { try { p.kill('SIGTERM'); } catch (e) {} } }
+    this.ffmpeg = this.emulator = this.audio = this.mux = null;
+    for (const set of [this.subscribers, this.audioSubs, this.muxSubs]) { for (const res of set) { try { res.end(); } catch (e) {} } set.clear(); }
+    for (const res of this._muxWaiters) { try { res.end(); } catch (e) {} }
+    this._muxWaiters = []; this.muxInit = this.muxCodecs = null; this.lastFrame = null; this._muxNoAudio = false;
   }
   audioEnabled() { return !!audioCaptureArgs(this.cfg); }
-  stop() {
-    this.running = false;
-    for (const p of [this.ffmpeg, this.emulator, this.audio]) { if (p) { try { p.kill('SIGTERM'); } catch (e) {} } }
-    this.ffmpeg = this.emulator = this.audio = null;
-    for (const res of this.subscribers) { try { res.end(); } catch (e) {} }
-    for (const res of this.audioSubs) { try { res.end(); } catch (e) {} }
-    this.subscribers.clear(); this.audioSubs.clear();
+  muxEnabled() { return this.cfg.mode !== 'mjpeg'; }
+  mjpegEnabled() { return this.cfg.mode !== 'h264'; }
+
+  /* ---------- MJPEG video ---------- */
+  _ensureVideo() {
+    if (this.ffmpeg || !this.active) return;
+    const splitter = new JpegSplitter(f => { this.lastFrame = f; this._broadcast(f); });
+    try { this.ffmpeg = spawn(this.cfg.ffmpeg, captureArgs(this.cfg, this.emu && this.emu.capture), { stdio: ['ignore', 'pipe', 'pipe'] }); }
+    catch (e) { this._err = 'ffmpeg: ' + e.message; this.ffmpeg = null; return; }
+    this.ffmpeg.stdout.on('data', d => splitter.push(d));
+    this.ffmpeg.stderr.on('data', d => { this._err = d.toString().trim().slice(0, 160); });
+    this.ffmpeg.on('error', e => { this._err = 'ffmpeg: ' + e.message; this.ffmpeg = null; });
+    this.ffmpeg.on('close', () => { this.ffmpeg = null; });
   }
-  addAudioSubscriber(res) {
-    res.writeHead(200, { 'Content-Type': 'application/octet-stream',
-      'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache', 'Connection': 'close',
-      'X-Audio-Rate': String(this.cfg.audioRate || '48000'), 'X-Audio-Channels': '2' });
-    this.audioSubs.add(res);
-    res.on('close', () => this.audioSubs.delete(res));
-  }
-  _broadcastAudio(buf) { for (const res of this.audioSubs) { try { res.write(buf); } catch (e) { this.audioSubs.delete(res); } } }
   addSubscriber(res) {
     res.writeHead(200, { 'Content-Type': 'multipart/x-mixed-replace; boundary=' + BOUNDARY,
       'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache', 'Connection': 'close' });
     this.subscribers.add(res);
     if (this.lastFrame) this._write(res, this.lastFrame);
-    res.on('close', () => this.subscribers.delete(res));
+    res.on('close', () => { this.subscribers.delete(res); if (!this.subscribers.size && this.ffmpeg) { try { this.ffmpeg.kill('SIGTERM'); } catch (e) {} this.ffmpeg = null; } });
+    this._ensureVideo();
   }
   _write(res, jpeg) {
     try {
@@ -374,6 +468,72 @@ class StreamSession {
     } catch (e) { this.subscribers.delete(res); }
   }
   _broadcast(jpeg) { for (const res of this.subscribers) this._write(res, jpeg); }
+
+  /* ---------- raw-PCM audio (for the MJPEG path) ---------- */
+  _ensureAudio() {
+    if (this.audio || !this.active) return;
+    const args = audioCaptureArgs(this.cfg);
+    if (!args) return;
+    try { this.audio = spawn(this.cfg.ffmpeg, args, { stdio: ['ignore', 'pipe', 'pipe'] }); }
+    catch (e) { this._audioErr = 'audio: ' + e.message; this.audio = null; return; }
+    this.audio.stdout.on('data', d => this._broadcastAudio(d));
+    this.audio.stderr.on('data', d => { this._audioErr = d.toString().trim().slice(0, 160); });
+    this.audio.on('error', e => { this._audioErr = 'audio: ' + e.message; this.audio = null; });
+    this.audio.on('close', () => { this.audio = null; });
+  }
+  addAudioSubscriber(res) {
+    res.writeHead(200, { 'Content-Type': 'application/octet-stream',
+      'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache', 'Connection': 'close',
+      'X-Audio-Rate': String(this.cfg.audioRate || '48000'), 'X-Audio-Channels': '2' });
+    this.audioSubs.add(res);
+    res.on('close', () => { this.audioSubs.delete(res); if (!this.audioSubs.size && this.audio) { try { this.audio.kill('SIGTERM'); } catch (e) {} this.audio = null; } });
+    this._ensureAudio();
+  }
+  _broadcastAudio(buf) { for (const res of this.audioSubs) { try { res.write(buf); } catch (e) { this.audioSubs.delete(res); } } }
+
+  /* ---------- muxed H.264 + AAC (fragmented MP4 over MSE) ---------- */
+  _ensureMux() {
+    if (this.mux || !this.active || !this.muxEnabled()) return;
+    const noAudio = this._muxNoAudio;
+    let proc;
+    try { proc = spawn(this.cfg.ffmpeg, muxArgs(this.cfg, this.emu && this.emu.capture, undefined, noAudio), { stdio: ['ignore', 'pipe', 'pipe'] }); }
+    catch (e) { this._muxErr = 'mux: ' + e.message; return; }
+    this.mux = proc; this.muxInit = null; this.muxCodecs = null;
+    const startedAt = Date.now();
+    const splitter = new Fmp4Splitter(
+      init => { this.muxInit = init; this.muxCodecs = codecsFromInit(init); this._flushMuxWaiters(); },
+      frag => { for (const res of this.muxSubs) { try { res.write(frag); } catch (e) { this.muxSubs.delete(res); } } });
+    proc.stdout.on('data', d => splitter.push(d));
+    proc.stderr.on('data', d => { this._muxErr = d.toString().trim().slice(0, 160); });
+    proc.on('error', e => { this._muxErr = 'mux: ' + e.message; this.mux = null; });
+    proc.on('close', () => {
+      this.mux = null;
+      // if the encoder died almost immediately and audio was in the mix, the audio
+      // device is the likely culprit — retry once, video-only, so the picture survives.
+      if (Date.now() - startedAt < 2500 && !noAudio && resolveAudio(this.cfg) && (this.muxSubs.size || this._muxWaiters.length)) {
+        this._muxNoAudio = true; this._ensureMux();
+      } else { this._failMuxWaiters(); }
+    });
+  }
+  addMuxSubscriber(res) {
+    if (!this.active || !this.muxEnabled()) { res.writeHead(503, { 'Content-Type': 'text/plain' }); res.end('no mux'); return; }
+    this._ensureMux();
+    if (this.muxInit) return this._sendMuxInit(res);
+    this._muxWaiters.push(res);
+    res._muxTimer = setTimeout(() => { this._dropWaiter(res); try { res.writeHead(503, { 'Content-Type': 'text/plain' }); res.end('mux timeout'); } catch (e) {} }, 8000);
+    res.on('close', () => this._dropWaiter(res));
+  }
+  _sendMuxInit(res) {
+    res.writeHead(200, { 'Content-Type': 'video/mp4', 'X-Codecs': this.muxCodecs || VIDEO_CODEC,
+      'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache', 'Connection': 'close' });
+    try { res.write(this.muxInit); } catch (e) { return; }
+    this.muxSubs.add(res);
+    res.on('close', () => { this.muxSubs.delete(res); if (!this.muxSubs.size && !this._muxWaiters.length && this.mux) { try { this.mux.kill('SIGTERM'); } catch (e) {} this.mux = null; this.muxInit = this.muxCodecs = null; this._muxNoAudio = false; } });
+  }
+  _flushMuxWaiters() { const w = this._muxWaiters; this._muxWaiters = []; for (const res of w) { clearTimeout(res._muxTimer); this._sendMuxInit(res); } }
+  _failMuxWaiters() { const w = this._muxWaiters; this._muxWaiters = []; for (const res of w) { clearTimeout(res._muxTimer); try { res.writeHead(503, { 'Content-Type': 'text/plain' }); res.end('mux failed'); } catch (e) {} } }
+  _dropWaiter(res) { const i = this._muxWaiters.indexOf(res); if (i >= 0) this._muxWaiters.splice(i, 1); clearTimeout(res._muxTimer); }
+
   inject(action, down) {
     const tool = resolveInputTool(this.cfg.inputTool);
     if (tool === 'none') return;
@@ -406,11 +566,11 @@ function listEmulators() {
     system: e.system, games: e.games,
   }));
 }
-function active() { return !!(session && session.running); }
+function active() { return !!(session && session.active); }
 
 // translate a relayed phone-pad message into a host key press
 function injectInput(msg) {
-  if (!session || !session.running || !msg) return;
+  if (!session || !session.active || !msg) return;
   if (msg.t === 'down' || msg.t === 'up') { session.inject(msg.b, msg.t === 'down'); return; }
   if (msg.t === 'hk') {
     if (msg.a === 'ff_on')  return session.inject('ff_on', true);
@@ -427,13 +587,17 @@ function injectInput(msg) {
 function handle(req, res, urlPath, q) {
   if (urlPath === '/stream/video') {
     const s = ensure();
-    if (!s.running) { res.writeHead(503, { 'Content-Type': 'text/plain' }); res.end('stream not started'); return true; }
+    if (!s.active || !s.mjpegEnabled()) { res.writeHead(503, { 'Content-Type': 'text/plain' }); res.end('stream not started'); return true; }
     s.addSubscriber(res); return true;
   }
   if (urlPath === '/stream/audio') {
     const s = ensure();
-    if (!s.running || !s.audioEnabled()) { res.writeHead(503, { 'Content-Type': 'text/plain' }); res.end('no audio'); return true; }
+    if (!s.active || !s.audioEnabled() || !s.mjpegEnabled()) { res.writeHead(503, { 'Content-Type': 'text/plain' }); res.end('no audio'); return true; }
     s.addAudioSubscriber(res); return true;
+  }
+  if (urlPath === '/stream/mux') {        // H.264 + AAC muxed fMP4 for MSE clients
+    const s = ensure();
+    s.addMuxSubscriber(res); return true;
   }
   if (urlPath === '/stream/start') {
     const s = ensure();
@@ -461,12 +625,14 @@ function handle(req, res, urlPath, q) {
   if (urlPath === '/stream/status') {
     const cfg = CFG || config();
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ enabled: true, running: active(),
+    res.end(JSON.stringify({ enabled: true, running: active(), mode: cfg.mode,
       emulator: session && session.emu ? session.emu.name : null,
-      viewers: session ? session.subscribers.size : 0,
+      mjpeg: cfg.mode !== 'h264', mux: cfg.mode !== 'mjpeg',
+      viewers: session ? (session.subscribers.size + session.muxSubs.size) : 0,
       capture: resolveCapture(cfg.capture), input: resolveInputTool(cfg.inputTool),
       audio: !!audioCaptureArgs(cfg), audioListeners: session ? session.audioSubs.size : 0,
-      error: session ? session._err : null, audioError: session ? session._audioErr : null }));
+      error: session ? session._err : null, audioError: session ? session._audioErr : null,
+      muxError: session ? session._muxErr : null }));
     return true;
   }
   return false;
@@ -477,7 +643,8 @@ module.exports = {
   shutdown() { if (session) session.stop(); stopInjectors(); },
   _internals: { config, scanEmulators, listRoms, captureArgs, tokenize, launchArgs, inputArgs, osaLine,
     defaultCapture, defaultInputTool, resolveCapture, resolveInputTool,
-    defaultAudioInput, resolveAudio, audioCaptureArgs,
+    defaultAudioInput, resolveAudio, audioCaptureArgs, videoInputArgs, muxArgs,
+    Fmp4Splitter, codecsFromInit, VIDEO_CODEC,
     KEYMAP, HOTKEY, VKMAP, VKHOT, OSAMAP, OSAHOT, JpegSplitter, StreamSession, EMU_DIR },
 };
 
@@ -512,6 +679,44 @@ if (require.main === module && process.argv.includes('--selftest')) {
   ok('audioCaptureArgs explicit format + device', audioCaptureArgs(Object.assign({}, acfg, { audio: 'alsa', audioDevice: 'hw:0' }), 'linux').join(' ')
        === '-loglevel error -f alsa -i hw:0 -ac 2 -ar 48000 -f s16le -');
   ok('audioCaptureArgs custom rate', audioCaptureArgs(Object.assign({}, acfg, { audioRate: '44100' }), 'linux').includes('44100'));
+
+  // ---- H.264 muxed transport ----
+  const mx = muxArgs(acfg, 'x11', 'linux').join(' ');
+  ok('muxArgs encodes H.264 + AAC fMP4', mx.includes('-c:v libx264') && mx.includes('-c:a aac')
+       && mx.includes('x11grab') && mx.includes('-f pulse -i default')
+       && mx.includes('+frag_keyframe+empty_moov+default_base_moof') && mx.endsWith('pipe:1'));
+  ok('muxArgs maps both streams', mx.includes('-map 0:v:0') && mx.includes('-map 1:a:0'));
+  const mxNA = muxArgs(acfg, 'x11', 'linux', true).join(' ');
+  ok('muxArgs noAudio drops the audio input/codec', !mxNA.includes('-c:a aac') && !mxNA.includes('-i default') && !mxNA.includes('-map 1:a:0'));
+  ok('muxArgs none-audio cfg is video-only', !muxArgs(Object.assign({}, acfg, { audio: 'none' }), 'x11', 'linux').join(' ').includes('aac'));
+  ok('muxArgs scales desktop grabs (gdigrab)', muxArgs(acfg, 'gdigrab', 'win32').join(' ').includes('scale=1280:-2'));
+
+  const mkbox = (type, payload) => { payload = payload || Buffer.alloc(0); const b = Buffer.alloc(8 + payload.length); b.writeUInt32BE(8 + payload.length, 0); b.write(type, 4, 'latin1'); payload.copy(b, 8); return b; };
+  const ftyp = mkbox('ftyp', Buffer.from('isom')), moov = mkbox('moov', Buffer.from('mp4a')); // moov names the audio codec
+  const moof1 = mkbox('moof', Buffer.from([1])), mdat1 = mkbox('mdat', Buffer.from([2, 2]));
+  const moof2 = mkbox('moof', Buffer.from([3])), mdat2 = mkbox('mdat', Buffer.from([4, 4]));
+  const inits = [], frags = [];
+  const fsp = new Fmp4Splitter(i => inits.push(i), f => frags.push(f));
+  const whole = Buffer.concat([ftyp, moov, moof1, mdat1, moof2, mdat2]);
+  for (let i = 0; i < whole.length; i += 5) fsp.push(whole.slice(i, i + 5));   // feed in tiny chunks
+  ok('Fmp4Splitter extracts init = ftyp+moov', inits.length === 1 && inits[0].equals(Buffer.concat([ftyp, moov])));
+  ok('Fmp4Splitter emits moof+mdat fragments', frags.length === 2
+       && frags[0].equals(Buffer.concat([moof1, mdat1])) && frags[1].equals(Buffer.concat([moof2, mdat2])));
+  ok('codecsFromInit detects audio track', codecsFromInit(Buffer.concat([ftyp, moov])) === 'avc1.42E01E,mp4a.40.2');
+  ok('codecsFromInit video-only', codecsFromInit(mkbox('moov', Buffer.from('avc1'))) === 'avc1.42E01E');
+
+  // mux subscriber: gets the cached init + the X-Codecs header
+  const ms2 = new StreamSession(config()); ms2.active = true; ms2.mux = {};   // pretend the encoder is already up
+  ms2.muxInit = Buffer.from([9, 9, 9]); ms2.muxCodecs = 'avc1.42E01E,mp4a.40.2';
+  let mhdr = {}, mbody = [];
+  ms2.addMuxSubscriber({ writeHead(c, h) { mhdr = h || {}; }, write(c) { mbody.push(Buffer.from(c)); return true; }, end() {}, on() {} });
+  ok('mux subscriber receives init + codecs', Buffer.concat(mbody).equals(ms2.muxInit) && mhdr['X-Codecs'] === 'avc1.42E01E,mp4a.40.2' && mhdr['Content-Type'] === 'video/mp4');
+  let mcode = 0; const mj = new StreamSession(Object.assign({}, config(), { mode: 'mjpeg' })); mj.active = true;
+  mj.addMuxSubscriber({ writeHead(c) { mcode = c; }, end() {}, on() {} });
+  ok('mux refused in mjpeg mode', mcode === 503);
+  ok('mode flags reflect config', new StreamSession(Object.assign({}, config(), { mode: 'mjpeg' })).muxEnabled() === false
+       && new StreamSession(Object.assign({}, config(), { mode: 'h264' })).mjpegEnabled() === false
+       && new StreamSession(config()).muxEnabled() === true && new StreamSession(config()).mjpegEnabled() === true);
 
   ok('launchArgs substitutes {rom}', (launchArgs({ cmd: 'pcsx2 {rom}' }, '/g/x.iso') || []).join(' ') === 'pcsx2 /g/x.iso');
   ok('launchArgs drops empty rom', (launchArgs({ cmd: 'retroarch {rom}' }, '') || []).join(' ') === 'retroarch');

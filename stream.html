@@ -6,7 +6,8 @@
 <title>ARCADE · Stream</title>
 <style>
   html,body{margin:0;height:100%;background:#000;overflow:hidden}
-  #view{width:100%;height:100%;object-fit:contain;display:block;background:#000}
+  #view,#vid{width:100%;height:100%;object-fit:contain;display:block;background:#000}
+  #view[hidden],#vid[hidden]{display:none}
   #msg{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
     color:#7fb9b0;font-family:system-ui,sans-serif;font-size:15px;text-align:center;padding:24px;line-height:1.5}
   #msg[hidden]{display:none}
@@ -20,74 +21,181 @@
 </style>
 </head>
 <body>
+  <video id="vid" playsinline autoplay muted hidden></video>
   <img id="view" alt="" hidden>
   <div id="msg">Connecting to the host stream…</div>
   <button id="sound" title="Turn the host's game sound on or off">🔊 Tap for sound</button>
 <script>
-  // Shows the host emulator's MJPEG stream. Embedded as an iframe inside ARCADE on
-  // the TV/phone. The actual emulator runs on the host with full power; this is
-  // just the picture. Controller input flows through ARCADE's pad relay and is
-  // injected host-side, so nothing extra is needed here.
-  const view = document.getElementById('view');
-  const msg  = document.getElementById('msg');
-  let tries = 0;
-  function connect(){
-    // cache-bust so a reconnect re-opens the multipart stream
-    view.src = '/stream/video?t=' + Date.now();
-  }
-  view.onload  = () => { view.hidden = false; msg.hidden = true; tries = 0; };
-  view.onerror = () => {
-    view.hidden = true; msg.hidden = false;
-    tries++;
-    msg.textContent = tries > 2
-      ? 'Waiting for the host to start a game… (pick one in ARCADE)'
-      : 'Connecting to the host stream…';
-    setTimeout(connect, 1500);
-  };
-  connect();
-
-  /* ============ AUDIO ============
-     The host streams its sound as raw PCM (signed-16 LE) over /stream/audio.
-     Raw PCM needs no decoder, so we play it through the Web Audio API with a
-     small jitter buffer — low latency, works offline, and the MJPEG video above
-     is completely untouched (old TVs that lack Web Audio just stay silent).
-     Browsers block audio until a user gesture, so we show a "Tap for sound"
-     button; the first tap inside this frame starts it. */
+  // Shows the host emulator's stream, embedded as an iframe inside ARCADE. The
+  // emulator runs on the host with full power; this page is just the picture (and
+  // sound). Two transports, chosen automatically:
+  //   • H.264 + AAC muxed into fragmented MP4, played through Media Source
+  //     Extensions in a <video> — ONE synced A/V stream (proper lip-sync), lower
+  //     bandwidth. Used whenever the browser supports MSE + the codec.
+  //   • MJPEG in an <img> + raw-PCM audio via Web Audio — the universal fallback
+  //     for old TV browsers that lack MSE.
+  // Controller input flows through ARCADE's pad relay and is injected host-side.
+  const vid   = document.getElementById('vid');
+  const view  = document.getElementById('view');
+  const msg   = document.getElementById('msg');
   const soundBtn = document.getElementById('sound');
-  let audioCtx = null, audioOn = false, audioReader = null, playHead = 0;
-  const LEAD = 0.15;        // seconds of buffer ahead of the clock (jitter cushion)
 
-  // does the host even have audio capture configured? only offer the button if so.
-  async function audioAvailable(){
-    try{ const s = await (await fetch('/stream/status', {cache:'no-store'})).json(); return !!(s && s.audio); }
-    catch(e){ return false; }
+  function showMsg(t){ msg.textContent = t; msg.hidden = false; }
+  function hideMsg(){ msg.hidden = true; }
+
+  async function status(){
+    try{ return await (await fetch('/stream/status', {cache:'no-store'})).json(); }
+    catch(e){ return null; }
   }
-  audioAvailable().then(ok => { if(ok) soundBtn.classList.add('show'); });
 
+  // pick the transport once we know what the host offers and what we can decode
+  (async function boot(){
+    const st = await status();
+    const mode = st ? st.mode : 'auto';
+    const audioCodec = (st && st.audio) ? ',mp4a.40.2' : '';
+    const mime = 'video/mp4; codecs="avc1.42E01E' + audioCodec + '"';
+    const canMux = (mode !== 'mjpeg') && !!(window.MediaSource && window.MediaSource.isTypeSupported && window.MediaSource.isTypeSupported(mime));
+    if(canMux) startMux(); else startMjpeg(mode === 'h264');
+  })();
+
+  /* ================= H.264 (MSE) ================= */
+  let ms = null, sb = null, mseReader = null, appendQueue = [], mseTries = 0;
+  function startMux(){
+    view.hidden = true; vid.hidden = false;
+    showMsg('Connecting to the host stream…');
+    ms = new MediaSource();
+    vid.src = URL.createObjectURL(ms);
+    ms.addEventListener('sourceopen', onSourceOpen, { once:true });
+  }
+  async function onSourceOpen(){
+    try{ URL.revokeObjectURL(vid.src); }catch(e){}
+    let resp;
+    try{ resp = await fetch('/stream/mux?t=' + Date.now(), {cache:'no-store'}); }
+    catch(e){ return retryMuxOrFallback(); }
+    if(!resp.ok || !resp.body){ return retryMuxOrFallback(); }
+    const codecs = resp.headers.get('X-Codecs') || 'avc1.42E01E';
+    const mime = 'video/mp4; codecs="' + codecs + '"';
+    try{ sb = ms.addSourceBuffer(mime); }
+    catch(e){ try{ resp.body.cancel(); }catch(_){} return retryMuxOrFallback(); }
+    sb.mode = 'sequence';
+    sb.addEventListener('updateend', pumpQueue);
+    sb.addEventListener('error', () => {});                 // a bad fragment: keep going
+    mseReader = resp.body.getReader();
+    readLoop();
+    // sound comes inside the mux: unmute via the button (autoplay policy needs a tap)
+    soundBtn.classList.add('show');
+    setBtn(false);
+    vid.play().catch(()=>{});
+  }
+  async function readLoop(){
+    try{
+      for(;;){
+        const { done, value } = await mseReader.read();
+        if(done) break;
+        appendQueue.push(value);
+        pumpQueue();
+      }
+    }catch(e){}
+    // stream ended (host stopped/changed game) — try to reconnect
+    if(ms && ms.readyState === 'open') setTimeout(reconnectMux, 1000);
+  }
+  function pumpQueue(){
+    if(!sb || sb.updating || !appendQueue.length) return;
+    try{ sb.appendBuffer(appendQueue.shift()); }
+    catch(e){
+      // running out of buffer space: drop what's already been played, then retry
+      if(e && e.name === 'QuotaExceededError'){ trimBuffer(true); }
+      else appendQueue.length = 0;
+    }
+    hideMsg();
+    if(vid.paused) vid.play().catch(()=>{});
+    catchUpToLive();
+  }
+  function trimBuffer(force){
+    try{
+      if(!sb || sb.updating || !sb.buffered.length) return;
+      const start = sb.buffered.start(0), keepFrom = (force ? sb.buffered.end(0) - 2 : vid.currentTime - 4);
+      if(keepFrom > start + 0.5) sb.remove(start, Math.max(start + 0.1, keepFrom));
+    }catch(e){}
+  }
+  function catchUpToLive(){
+    try{
+      if(!sb || !sb.buffered.length) return;
+      const end = sb.buffered.end(sb.buffered.length - 1);
+      const behind = end - vid.currentTime;
+      if(behind > 1.2){ vid.currentTime = end - 0.3; }      // jumped too far back: snap to live
+      else if(behind > 0.5){ vid.playbackRate = 1.07; }     // a little late: ease forward
+      else vid.playbackRate = 1.0;
+      if(!vid.paused && Math.random() < 0.05) trimBuffer(false);
+    }catch(e){}
+  }
+  function reconnectMux(){
+    try{ if(mseReader) mseReader.cancel(); }catch(e){}
+    mseReader = null; sb = null; appendQueue.length = 0;
+    showMsg('Waiting for the host to start a game…');
+    // a fresh MediaSource is the simplest way to re-arm after the host stops a game
+    try{ ms = new MediaSource(); vid.src = URL.createObjectURL(ms); ms.addEventListener('sourceopen', onSourceOpen, { once:true }); }
+    catch(e){ retryMuxOrFallback(); }
+  }
+  function retryMuxOrFallback(){
+    mseTries++;
+    if(mseTries <= 3){ showMsg('Waiting for the host to start a game…'); setTimeout(reconnectMux, 1500); }
+    else { teardownMux(); startMjpeg(false); }              // give up on MSE, use the universal path
+  }
+  function teardownMux(){
+    try{ if(mseReader) mseReader.cancel(); }catch(e){}
+    try{ vid.removeAttribute('src'); vid.load(); }catch(e){}
+    vid.hidden = true; ms = null; sb = null; mseReader = null; appendQueue.length = 0;
+    soundBtn.classList.remove('show');
+  }
+
+  // muted/unmuted toggle for the MSE <video>
   function setBtn(on){
-    audioOn = on;
     soundBtn.classList.toggle('on', on);
     soundBtn.textContent = on ? '🔊 Sound on' : '🔇 Tap for sound';
   }
-  soundBtn.addEventListener('click', () => { audioOn ? stopAudio() : startAudio(); });
+  soundBtn.addEventListener('click', () => {
+    if(!vid.hidden){                         // H.264 path: just (un)mute the video element
+      vid.muted = !vid.muted; setBtn(!vid.muted); vid.play().catch(()=>{});
+    } else {                                 // MJPEG path: Web Audio PCM
+      audioOn ? stopAudio() : startAudio();
+    }
+  });
+
+  /* ================= MJPEG + PCM fallback ================= */
+  let mjpegTries = 0;
+  function startMjpeg(forced){
+    vid.hidden = true; view.hidden = false;
+    if(forced) showMsg('This browser can’t play the H.264 stream — using the basic view.');
+    connectMjpeg();
+    audioAvailable().then(ok => { if(ok) soundBtn.classList.add('show'); });
+  }
+  function connectMjpeg(){ view.src = '/stream/video?t=' + Date.now(); }   // cache-bust re-opens the multipart stream
+  view.onload  = () => { view.hidden = false; hideMsg(); mjpegTries = 0; };
+  view.onerror = () => {
+    if(vid && !vid.hidden) return;            // ignore if we're actually on the H.264 path
+    view.hidden = true;
+    mjpegTries++;
+    showMsg(mjpegTries > 2 ? 'Waiting for the host to start a game… (pick one in ARCADE)' : 'Connecting to the host stream…');
+    setTimeout(connectMjpeg, 1500);
+  };
+
+  let audioCtx = null, audioOn = false, audioReader = null, playHead = 0;
+  const LEAD = 0.15;        // seconds of buffer ahead of the clock (jitter cushion)
+  async function audioAvailable(){ const s = await status(); return !!(s && s.audio && s.mjpeg); }
 
   async function startAudio(){
     if(audioOn) return;
-    try{
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      await audioCtx.resume();
-    }catch(e){ return; }
-    setBtn(true);
+    try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); await audioCtx.resume(); }
+    catch(e){ return; }
+    audioOn = true; setBtn(true);
     pumpAudio();
   }
   function stopAudio(){
-    setBtn(false);
-    try{ if(audioReader) audioReader.cancel(); }catch(e){}
-    audioReader = null;
-    try{ if(audioCtx) audioCtx.close(); }catch(e){}
-    audioCtx = null;
+    audioOn = false; setBtn(false);
+    try{ if(audioReader) audioReader.cancel(); }catch(e){} audioReader = null;
+    try{ if(audioCtx) audioCtx.close(); }catch(e){} audioCtx = null;
   }
-
   async function pumpAudio(){
     let rate = 48000, ch = 2;
     try{
@@ -102,7 +210,6 @@
       while(audioOn){
         const { done, value } = await audioReader.read();
         if(done) break;
-        // stitch any bytes left from the previous chunk onto this one
         let bytes = value;
         if(leftover.length){ const m = new Uint8Array(leftover.length + value.length); m.set(leftover); m.set(value, leftover.length); bytes = m; }
         const nFrames = Math.floor(bytes.length / frameBytes);
@@ -118,13 +225,13 @@
         const src = audioCtx.createBufferSource();
         src.buffer = buf; src.connect(audioCtx.destination);
         const now = audioCtx.currentTime;
-        if(playHead < now + 0.02) playHead = now + 0.02;   // underran: nudge forward
-        else if(playHead > now + 0.6) playHead = now + LEAD; // drifted late: resync, drop the backlog
+        if(playHead < now + 0.02) playHead = now + 0.02;     // underran: nudge forward
+        else if(playHead > now + 0.6) playHead = now + LEAD;  // drifted late: resync, drop backlog
         src.start(playHead);
         playHead += buf.duration;
       }
-    }catch(e){ /* stream ended or was cancelled */ }
-    if(audioOn) setTimeout(()=>{ if(audioOn) pumpAudio(); }, 1000);   // reconnect if the host restarts a game
+    }catch(e){}
+    if(audioOn) setTimeout(()=>{ if(audioOn) pumpAudio(); }, 1000);
   }
 </script>
 </body>

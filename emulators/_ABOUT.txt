@@ -53,6 +53,9 @@ HOW TO ADD AN EMULATOR
                 e.g. [".iso", ".chd"] — leave out to list every file.
 
 NOTES
+  - Modern devices get an H.264 + AAC stream with audio and video muxed
+    together (in sync); old TV browsers fall back to MJPEG + PCM audio.
+    It's automatic — ARCADE_STREAM_MODE=auto (default), or force h264/mjpeg.
   - Sound is streamed too: the client shows a "🔊 Tap for sound" button.
     Tell ffmpeg which source to capture with ARCADE_STREAM_AUDIO_DEVICE
     (the speaker monitor/loopback, not a mic) — see SETUP-STREAMING.txt,
