@@ -20,6 +20,13 @@ WHAT THIS IS
   Full setup (ffmpeg + per-OS notes): see SETUP-STREAMING.txt in the ARCADE
   folder. Ready-made manifests to copy: see the _examples/ folder in here.
 
+ALREADY SET UP FOR WINDOWS
+  Six emulators come pre-configured in here: project64/ (N64), pcsx2/ (PS2),
+  ppsspp/ (PSP), xemu/ (XBOX), freej2me/ and kemulator/ (Java). Run
+  download-emulators-windows.bat once to fetch the portable ones; the
+  installer-based ones (PCSX2/PPSSPP/Project64) you install normally — their
+  default paths are pre-wired. Each folder has a _SETUP.txt with specifics.
+
 HOW TO ADD AN EMULATOR
   Make ONE folder per emulator in here, each with an "emulator.json" manifest:
 

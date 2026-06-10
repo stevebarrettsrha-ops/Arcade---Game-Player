@@ -331,8 +331,12 @@
    the controller (tap "🔊 Tap for sound" on the stream to hear audio).
    Drop PS2 games in games/ps2 and XBOX games in games/xbox, set up
    the matching emulator once, and start with start-*-stream.
-   Full instructions: SETUP-STREAMING.txt (ready-made emulator
-   manifests are in emulators/_examples/; sound setup is section 3b).
+   On Windows the setup is mostly automatic: Project64, PCSX2, PPSSPP,
+   xemu, FreeJ2ME and KEmulator come pre-configured in emulators/ -
+   run download-emulators-windows.bat once to fetch the portable ones
+   (installer-based ones you install yourself; default paths are
+   pre-wired). Full instructions: SETUP-STREAMING.txt (more example
+   manifests in emulators/_examples/; sound setup is section 3b).
 
 10. TRULY OFFLINE (no internet)
    ARCADE's own UI is already 100% offline - the fonts and QR code

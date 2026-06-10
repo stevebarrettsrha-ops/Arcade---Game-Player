@@ -1,0 +1,10 @@
+{
+  "name": "xemu (Original XBOX)",
+  "cmd": "emulators/xemu/app/xemu.exe -full-screen -dvd_path {rom}",
+  "capture": "auto",
+  "window": "xemu",
+  "needsRom": true,
+  "system": "XBOX",
+  "roms": "games/xbox",
+  "exts": [".iso", ".xiso"]
+}

@@ -4,6 +4,9 @@ certs/
 # per-player profiles + saved games (created at runtime; may contain hashed PINs)
 users/
 
+# downloaded emulator binaries (fetched by get-emulators.js) — never commit
+emulators/*/app/
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db

@@ -1,0 +1,10 @@
+{
+  "name": "Project64 (N64)",
+  "cmd": "\"C:\\Program Files (x86)\\Project64 3.0\\Project64.exe\" {rom}",
+  "capture": "auto",
+  "window": "Project64",
+  "needsRom": true,
+  "system": "N64",
+  "roms": "games/n64",
+  "exts": [".n64", ".z64", ".v64", ".zip"]
+}

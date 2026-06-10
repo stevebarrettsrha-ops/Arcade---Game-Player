@@ -1,0 +1,10 @@
+{
+  "name": "PCSX2 (PS2)",
+  "cmd": "\"C:\\Program Files\\PCSX2\\pcsx2-qt.exe\" -fullscreen {rom}",
+  "capture": "auto",
+  "window": "PCSX2",
+  "needsRom": true,
+  "system": "PS2",
+  "roms": "games/ps2",
+  "exts": [".iso", ".chd", ".cso", ".gz"]
+}

@@ -1,0 +1,10 @@
+KEMULATOR NNMOD (Java phone games on the host) - setup
+  EASIEST: run download-emulators-windows.bat - it fetches KEmulator
+  nnmod into the app/ folder here automatically (the x64 build bundles
+  its own Java).
+
+  MANUAL (e.g. you already downloaded kemnnmod...zip): extract it into
+  an "app" folder here, so this file exists:
+        emulators/kemulator/app/KEmulator.exe
+
+  Games come from games/j2me. The "nojre" build needs Java 8+ installed.

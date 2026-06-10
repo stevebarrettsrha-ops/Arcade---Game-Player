@@ -37,11 +37,25 @@ WHAT IT DOES
 ------------------------------------------------------------
 2. ADD YOUR EMULATORS
 ------------------------------------------------------------
-  Ready-made manifests for PCSX2 (PS2), xemu (XBOX), PPSSPP (PSP),
-  RetroArch-N64, Dolphin and RPCS3 are in  emulators/_examples/ .
-  Copy a folder one level up (e.g. emulators/_examples/pcsx2 ->
-  emulators/pcsx2), then edit its "cmd" line to match how the emulator is
-  launched on YOUR computer. See emulators/_examples/README.txt.
+  WINDOWS — mostly automatic. Six emulators come PRE-CONFIGURED in
+  emulators/:  Project64 (N64), PCSX2 (PS2), PPSSPP (PSP), xemu (XBOX),
+  FreeJ2ME and KEmulator nnmod (Java). Double-click
+
+      download-emulators-windows.bat        (one time, online)
+
+  It downloads the portable ones (xemu, KEmulator, FreeJ2ME) from their
+  official releases into emulators/<name>/app/ and checks the rest.
+  PCSX2, PPSSPP and Project64 use normal Windows installers, so run the
+  installer you downloaded yourself — the manifests already point at their
+  default install paths (edit emulators/<name>/emulator.json if you chose
+  a different folder). Each folder has a short _SETUP.txt with specifics.
+  start-windows-stream.bat also offers this setup on first run.
+
+  LINUX / macOS (or other emulators): manifests for Dolphin, RPCS3,
+  RetroArch-N64 and Linux variants are in  emulators/_examples/ .
+  Copy a folder one level up (e.g. emulators/_examples/dolphin ->
+  emulators/dolphin), then edit its "cmd" line to match how the emulator
+  is launched on YOUR computer. See emulators/_examples/README.txt.
 
   Manifest format (emulators/<name>/emulator.json):
      {
