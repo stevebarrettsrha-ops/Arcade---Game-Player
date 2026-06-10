@@ -27,6 +27,18 @@ ALREADY SET UP FOR WINDOWS
   installer-based ones (PCSX2/PPSSPP/Project64) you install normally — their
   default paths are pre-wired. Each folder has a _SETUP.txt with specifics.
 
+WRONG PATHS? AUTO-FIX THEM
+  The manifests ship with the DEFAULT install paths. If you installed an
+  emulator elsewhere, or dropped a portable build straight into its
+  emulators/<name>/ folder, the launch silently fails ("button does
+  nothing"). Run the path fixer once to scan for where each emulator
+  really lives and rewrite the "cmd" paths to match:
+      Windows :  fix-emulator-paths-windows.bat   (or: node fix-emulator-paths.js)
+      macOS   :  fix-emulator-paths-mac.command
+      Linux   :  ./fix-emulator-paths-linux.sh
+  Add --dry-run to preview without changing anything. It also creates each
+  emulator's games folder and reports how many games it can see.
+
 HOW TO ADD AN EMULATOR
   Make ONE folder per emulator in here, each with an "emulator.json" manifest:
 
@@ -43,12 +55,30 @@ HOW TO ADD AN EMULATOR
                   "flatpak run net.pcsx2.PCSX2 -fullscreen {rom}"
                   "retroarch -f -L mupen64plus_next {rom}"
                   "xemu -full-screen -dvd_path {rom}"
-      capture   how ARCADE grabs the picture. "auto" (recommended) picks the
-                right one for the host OS — Windows: gdigrab, macOS:
-                avfoundation, Linux: x11. Or force: x11 | gdigrab |
-                avfoundation | kms | test ("test" = a test pattern, no game).
-      window    (optional) the emulator window's title, so controller input
-                is focused on it on Linux/X11 (e.g. "PCSX2", "RetroArch")
+      capture   how ARCADE grabs the picture:
+                  "auto"   – whole screen, right grabber per OS (Windows:
+                             gdigrab, macOS: avfoundation, Linux: x11). Best
+                             when the emulator runs FULLSCREEN (e.g. PCSX2,
+                             PPSSPP, xemu all pass a -fullscreen flag) so the
+                             screen IS the game.
+                  "window" – Windows only: grab ONLY the emulator's window (by
+                             its "window" title, below), not the whole desktop.
+                             Use this for emulators that run in a WINDOW (e.g.
+                             Project64, the Java handsets) so you stream just
+                             the game — not your desktop (which would otherwise
+                             mirror the browser showing the stream). On macOS/
+                             Linux it falls back to a full-screen grab.
+                             Note: if the game area shows up BLACK, the
+                             emulator is rendering with a backend gdigrab can't
+                             read — run it fullscreen and use "auto" instead,
+                             or switch its video plugin/backend.
+                Or force a specific grabber: x11 | gdigrab | avfoundation |
+                kms | test ("test" = a test pattern, no game).
+      window    (optional) the emulator window's title. Used to focus
+                controller input on Linux/X11 AND, with capture:"window", to
+                pick which window to stream. A substring is fine — ARCADE
+                matches the live title (e.g. "Project64" matches
+                "Mario 64 - Project64"). Examples: "PCSX2", "Project64".
       needsRom  true if cmd uses {rom}; false for emulators you point at a
                 game from their own menu
       system    (optional) short label shown on the cards, e.g. "PS2", "XBOX"

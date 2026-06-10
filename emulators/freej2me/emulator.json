@@ -1,7 +1,7 @@
 {
   "name": "FreeJ2ME (Java, desktop)",
   "cmd": "java -jar emulators/freej2me/app/freej2me.jar {rom}",
-  "capture": "auto",
+  "capture": "window",
   "window": "FreeJ2ME",
   "needsRom": true,
   "system": "JAVA",

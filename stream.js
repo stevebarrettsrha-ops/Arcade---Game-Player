@@ -49,7 +49,7 @@
    Logic self-test (no ffmpeg/emulator needed):  node stream.js --selftest
    ============================================================ */
 'use strict';
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const fs   = require('fs');
 const path = require('path');
 
@@ -70,7 +70,13 @@ function defaultInputTool(platform) {
   return 'xdotool';
 }
 function resolveCapture(capture, platform) {
-  return (!capture || capture === 'auto') ? defaultCapture(platform) : capture;
+  platform = platform || process.platform;
+  if (!capture || capture === 'auto') return defaultCapture(platform);
+  // "window" = grab just the emulator's window instead of the whole desktop.
+  // Only Windows (gdigrab) can do this by title; elsewhere fall back to the
+  // desktop grabber (best-effort) so something still streams.
+  if (capture === 'window') return platform === 'win32' ? 'window' : defaultCapture(platform);
+  return capture;
 }
 function resolveInputTool(tool, platform) {
   return (!tool || tool === 'auto') ? defaultInputTool(platform) : tool;
@@ -137,10 +143,16 @@ function audioCaptureArgs(cfg, platform) {
 }
 
 /* ---- the video grabber input args, shared by MJPEG and the H.264 mux (pure) ---- */
-function videoInputArgs(cfg, capture) {
+function videoInputArgs(cfg, capture, window) {
   const a = [];
   let scale = false;
-  if (capture === 'x11') {
+  if (capture === 'window') {
+    // Windows single-window capture: gdigrab grabs only the emulator window by
+    // its title, so the stream shows the game — not the whole desktop (which
+    // otherwise mirrors the browser showing the stream). Needs the exact title;
+    // if we don't know it, fall back to a desktop grab so the picture survives.
+    a.push('-f', 'gdigrab', '-framerate', cfg.fps, '-i', window ? 'title=' + window : 'desktop'); scale = true;
+  } else if (capture === 'x11') {
     a.push('-f', 'x11grab', '-video_size', cfg.size, '-framerate', cfg.fps, '-i', cfg.display);
   } else if (capture === 'gdigrab') {
     a.push('-f', 'gdigrab', '-framerate', cfg.fps, '-i', 'desktop'); scale = true;
@@ -162,9 +174,9 @@ function videoInputArgs(cfg, capture) {
    video-only if the audio device wedges the encoder. The fragment settings
    (empty_moov + frag_keyframe + default_base_moof, short frag_duration) are what
    MSE needs to start instantly and stay near the live edge. */
-function muxArgs(cfg, capture, platform, noAudio) {
+function muxArgs(cfg, capture, platform, noAudio, window) {
   capture = resolveCapture(capture || cfg.capture, platform);
-  const vin = videoInputArgs(cfg, capture);
+  const vin = videoInputArgs(cfg, capture, window);
   const a = ['-loglevel', 'error', '-fflags', 'nobuffer', ...vin.args];
   const au = noAudio ? null : resolveAudio(cfg, platform);
   if (au) a.push('-f', au.fmt, '-i', au.dev);
@@ -232,27 +244,13 @@ function scanEmulators(dir, root) {
 }
 
 /* ---- ffmpeg capture+encode args -> concatenated-JPEG stream on stdout (pure) ---- */
-function captureArgs(cfg, capture, platform) {
+function captureArgs(cfg, capture, platform, window) {
   capture = resolveCapture(capture || cfg.capture, platform);
-  const a = ['-loglevel', 'error'];
+  const vin = videoInputArgs(cfg, capture, window);
   const width = parseInt(cfg.size, 10) || 1280;
-  let scale = false;
-  if (capture === 'x11') {
-    a.push('-f', 'x11grab', '-video_size', cfg.size, '-framerate', cfg.fps, '-i', cfg.display);
-  } else if (capture === 'gdigrab') {                                // Windows desktop
-    a.push('-f', 'gdigrab', '-framerate', cfg.fps, '-i', 'desktop');
-    scale = true;
-  } else if (capture === 'avfoundation') {                           // macOS screen
-    const dev = /^[:]/.test(cfg.display) ? 'Capture screen 0' : cfg.display;
-    a.push('-f', 'avfoundation', '-capture_cursor', '1', '-framerate', cfg.fps, '-i', dev + ':none');
-    scale = true;
-  } else if (capture === 'kms') {
-    a.push('-f', 'kmsgrab', '-framerate', cfg.fps, '-i', '-');       // advanced; see docs
-  } else {                                                           // 'test'
-    a.push('-f', 'lavfi', '-i', `testsrc=size=${cfg.size}:rate=${cfg.fps}`);
-  }
-  // full-desktop grabs are scaled down to the target width (keeps aspect, saves WiFi bandwidth)
-  const vf = scale ? `scale=${width}:-2,format=yuvj420p` : 'format=yuvj420p';
+  const a = ['-loglevel', 'error', ...vin.args];
+  // full-desktop/window grabs are scaled down to the target width (keeps aspect, saves WiFi bandwidth)
+  const vf = vin.scale ? `scale=${width}:-2,format=yuvj420p` : 'format=yuvj420p';
   a.push('-vf', vf, '-c:v', 'mjpeg', '-q:v', String(cfg.quality), '-f', 'image2pipe', '-');
   return a;
 }
@@ -340,6 +338,25 @@ function osaSend(key, down) {
 function stopInjectors() {
   for (const p of [psProc, osaProc]) { if (p) { try { p.kill('SIGTERM'); } catch (e) {} } }
   psProc = osaProc = null;
+}
+
+/* ---- resolve the EXACT window title gdigrab needs (Windows) ----
+   The manifest's "window" is a hint (e.g. "Project64"); the live window usually
+   appends the game ("Conker's Bad Fur Day - Project64"). gdigrab title= needs
+   the full string, so ask Windows for the first visible window whose title
+   contains the hint. Returns the exact title, or '' if none is found yet. */
+function resolveWindowTitle(hint, platform) {
+  platform = platform || process.platform;
+  if (!hint || platform !== 'win32') return '';
+  const like = '*' + String(hint).replace(/'/g, "''") + '*';
+  const script = "Get-Process | Where-Object { $_.MainWindowTitle -like '" + like +
+    "' } | Sort-Object StartTime -Descending | Select-Object -First 1 -ExpandProperty MainWindowTitle";
+  try {
+    const r = spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script],
+      { encoding: 'utf8', timeout: 4000, windowsHide: true });
+    const title = (r.stdout || '').replace(/\r?\n/g, '').trim();
+    return title;
+  } catch (e) { return ''; }
 }
 
 /* ---- JPEG frame splitter: ffmpeg's concatenated JPEGs -> discrete frames (testable) ---- */
@@ -437,16 +454,24 @@ class StreamSession {
     for (const set of [this.subscribers, this.audioSubs, this.muxSubs]) { for (const res of set) { try { res.end(); } catch (e) {} } set.clear(); }
     for (const res of this._muxWaiters) { try { res.end(); } catch (e) {} }
     this._muxWaiters = []; this.muxInit = this.muxCodecs = null; this.lastFrame = null; this._muxNoAudio = false;
+    this._winTitle = null;   // re-resolve the capture window for the next game
   }
   audioEnabled() { return !!audioCaptureArgs(this.cfg); }
   muxEnabled() { return this.cfg.mode !== 'mjpeg'; }
   mjpegEnabled() { return this.cfg.mode !== 'h264'; }
+  // the window title for single-window ("window") capture, resolved + cached
+  // for this run. Empty unless the emulator asked for window capture on Windows.
+  _capWindow() {
+    if (resolveCapture(this.emu && this.emu.capture || this.cfg.capture) !== 'window') return '';
+    if (this._winTitle == null) this._winTitle = resolveWindowTitle(this.emu && this.emu.window) || (this.emu && this.emu.window) || '';
+    return this._winTitle;
+  }
 
   /* ---------- MJPEG video ---------- */
   _ensureVideo() {
     if (this.ffmpeg || !this.active) return;
     const splitter = new JpegSplitter(f => { this.lastFrame = f; this._broadcast(f); });
-    try { this.ffmpeg = spawn(this.cfg.ffmpeg, captureArgs(this.cfg, this.emu && this.emu.capture), { stdio: ['ignore', 'pipe', 'pipe'] }); }
+    try { this.ffmpeg = spawn(this.cfg.ffmpeg, captureArgs(this.cfg, this.emu && this.emu.capture, undefined, this._capWindow()), { stdio: ['ignore', 'pipe', 'pipe'] }); }
     catch (e) { this._err = 'ffmpeg: ' + e.message; this.ffmpeg = null; return; }
     this.ffmpeg.stdout.on('data', d => splitter.push(d));
     this.ffmpeg.stderr.on('data', d => { this._err = d.toString().trim().slice(0, 160); });
@@ -496,7 +521,7 @@ class StreamSession {
     if (this.mux || !this.active || !this.muxEnabled()) return;
     const noAudio = this._muxNoAudio;
     let proc;
-    try { proc = spawn(this.cfg.ffmpeg, muxArgs(this.cfg, this.emu && this.emu.capture, undefined, noAudio), { stdio: ['ignore', 'pipe', 'pipe'] }); }
+    try { proc = spawn(this.cfg.ffmpeg, muxArgs(this.cfg, this.emu && this.emu.capture, undefined, noAudio, this._capWindow()), { stdio: ['ignore', 'pipe', 'pipe'] }); }
     catch (e) { this._muxErr = 'mux: ' + e.message; return; }
     this.mux = proc; this.muxInit = null; this.muxCodecs = null;
     const startedAt = Date.now();
@@ -642,7 +667,7 @@ module.exports = {
   handle, injectInput, active, listEmulators,
   shutdown() { if (session) session.stop(); stopInjectors(); },
   _internals: { config, scanEmulators, listRoms, captureArgs, tokenize, launchArgs, inputArgs, osaLine,
-    defaultCapture, defaultInputTool, resolveCapture, resolveInputTool,
+    defaultCapture, defaultInputTool, resolveCapture, resolveInputTool, resolveWindowTitle,
     defaultAudioInput, resolveAudio, audioCaptureArgs, videoInputArgs, muxArgs,
     Fmp4Splitter, codecsFromInit, VIDEO_CODEC,
     KEYMAP, HOTKEY, VKMAP, VKHOT, OSAMAP, OSAHOT, JpegSplitter, StreamSession, EMU_DIR },
@@ -662,6 +687,15 @@ if (require.main === module && process.argv.includes('--selftest')) {
   ok('captureArgs auto resolves per-OS', captureArgs(config(), 'auto', 'win32').includes('gdigrab')
        && captureArgs(config(), 'auto', 'darwin').includes('avfoundation')
        && captureArgs(config(), 'auto', 'linux').includes('x11grab'));
+  // single-window capture (Windows): grab only the emulator window by title
+  ok('captureArgs window grabs by title', captureArgs(config(), 'window', 'win32', 'Project64').join(' ')
+       .includes('-f gdigrab -framerate 30 -i title=Project64'));
+  ok('captureArgs window still scales', captureArgs(config(), 'window', 'win32', 'Project64').join(' ').includes('scale=1280:-2'));
+  ok('captureArgs window without a title falls back to desktop', captureArgs(config(), 'window', 'win32', '').join(' ').includes('-i desktop'));
+  ok('resolveCapture window is Windows-only', resolveCapture('window', 'win32') === 'window'
+       && resolveCapture('window', 'linux') === 'x11' && resolveCapture('window', 'darwin') === 'avfoundation');
+  ok('muxArgs window grabs by title', muxArgs(config(), 'window', 'win32', true, 'PCSX2').join(' ').includes('-i title=PCSX2'));
+  ok('resolveWindowTitle is a no-op off Windows', resolveWindowTitle('Project64', 'linux') === '');
   ok('resolveInputTool auto per-OS', resolveInputTool('auto', 'win32') === 'powershell'
        && resolveInputTool('auto', 'darwin') === 'osascript' && resolveInputTool('auto', 'linux') === 'xdotool');
   ok('resolveInputTool explicit kept', resolveInputTool('none', 'win32') === 'none');
