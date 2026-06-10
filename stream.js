@@ -4,10 +4,11 @@
    Instead of every TV/phone running the emulator in its own browser (WASM),
    the HOST (a gaming PC / Steam Deck / mini-PC) runs the REAL native emulator
    with all its capabilities, and ARCADE streams the picture to the clients as
-   MJPEG, shown inside an iframe. Clients just display the video and send
-   button presses from pad.html — so weak TVs do almost no work, and you get
-   the heavy / "impossible" systems (PS2, original XBOX, GameCube/Wii, PS3,
-   flawless N64/PSP) a browser can't do.
+   MJPEG (plus the sound as raw PCM over a second stream), shown inside an
+   iframe. Clients just display the video, play the audio via Web Audio, and
+   send button presses from pad.html — so weak TVs do almost no work, and you
+   get the heavy / "impossible" systems (PS2, original XBOX, GameCube/Wii,
+   PS3, flawless N64/PSP) a browser can't do.
 
    HOW EMULATORS ARE REGISTERED
    Drop one folder per emulator into  emulators/<name>/  with a manifest:
@@ -82,7 +83,47 @@ function config() {
     quality:   e.ARCADE_STREAM_QUALITY || '6',        // ffmpeg mjpeg -q:v (2 best .. 31 worst)
     ffmpeg:    e.ARCADE_STREAM_FFMPEG  || 'ffmpeg',
     inputTool: e.ARCADE_STREAM_INPUT   || 'auto',     // auto | xdotool | powershell | osascript | none
+    // audio: capture the host's sound and stream it alongside the video (PCM over HTTP).
+    //   'auto' = the OS's default audio grabber, 'none' = silent, or a format name
+    //   (pulse | alsa | dshow | avfoundation) — pair with ARCADE_STREAM_AUDIO_DEVICE.
+    audio:       e.ARCADE_STREAM_AUDIO        || 'auto',
+    audioDevice: e.ARCADE_STREAM_AUDIO_DEVICE || '',  // override the input device/source
+    audioRate:   e.ARCADE_STREAM_AUDIO_RATE   || '48000',
   };
+}
+
+/* ---- per-OS audio capture defaults (pure, testable via the platform arg) ----
+   System-audio capture is host-specific, so these are best-effort defaults that
+   the user overrides with ARCADE_STREAM_AUDIO / ARCADE_STREAM_AUDIO_DEVICE:
+     Linux  : PulseAudio/PipeWire. "default" is whatever Pulse's default source is;
+              to capture GAME sound, point ARCADE_STREAM_AUDIO_DEVICE at the sink
+              monitor (e.g. "alsa_output...analog-stereo.monitor" — find it with
+              `pactl list sources short`).
+     Windows: DirectShow. "Stereo Mix" captures the speakers if it's enabled in
+              Sound > Recording; otherwise install a virtual cable and name it.
+     macOS   : avfoundation can't grab system audio natively — install a loopback
+              device (e.g. BlackHole) and select it; ":default" uses the default. */
+function defaultAudioInput(platform) {
+  platform = platform || process.platform;
+  if (platform === 'win32')  return { fmt: 'dshow',        dev: 'audio=Stereo Mix' };
+  if (platform === 'darwin') return { fmt: 'avfoundation', dev: ':default' };
+  return { fmt: 'pulse', dev: 'default' };
+}
+function resolveAudio(cfg, platform) {
+  if (!cfg.audio || cfg.audio === 'none') return null;
+  const def = defaultAudioInput(platform);
+  const fmt = cfg.audio === 'auto' ? def.fmt : cfg.audio;
+  const dev = cfg.audioDevice || def.dev;
+  return { fmt, dev, rate: String(cfg.audioRate || '48000'), channels: 2 };
+}
+/* ffmpeg args: capture the audio device -> raw signed-16 little-endian PCM on stdout.
+   Raw PCM needs no decoder in the browser (Web Audio plays it directly) and stays
+   sample-accurate across chunk boundaries, which keeps latency low on WiFi. */
+function audioCaptureArgs(cfg, platform) {
+  const a = resolveAudio(cfg, platform);
+  if (!a) return null;
+  return ['-loglevel', 'error', '-f', a.fmt, '-i', a.dev,
+    '-ac', String(a.channels), '-ar', a.rate, '-f', 's16le', '-'];
 }
 
 /* ---- scan a roms folder declared by a manifest ---- */
@@ -265,13 +306,13 @@ class JpegSplitter {
 const BOUNDARY = 'arcadeframe';
 class StreamSession {
   constructor(cfg) {
-    this.cfg = cfg; this.subscribers = new Set();
-    this.lastFrame = null; this.ffmpeg = null; this.emulator = null;
-    this.running = false; this.emu = null; this._err = null;
+    this.cfg = cfg; this.subscribers = new Set(); this.audioSubs = new Set();
+    this.lastFrame = null; this.ffmpeg = null; this.emulator = null; this.audio = null;
+    this.running = false; this.emu = null; this._err = null; this._audioErr = null;
   }
   start(emu, romPath) {
     this.stop();
-    this.emu = emu; this._err = null;
+    this.emu = emu; this._err = null; this._audioErr = null;
     if (emu && emu.cmd) {
       const la = launchArgs(emu, romPath);
       if (la && la.length) { try { this.emulator = spawn(la[0], la.slice(1), { stdio: 'ignore' }); this.emulator.on('error', e => { this._err = 'emulator: ' + e.message; }); } catch (e) { this._err = 'emulator: ' + e.message; } }
@@ -285,15 +326,40 @@ class StreamSession {
     this.ffmpeg.on('error', e => { this._err = 'ffmpeg: ' + e.message; this.running = false; });
     this.ffmpeg.on('close', () => { this.running = false; });
     this.running = true;
+    this._startAudio();          // audio is independent: if it fails, video keeps playing
     return { ok: true };
   }
+  // a SECOND, separate ffmpeg grabs the sound card -> raw PCM, fanned out to
+  // audio subscribers. Kept apart from video so a missing/mis-named audio device
+  // can never take the picture down with it.
+  _startAudio() {
+    const args = audioCaptureArgs(this.cfg);
+    if (!args) return;           // audio disabled (ARCADE_STREAM_AUDIO=none)
+    try {
+      this.audio = spawn(this.cfg.ffmpeg, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (e) { this._audioErr = 'audio: ' + e.message; this.audio = null; return; }
+    this.audio.stdout.on('data', d => this._broadcastAudio(d));
+    this.audio.stderr.on('data', d => { this._audioErr = d.toString().trim().slice(0, 160); });
+    this.audio.on('error', e => { this._audioErr = 'audio: ' + e.message; this.audio = null; });
+    this.audio.on('close', () => { this.audio = null; });
+  }
+  audioEnabled() { return !!audioCaptureArgs(this.cfg); }
   stop() {
     this.running = false;
-    for (const p of [this.ffmpeg, this.emulator]) { if (p) { try { p.kill('SIGTERM'); } catch (e) {} } }
-    this.ffmpeg = this.emulator = null;
+    for (const p of [this.ffmpeg, this.emulator, this.audio]) { if (p) { try { p.kill('SIGTERM'); } catch (e) {} } }
+    this.ffmpeg = this.emulator = this.audio = null;
     for (const res of this.subscribers) { try { res.end(); } catch (e) {} }
-    this.subscribers.clear();
+    for (const res of this.audioSubs) { try { res.end(); } catch (e) {} }
+    this.subscribers.clear(); this.audioSubs.clear();
   }
+  addAudioSubscriber(res) {
+    res.writeHead(200, { 'Content-Type': 'application/octet-stream',
+      'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache', 'Connection': 'close',
+      'X-Audio-Rate': String(this.cfg.audioRate || '48000'), 'X-Audio-Channels': '2' });
+    this.audioSubs.add(res);
+    res.on('close', () => this.audioSubs.delete(res));
+  }
+  _broadcastAudio(buf) { for (const res of this.audioSubs) { try { res.write(buf); } catch (e) { this.audioSubs.delete(res); } } }
   addSubscriber(res) {
     res.writeHead(200, { 'Content-Type': 'multipart/x-mixed-replace; boundary=' + BOUNDARY,
       'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache', 'Connection': 'close' });
@@ -364,6 +430,11 @@ function handle(req, res, urlPath, q) {
     if (!s.running) { res.writeHead(503, { 'Content-Type': 'text/plain' }); res.end('stream not started'); return true; }
     s.addSubscriber(res); return true;
   }
+  if (urlPath === '/stream/audio') {
+    const s = ensure();
+    if (!s.running || !s.audioEnabled()) { res.writeHead(503, { 'Content-Type': 'text/plain' }); res.end('no audio'); return true; }
+    s.addAudioSubscriber(res); return true;
+  }
   if (urlPath === '/stream/start') {
     const s = ensure();
     const id = q.get('emu') || '';
@@ -394,7 +465,8 @@ function handle(req, res, urlPath, q) {
       emulator: session && session.emu ? session.emu.name : null,
       viewers: session ? session.subscribers.size : 0,
       capture: resolveCapture(cfg.capture), input: resolveInputTool(cfg.inputTool),
-      error: session ? session._err : null }));
+      audio: !!audioCaptureArgs(cfg), audioListeners: session ? session.audioSubs.size : 0,
+      error: session ? session._err : null, audioError: session ? session._audioErr : null }));
     return true;
   }
   return false;
@@ -405,6 +477,7 @@ module.exports = {
   shutdown() { if (session) session.stop(); stopInjectors(); },
   _internals: { config, scanEmulators, listRoms, captureArgs, tokenize, launchArgs, inputArgs, osaLine,
     defaultCapture, defaultInputTool, resolveCapture, resolveInputTool,
+    defaultAudioInput, resolveAudio, audioCaptureArgs,
     KEYMAP, HOTKEY, VKMAP, VKHOT, OSAMAP, OSAHOT, JpegSplitter, StreamSession, EMU_DIR },
 };
 
@@ -425,6 +498,20 @@ if (require.main === module && process.argv.includes('--selftest')) {
   ok('resolveInputTool auto per-OS', resolveInputTool('auto', 'win32') === 'powershell'
        && resolveInputTool('auto', 'darwin') === 'osascript' && resolveInputTool('auto', 'linux') === 'xdotool');
   ok('resolveInputTool explicit kept', resolveInputTool('none', 'win32') === 'none');
+
+  const acfg = config();
+  ok('audioCaptureArgs auto Linux -> pulse s16le', audioCaptureArgs(acfg, 'linux').join(' ')
+       === '-loglevel error -f pulse -i default -ac 2 -ar 48000 -f s16le -');
+  ok('audioCaptureArgs auto Windows -> dshow Stereo Mix', audioCaptureArgs(acfg, 'win32').join(' ')
+       === '-loglevel error -f dshow -i audio=Stereo Mix -ac 2 -ar 48000 -f s16le -');
+  ok('audioCaptureArgs auto macOS -> avfoundation', audioCaptureArgs(acfg, 'darwin').join(' ')
+       === '-loglevel error -f avfoundation -i :default -ac 2 -ar 48000 -f s16le -');
+  ok('audioCaptureArgs none -> null', audioCaptureArgs(Object.assign({}, acfg, { audio: 'none' }), 'linux') === null);
+  ok('audioCaptureArgs device override', audioCaptureArgs(Object.assign({}, acfg, { audioDevice: 'sink.monitor' }), 'linux').join(' ')
+       === '-loglevel error -f pulse -i sink.monitor -ac 2 -ar 48000 -f s16le -');
+  ok('audioCaptureArgs explicit format + device', audioCaptureArgs(Object.assign({}, acfg, { audio: 'alsa', audioDevice: 'hw:0' }), 'linux').join(' ')
+       === '-loglevel error -f alsa -i hw:0 -ac 2 -ar 48000 -f s16le -');
+  ok('audioCaptureArgs custom rate', audioCaptureArgs(Object.assign({}, acfg, { audioRate: '44100' }), 'linux').includes('44100'));
 
   ok('launchArgs substitutes {rom}', (launchArgs({ cmd: 'pcsx2 {rom}' }, '/g/x.iso') || []).join(' ') === 'pcsx2 /g/x.iso');
   ok('launchArgs drops empty rom', (launchArgs({ cmd: 'retroarch {rom}' }, '') || []).join(' ') === 'retroarch');
@@ -478,6 +565,15 @@ if (require.main === module && process.argv.includes('--selftest')) {
   sess._broadcast(f1);
   const blob = Buffer.concat(chunks).toString('latin1');
   ok('MJPEG boundary + content-length', blob.includes('--' + BOUNDARY) && blob.includes('Content-Length: 7'));
+
+  // raw-PCM audio fan-out (bytes relayed untouched, headers advertise rate/channels)
+  const ahdr = {}; const apcm = [];
+  sess.addAudioSubscriber({ writeHead(c, h) { Object.assign(ahdr, h); }, write(c) { apcm.push(Buffer.from(c)); }, end() {}, on() {} });
+  const pcm = Buffer.from([1, 2, 3, 4]); sess._broadcastAudio(pcm);
+  ok('audio fan-out relays PCM + advertises format', Buffer.concat(apcm).equals(pcm)
+       && ahdr['X-Audio-Rate'] === '48000' && ahdr['X-Audio-Channels'] === '2');
+  ok('session audioEnabled reflects config', new StreamSession(config()).audioEnabled() === true
+       && new StreamSession(Object.assign({}, config(), { audio: 'none' })).audioEnabled() === false);
 
   let threw = false; try { injectInput({ t: 'down', b: 'a' }); injectInput({ t: 'hk', a: 'save' }); } catch (e) { threw = true; }
   ok('injectInput safe when idle', !threw);

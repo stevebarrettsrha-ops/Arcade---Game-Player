@@ -10,11 +10,19 @@
   #msg{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
     color:#7fb9b0;font-family:system-ui,sans-serif;font-size:15px;text-align:center;padding:24px;line-height:1.5}
   #msg[hidden]{display:none}
+  /* sound enable button — browsers need a tap before audio can start */
+  #sound{position:fixed;right:12px;bottom:12px;z-index:5;display:none;align-items:center;gap:8px;
+    font-family:system-ui,sans-serif;font-size:14px;font-weight:600;color:#06100f;cursor:pointer;
+    background:linear-gradient(180deg,#7df3e7,#3fe0cf);border:none;border-radius:999px;padding:10px 16px;
+    box-shadow:0 4px 14px rgba(0,0,0,.5)}
+  #sound.show{display:flex}
+  #sound.on{background:#152029;color:#bfeee7;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 </style>
 </head>
 <body>
   <img id="view" alt="" hidden>
   <div id="msg">Connecting to the host stream…</div>
+  <button id="sound" title="Turn the host's game sound on or off">🔊 Tap for sound</button>
 <script>
   // Shows the host emulator's MJPEG stream. Embedded as an iframe inside ARCADE on
   // the TV/phone. The actual emulator runs on the host with full power; this is
@@ -37,6 +45,87 @@
     setTimeout(connect, 1500);
   };
   connect();
+
+  /* ============ AUDIO ============
+     The host streams its sound as raw PCM (signed-16 LE) over /stream/audio.
+     Raw PCM needs no decoder, so we play it through the Web Audio API with a
+     small jitter buffer — low latency, works offline, and the MJPEG video above
+     is completely untouched (old TVs that lack Web Audio just stay silent).
+     Browsers block audio until a user gesture, so we show a "Tap for sound"
+     button; the first tap inside this frame starts it. */
+  const soundBtn = document.getElementById('sound');
+  let audioCtx = null, audioOn = false, audioReader = null, playHead = 0;
+  const LEAD = 0.15;        // seconds of buffer ahead of the clock (jitter cushion)
+
+  // does the host even have audio capture configured? only offer the button if so.
+  async function audioAvailable(){
+    try{ const s = await (await fetch('/stream/status', {cache:'no-store'})).json(); return !!(s && s.audio); }
+    catch(e){ return false; }
+  }
+  audioAvailable().then(ok => { if(ok) soundBtn.classList.add('show'); });
+
+  function setBtn(on){
+    audioOn = on;
+    soundBtn.classList.toggle('on', on);
+    soundBtn.textContent = on ? '🔊 Sound on' : '🔇 Tap for sound';
+  }
+  soundBtn.addEventListener('click', () => { audioOn ? stopAudio() : startAudio(); });
+
+  async function startAudio(){
+    if(audioOn) return;
+    try{
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      await audioCtx.resume();
+    }catch(e){ return; }
+    setBtn(true);
+    pumpAudio();
+  }
+  function stopAudio(){
+    setBtn(false);
+    try{ if(audioReader) audioReader.cancel(); }catch(e){}
+    audioReader = null;
+    try{ if(audioCtx) audioCtx.close(); }catch(e){}
+    audioCtx = null;
+  }
+
+  async function pumpAudio(){
+    let rate = 48000, ch = 2;
+    try{
+      const resp = await fetch('/stream/audio?t=' + Date.now(), {cache:'no-store'});
+      if(!resp.ok || !resp.body){ if(audioOn) setTimeout(()=>{ if(audioOn) pumpAudio(); }, 1500); return; }
+      rate = +resp.headers.get('X-Audio-Rate') || 48000;
+      ch   = +resp.headers.get('X-Audio-Channels') || 2;
+      audioReader = resp.body.getReader();
+      const frameBytes = 2 * ch;                 // s16le interleaved
+      let leftover = new Uint8Array(0);
+      playHead = audioCtx.currentTime + LEAD;
+      while(audioOn){
+        const { done, value } = await audioReader.read();
+        if(done) break;
+        // stitch any bytes left from the previous chunk onto this one
+        let bytes = value;
+        if(leftover.length){ const m = new Uint8Array(leftover.length + value.length); m.set(leftover); m.set(value, leftover.length); bytes = m; }
+        const nFrames = Math.floor(bytes.length / frameBytes);
+        if(nFrames === 0){ leftover = bytes; continue; }
+        const used = nFrames * frameBytes;
+        leftover = bytes.slice(used);
+        const dv = new DataView(bytes.buffer, bytes.byteOffset, used);
+        const buf = audioCtx.createBuffer(ch, nFrames, rate);
+        for(let c = 0; c < ch; c++){
+          const out = buf.getChannelData(c);
+          for(let i = 0; i < nFrames; i++) out[i] = dv.getInt16((i * ch + c) * 2, true) / 32768;
+        }
+        const src = audioCtx.createBufferSource();
+        src.buffer = buf; src.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+        if(playHead < now + 0.02) playHead = now + 0.02;   // underran: nudge forward
+        else if(playHead > now + 0.6) playHead = now + LEAD; // drifted late: resync, drop the backlog
+        src.start(playHead);
+        playHead += buf.duration;
+      }
+    }catch(e){ /* stream ended or was cancelled */ }
+    if(audioOn) setTimeout(()=>{ if(audioOn) pumpAudio(); }, 1000);   // reconnect if the host restarts a game
+  }
 </script>
 </body>
 </html>

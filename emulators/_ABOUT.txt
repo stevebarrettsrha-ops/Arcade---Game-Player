@@ -53,6 +53,10 @@ HOW TO ADD AN EMULATOR
                 e.g. [".iso", ".chd"] — leave out to list every file.
 
 NOTES
+  - Sound is streamed too: the client shows a "🔊 Tap for sound" button.
+    Tell ffmpeg which source to capture with ARCADE_STREAM_AUDIO_DEVICE
+    (the speaker monitor/loopback, not a mic) — see SETUP-STREAMING.txt,
+    section 3b. ARCADE_STREAM_AUDIO=none turns it off.
   - Controller input is sent as keyboard presses (RetroArch's default
     layout: arrows, Z/X/A/S, Q/W/E/T, Enter, Shift; F2 save, F4 load,
     Space fast-forward). Bind those keys inside the emulator once and the
