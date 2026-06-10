@@ -189,8 +189,19 @@ LIMITS / NOTES
   - The phone's analog stick arrives as 8-way digital presses (the same keys
     as the D-pad). True analog needs a virtual gamepad (uinput) — planned.
   - One host = one stream at a time (everyone watches the SAME game).
-  - Capture grabs the whole desktop, so run the emulator fullscreen on the
-    host for the cleanest picture.
+  - Streaming your WHOLE DESKTOP instead of just the game? Two fixes:
+      * Fullscreen emulators (PCSX2/PPSSPP/xemu): they pass a -fullscreen
+        flag, so with capture:"auto" the screen IS the game. Make sure the
+        emulator actually goes fullscreen.
+      * Windowed emulators (Project64, the Java handsets): set
+        capture:"window" in their emulator.json (already done for the
+        pre-wired ones). ARCADE then streams ONLY that emulator window — by
+        its "window" title — instead of the desktop, which also stops the
+        recursive "browser showing the stream" mirror effect. Windows only;
+        on macOS/Linux it falls back to a full-screen grab.
+        If the game area comes out BLACK with capture:"window", the
+        emulator's video backend can't be window-grabbed — run it fullscreen
+        with capture:"auto", or switch its video plugin/backend.
   - You supply your own legally-owned emulators, BIOS files and games.
     Nothing is bundled or downloaded by ARCADE.
 ==============================================================

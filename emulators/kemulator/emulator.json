@@ -1,7 +1,7 @@
 {
   "name": "KEmulator nnmod (Java, desktop)",
   "cmd": "emulators/kemulator/app/KEmulator.exe {rom}",
-  "capture": "auto",
+  "capture": "window",
   "window": "KEmulator",
   "needsRom": true,
   "system": "JAVA",
