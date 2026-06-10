@@ -27,6 +27,18 @@ ALREADY SET UP FOR WINDOWS
   installer-based ones (PCSX2/PPSSPP/Project64) you install normally — their
   default paths are pre-wired. Each folder has a _SETUP.txt with specifics.
 
+WRONG PATHS? AUTO-FIX THEM
+  The manifests ship with the DEFAULT install paths. If you installed an
+  emulator elsewhere, or dropped a portable build straight into its
+  emulators/<name>/ folder, the launch silently fails ("button does
+  nothing"). Run the path fixer once to scan for where each emulator
+  really lives and rewrite the "cmd" paths to match:
+      Windows :  fix-emulator-paths-windows.bat   (or: node fix-emulator-paths.js)
+      macOS   :  fix-emulator-paths-mac.command
+      Linux   :  ./fix-emulator-paths-linux.sh
+  Add --dry-run to preview without changing anything. It also creates each
+  emulator's games folder and reports how many games it can see.
+
 HOW TO ADD AN EMULATOR
   Make ONE folder per emulator in here, each with an "emulator.json" manifest:
 
