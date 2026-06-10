@@ -1,0 +1,7 @@
+PPSSPP (PSP, native) - setup
+  1. Run the PPSSPP installer you downloaded (PPSSPPSetup.exe).
+  2. emulator.json already points at the default install path:
+        C:\Program Files\PPSSPP\PPSSPPWindows64.exe
+     Installed somewhere else? Edit the "cmd" line to match.
+  3. PSP games already live in games/psp (shared with the in-browser
+     engines). Start ARCADE with start-windows-stream.bat.

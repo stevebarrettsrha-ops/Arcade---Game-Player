@@ -1,0 +1,11 @@
+XEMU (Original XBOX) - setup
+  EASIEST: run download-emulators-windows.bat - it fetches xemu into
+  the app/ folder here automatically.
+
+  MANUAL (e.g. you already downloaded xemu-...-windows-x86_64.zip):
+  extract that zip into an "app" folder here, so this file exists:
+        emulators/xemu/app/xemu.exe
+
+  xemu also needs its own one-time setup (MCPX + flash BIOS dumps and an
+  HDD image - see https://xemu.app/docs): start it once and set those in
+  its settings. Then drop XBOX games in games/xbox.

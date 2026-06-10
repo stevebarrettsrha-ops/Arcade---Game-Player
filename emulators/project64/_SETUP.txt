@@ -1,0 +1,7 @@
+PROJECT64 (N64) - setup
+  1. Run the Project64 installer you downloaded (Setup Project64 3.0.1...).
+  2. emulator.json already points at the default install path:
+        C:\Program Files (x86)\Project64 3.0\Project64.exe
+     Installed somewhere else? Edit the "cmd" line to match.
+  3. Drop N64 games in games/n64 and start ARCADE with
+     start-windows-stream.bat.

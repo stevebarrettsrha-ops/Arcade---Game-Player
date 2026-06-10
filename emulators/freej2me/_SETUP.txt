@@ -1,0 +1,14 @@
+FREEJ2ME (Java phone games on the host) - setup
+  Needs Java installed on this computer (https://adoptium.net).
+
+  EASIEST: run download-emulators-windows.bat - it tries to fetch the
+  FreeJ2ME jar into the app/ folder here automatically.
+
+  MANUAL (e.g. you already downloaded freej2me_2018-09-07.zip):
+  extract it and copy the main jar in as:
+        emulators/freej2me/app/freej2me.jar
+
+  Games come from games/j2me (the same folder the in-browser Java
+  handset uses). Note: J2ME games are keypad-driven - the pad's D-pad,
+  A (Enter/OK), and Q/W soft keys map through; number-heavy games may
+  still want the host keyboard.

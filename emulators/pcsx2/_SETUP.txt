@@ -1,0 +1,8 @@
+PCSX2 (PS2) - setup
+  1. Run the PCSX2 installer you downloaded (PCSX2-v2...-installer.exe),
+     then start PCSX2 once to set its PS2 BIOS (you must dump your own).
+  2. emulator.json already points at the default install path:
+        C:\Program Files\PCSX2\pcsx2-qt.exe
+     Installed somewhere else? Edit the "cmd" line to match.
+  3. Drop PS2 games in games/ps2 and start ARCADE with
+     start-windows-stream.bat.
