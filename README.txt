@@ -164,6 +164,11 @@
        automatically, so you pick up where you left off.
 
    Notes:
+     - Saves take very little space: ARCADE compresses them on disk
+       (a multi-MB N64/PS1 save state typically shrinks 5-10x) and
+       unpacks them automatically when loading. Saves from older
+       versions are shrunk once at server start. This is invisible to
+       players - back up / restore the users/ folder as before.
      - "Guest" uses the browser's built-in saving (the old behaviour) and
        does NOT get a server folder.
      - The 4-digit PIN keeps players separate on your home network; the
