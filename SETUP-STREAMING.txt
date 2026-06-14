@@ -220,6 +220,13 @@ WHAT IT DOES
   equivalent — so you don't bind anything inside PPSSPP/PCSX2/xemu/etc.
   Force it on/off with ARCADE_STREAM_INPUT=gamepad / =powershell.
 
+  If the controller can't start (driver not installed, a reboot is still
+  pending, or a 32-bit DLL), ARCADE prints a one-line reason like
+    [gamepad] Virtual Xbox controller unavailable: vigem_connect failed ...
+  and AUTOMATICALLY falls back to keyboard input (the U/N/H/M analog keys)
+  so you keep playing. Fix the reason shown, then restart to get true analog.
+  Most common fix: finish the ViGEmBus install and REBOOT (step 1).
+
 ------------------------------------------------------------
 LIMITS / NOTES
 ------------------------------------------------------------

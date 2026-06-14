@@ -353,6 +353,7 @@ function psSend(vk, down) {
         path.join(ROOT, 'stream-input.ps1')], { stdio: ['pipe', 'ignore', 'ignore'] });
       psProc.on('error', () => { psProc = null; });
       psProc.on('close', () => { psProc = null; });
+      psProc.stdin.on('error', () => { psProc = null; });   // swallow async EPIPE
     } catch (e) { psProc = null; return; }
   }
   try { psProc.stdin.write((down ? 'down ' : 'up ') + vk + '\n'); } catch (e) { psProc = null; }
@@ -363,28 +364,50 @@ function osaSend(key, down) {
       osaProc = spawn('osascript', ['-i'], { stdio: ['pipe', 'ignore', 'ignore'] });
       osaProc.on('error', () => { osaProc = null; });
       osaProc.on('close', () => { osaProc = null; });
+      osaProc.stdin.on('error', () => { osaProc = null; });   // swallow async EPIPE
     } catch (e) { osaProc = null; return; }
   }
   try { osaProc.stdin.write(osaLine(key, down) + '\n'); } catch (e) { osaProc = null; }
 }
 // Virtual Xbox pad helper (Windows / ViGEmBus). One persistent PowerShell that
 // holds the controller open; we stream it tiny lines: "b <name> <0|1>" for a
-// button, "a <lx> <ly>" for the left analog stick (floats -1..1).
-let gpProc = null;
+// button, "a <lx> <ly>" for the left analog stick (floats -1..1). If the helper
+// can't run (driver missing, DLL/arch mismatch, ...) it exits; we capture why,
+// mark the pad dead, and callers transparently fall back to the keyboard path.
+let gpProc = null, gpDead = false, gpSpawnAt = 0, gpKilling = false, gpErrBuf = '';
+function gamepadDead() { return gpDead; }
+// returns true if the line was handed to a live helper, false if the pad is
+// unavailable (so the caller can fall back without ever seeing an EPIPE).
 function gpSend(line) {
+  if (gpDead) return false;
   if (!gpProc) {
     const dll = findVigemDll();
     try {
+      gpSpawnAt = Date.now(); gpKilling = false; gpErrBuf = '';
       gpProc = spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
         path.join(ROOT, 'stream-gamepad.ps1')],
-        { stdio: ['pipe', 'ignore', 'ignore'], env: Object.assign({}, process.env, dll ? { ARCADE_VIGEM_DLL: dll } : {}) });
+        { stdio: ['pipe', 'ignore', 'pipe'], env: Object.assign({}, process.env, dll ? { ARCADE_VIGEM_DLL: dll } : {}) });
       gpProc.on('error', () => { gpProc = null; });
-      gpProc.on('close', () => { gpProc = null; });
-    } catch (e) { gpProc = null; return; }
+      gpProc.stdin.on('error', () => { gpProc = null; });   // swallow async EPIPE
+      if (gpProc.stderr) gpProc.stderr.on('data', d => { if (gpErrBuf.length < 2000) gpErrBuf += d.toString(); });
+      gpProc.on('close', () => {
+        const quick = Date.now() - gpSpawnAt < 6000;        // fell over on its own?
+        gpProc = null;
+        if (gpKilling || !quick) return;                     // we asked it to stop, or it ran fine
+        gpDead = true;                                        // stop using the pad this run
+        if (process.platform === 'win32') {
+          const why = gpErrBuf.trim().split(/\r?\n/).map(s => s.trim()).filter(Boolean).pop() || 'helper exited';
+          console.warn('\n  [gamepad] Virtual Xbox controller unavailable: ' + why +
+            '\n  Check the ViGEmBus driver is installed (SETUP-STREAMING.txt section 4a),' +
+            '\n  then restart. Falling back to keyboard input for now.\n');
+        }
+      });
+    } catch (e) { gpProc = null; gpDead = true; return false; }
   }
-  try { gpProc.stdin.write(line + '\n'); } catch (e) { gpProc = null; }
+  try { gpProc.stdin.write(line + '\n'); return true; } catch (e) { gpProc = null; return false; }
 }
 function stopInjectors() {
+  gpKilling = true;   // stays set until the next gpSend spawn, so the close below is ignored
   for (const p of [psProc, osaProc, gpProc]) { if (p) { try { p.kill('SIGTERM'); } catch (e) {} } }
   psProc = osaProc = gpProc = null;
 }
@@ -609,14 +632,19 @@ class StreamSession {
   _failMuxWaiters() { const w = this._muxWaiters; this._muxWaiters = []; for (const res of w) { clearTimeout(res._muxTimer); try { res.writeHead(503, { 'Content-Type': 'text/plain' }); res.end('mux failed'); } catch (e) {} } }
   _dropWaiter(res) { const i = this._muxWaiters.indexOf(res); if (i >= 0) this._muxWaiters.splice(i, 1); clearTimeout(res._muxTimer); }
 
+  // effective input tool: a requested-but-dead virtual pad degrades to keyboard
+  _tool() {
+    const t = resolveInputTool(this.cfg.inputTool);
+    return (t === 'gamepad' && gamepadDead()) ? 'powershell' : t;
+  }
   inject(action, down) {
-    const tool = resolveInputTool(this.cfg.inputTool);
+    let tool = this._tool();
     if (tool === 'none') return;
     if (tool === 'gamepad') {
       // save/load/fast-forward have no pad button -> send them as keyboard keys
       if (action in VKHOT) { psSend(VKHOT[action], down); return; }
-      gpSend('b ' + action + ' ' + (down ? 1 : 0));
-      return;
+      if (gpSend('b ' + action + ' ' + (down ? 1 : 0))) return;
+      tool = 'powershell';   // pad helper just died -> fall back this event
     }
     if (tool === 'powershell') {
       const vk = (action in VKHOT) ? VKHOT[action] : VKMAP[action];
@@ -637,7 +665,7 @@ class StreamSession {
   }
   // one analog-stick direction key (separate from the D-pad) for the keyboard paths
   _analogKey(dir, down) {
-    const tool = resolveInputTool(this.cfg.inputTool);
+    const tool = this._tool();
     if (tool === 'powershell') { const vk = AVKMAP[dir]; if (vk != null) psSend(vk, down); return; }
     if (tool === 'osascript')  { const k = AOSAMAP[dir]; if (k) osaSend(k, down); return; }
     if (tool === 'xdotool') {
@@ -648,12 +676,12 @@ class StreamSession {
   // left analog stick. Gamepad path = true analog; keyboard paths = held U/N/H/M
   // keys (its own set, so the stick is independent of the D-pad arrows).
   injectAxis(x, y) {
-    const tool = resolveInputTool(this.cfg.inputTool);
+    let tool = this._tool();
     if (tool === 'none') return;
     if (tool === 'gamepad') {
       const cl = v => Math.max(-1, Math.min(1, +v || 0));
-      gpSend('a ' + cl(x).toFixed(3) + ' ' + cl(y).toFixed(3));
-      return;
+      if (gpSend('a ' + cl(x).toFixed(3) + ' ' + cl(y).toFixed(3))) return;
+      tool = 'powershell';   // pad helper just died -> fall back to U/N/H/M keys
     }
     x = +x || 0; y = +y || 0;
     const want = { up: y < -ATHRESH, down: y > ATHRESH, left: x < -ATHRESH, right: x > ATHRESH };
@@ -867,6 +895,12 @@ if (require.main === module && process.argv.includes('--selftest')) {
     fake.injectAxis(0.9, 0.0);                 // still right -> no repeat
     fake.injectAxis(0.0, 0.0);                 // center -> release
     ok('injectAxis fires one press+release per direction', fired.join(',') === 'right+,right-');
+    // a requested virtual pad degrades to the keyboard path once it's marked dead
+    const pad = new StreamSession({ inputTool: 'gamepad' });
+    ok('gamepad effective tool tracks pad health', pad._tool() === (gamepadDead() ? 'powershell' : 'gamepad'));
+    let padThrew = false;
+    try { const k = new StreamSession({ inputTool: 'none' }); k.inject('a', true); k.inject('a', false); } catch (e) { padThrew = true; }
+    ok('inject is a no-op (no throw) in none mode', !padThrew);
   }
   ok('osaLine letter down/up', osaLine('x', true) === 'tell application "System Events" to key down "x"'
        && osaLine('x', false) === 'tell application "System Events" to key up "x"');
