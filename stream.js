@@ -329,6 +329,29 @@ const OSAMAP = {
 };
 const OSAHOT = { save: 'code:120', load: 'code:118', ff_on: 'space', ff_off: 'space' };
 
+/* ---- J2ME phone keypad (pad2.html -> KEmulator nnmod & other Java handsets) ----
+   Sent with a "keyboard-only" flag so they always type, even in gamepad mode.
+   D-pad reuses up/down/left/right (arrows). Digits use the number row (so they
+   match KEmulator's defaults / are trivial to bind); fire = Space (KEmulator's
+   default); soft keys = F1/F3; * and # = F11/F12. Bind these in KEmulator's
+   visual key editor — see emulators/kemulator/_SETUP.txt. */
+const PHONE_KEYS = ['fire','soft1','soft2','star','hash','num0','num1','num2','num3','num4','num5','num6','num7','num8','num9'];
+const PHONE_KEYMAP = {                                   // xdotool (Linux/X11)
+  fire: 'space', soft1: 'F1', soft2: 'F3', star: 'F11', hash: 'F12',
+  num0: '0', num1: '1', num2: '2', num3: '3', num4: '4', num5: '5', num6: '6', num7: '7', num8: '8', num9: '9',
+};
+const PHONE_VK = {                                        // Windows virtual-key codes
+  fire: 0x20, soft1: 0x70, soft2: 0x72, star: 0x7A, hash: 0x7B,
+  num0: 0x30, num1: 0x31, num2: 0x32, num3: 0x33, num4: 0x34, num5: 0x35, num6: 0x36, num7: 0x37, num8: 0x38, num9: 0x39,
+};
+const PHONE_OSA = {                                       // macOS System Events
+  fire: 'space', soft1: 'code:122', soft2: 'code:99', star: 'code:103', hash: 'code:111',
+  num0: '0', num1: '1', num2: '2', num3: '3', num4: '4', num5: '5', num6: '6', num7: '7', num8: '8', num9: '9',
+};
+Object.assign(KEYMAP, PHONE_KEYMAP);
+Object.assign(VKMAP, PHONE_VK);
+Object.assign(OSAMAP, PHONE_OSA);
+
 // Left analog stick on the KEYBOARD paths -> its OWN keys (U/N/H/M), held while
 // the stick is pushed past ATHRESH. Separate from the D-pad arrows (which the
 // stick also drives), so you can bind the emulator's analog stick to these and
@@ -657,14 +680,17 @@ class StreamSession {
     const t = resolveInputTool(this.cfg.inputTool);
     return (t === 'gamepad' && gamepadDead()) ? 'powershell' : t;
   }
-  inject(action, down) {
+  inject(action, down, forceKbd) {
     let tool = this._tool();
     if (tool === 'none') return;
     if (tool === 'gamepad') {
-      // save/load/fast-forward have no pad button -> send them as keyboard keys
-      if (action in VKHOT) { psSend(VKHOT[action], down); return; }
-      if (gpSend('b ' + action + ' ' + (down ? 1 : 0))) return;
-      tool = 'powershell';   // pad helper just died -> fall back this event
+      if (!forceKbd) {
+        // hotkeys + real pad buttons drive the controller; J2ME phone keys are
+        // sent with forceKbd so they TYPE (KEmulator reads the keyboard) instead.
+        if (action in VKHOT) { psSend(VKHOT[action], down); return; }
+        if (gpSend('b ' + action + ' ' + (down ? 1 : 0))) return;
+      }
+      tool = 'powershell';   // forced keyboard, or the pad write failed -> keyboard
     }
     if (tool === 'powershell') {
       const vk = (action in VKHOT) ? VKHOT[action] : VKMAP[action];
@@ -727,7 +753,7 @@ function active() { return !!(session && session.active); }
 // translate a relayed phone-pad message into a host key press
 function injectInput(msg) {
   if (!session || !session.active || !msg) return;
-  if (msg.t === 'down' || msg.t === 'up') { session.inject(msg.b, msg.t === 'down'); return; }
+  if (msg.t === 'down' || msg.t === 'up') { session.inject(msg.b, msg.t === 'down', msg.k); return; }
   if (msg.t === 'axis') { session.injectAxis(msg.x, msg.y); return; }
   if (msg.t === 'hk') {
     if (msg.a === 'ff_on')  return session.inject('ff_on', true);
@@ -990,6 +1016,15 @@ if (require.main === module && process.argv.includes('--selftest')) {
 
   let threw = false; try { injectInput({ t: 'down', b: 'a' }); injectInput({ t: 'hk', a: 'save' }); injectInput({ t: 'axis', x: 0.5, y: -0.5 }); } catch (e) { threw = true; }
   ok('injectInput safe when idle', !threw);
+
+  // J2ME phone keypad (pad2.html): every phone key is mapped on all three host
+  // injectors, digits use the number row, and none collide with the gamepad keys.
+  ok('phone keys mapped on every injector', PHONE_KEYS.every(k => VKMAP[k] != null && KEYMAP[k] && OSAMAP[k]));
+  ok('phone digits use the number row', PHONE_VK.num0 === 0x30 && PHONE_VK.num9 === 0x39 && PHONE_KEYMAP.num5 === '5');
+  ok('phone fire = Space (KEmulator default)', VKMAP.fire === 0x20 && KEYMAP.fire === 'space');
+  ok('phone keys do not clash with face buttons', !PHONE_KEYS.some(k => ['a','b','x','y','start','select'].includes(k)));
+  let pkThrew = false; try { injectInput({ t: 'down', b: 'num5', k: 1 }); injectInput({ t: 'up', b: 'num5', k: 1 }); injectInput({ t: 'down', b: 'fire', k: 1 }); } catch (e) { pkThrew = true; }
+  ok('injectInput handles keyboard-forced phone keys when idle', !pkThrew);
 
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
   console.log(`\n${pass} passed, ${fail} failed`);

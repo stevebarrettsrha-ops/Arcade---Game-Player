@@ -8,3 +8,30 @@ KEMULATOR NNMOD (Java phone games on the host) - setup
         emulators/kemulator/app/KEmulator.exe
 
   Games come from games/j2me. The "nojre" build needs Java 8+ installed.
+
+  ----------------------------------------------------------------
+  PHONE KEYPAD ON YOUR PHONE (pad2.html)
+  ----------------------------------------------------------------
+  Java games need a phone keypad (numbers, soft keys, * #), not a
+  console gamepad. Open the keypad controller on your phone:
+     - tap "Keypad" in the top bar of the normal controller, OR
+     - go to    http://<this-pc>:PORT/pad2.html?room=CODE
+  (same room code as the gamepad). The keypad sends its keys as
+  KEYBOARD presses, so they reach KEmulator even if the virtual
+  Xbox controller is enabled.
+
+  ONE-TIME KEY SETUP in KEmulator (Options -> Settings -> Keys,
+  the visual key editor). Set the phone keys to these keyboard keys:
+
+     D-pad Up/Down/Left/Right ....... Arrow keys      (usually default)
+     Fire / OK (center) ............. Space           (usually default)
+     Left soft key .................. F1
+     Right soft key ................. F3
+     Number keys 0-9 ................ keyboard 0-9     (top number row)
+     *  (star) ...................... F11
+     #  (hash) ...................... F12
+
+  Many games only use the D-pad + Fire + numbers, and KEmulator's
+  defaults already cover Arrows + Space, so often you only need to
+  bind the soft keys. If a key does nothing, set it in KEmulator to
+  match the list above.
