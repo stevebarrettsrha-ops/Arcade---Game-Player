@@ -118,10 +118,13 @@
 <script>
   const $ = s => document.querySelector(s);
 
-  // room code from URL (?room=CODE or ?pad=CODE)
+  // room code from URL (?room=CODE or ?pad=CODE); fall back to the last one we
+  // saw, so opening the keypad directly still works. Host-emulator input is
+  // injected regardless of room, so we connect/send even when it's blank.
   const Q = new URL(location.href);
-  const ROOM = (Q.searchParams.get('room') || Q.searchParams.get('pad') || '').toUpperCase().slice(0,8);
-  $('#room').textContent = ROOM || '????';
+  let ROOM = (Q.searchParams.get('room') || Q.searchParams.get('pad') || '').toUpperCase().slice(0,8);
+  try { if (ROOM) localStorage.setItem('arcade_room', ROOM); else ROOM = (localStorage.getItem('arcade_room') || '').toUpperCase().slice(0,8); } catch(e){}
+  $('#room').textContent = ROOM || 'HOST';
   $('#gamepadBtn').href = 'pad.html?room=' + encodeURIComponent(ROOM);
 
   function vibe(ms){ try{ navigator.vibrate && navigator.vibrate(ms||12); }catch(e){} }
@@ -136,7 +139,6 @@
   function setLinked(on){ $('#dot').classList.toggle('on', !!on); }
   let padWS = null, wsReady = false;
   function openWS(){
-    if(!ROOM) return;
     try{
       const proto = location.protocol==='https:' ? 'wss:' : 'ws:';
       const ws = new WebSocket(proto+'//'+location.host+'/ws?room='+encodeURIComponent(ROOM)+'&role=pad');
@@ -149,11 +151,10 @@
     try{
       const r = await fetch('/input?room='+encodeURIComponent(ROOM), { method:'POST', body:JSON.stringify(o), keepalive:true });
       const j = await r.json().catch(()=>({}));
-      setLinked(j && j.displays > 0);
+      setLinked(!!(j && j.ok));   // host accepted it (injection doesn't need a TV in the room)
     }catch(e){ setLinked(false); }
   }
   function sendMsg(o){
-    if(!ROOM) return;
     if(wsReady && padWS){ try{ padWS.send(JSON.stringify(o)); return; }catch(e){ wsReady = false; } }
     postMsg(o);
   }
@@ -189,7 +190,7 @@
 
   bindButtons();
   openWS();
-  if(!ROOM) toast('No room code — open this from the gamepad or the TV pairing QR.');
+  if(!ROOM) toast('Host keypad — drives the game running on the host PC.');
 </script>
 </body>
 </html>

@@ -258,6 +258,7 @@
   const Q = new URL(location.href);
   const ROOM = (Q.searchParams.get('room') || Q.searchParams.get('pad') || '').toUpperCase().slice(0,8);
   $('#room').textContent = ROOM || '????';
+  try { if (ROOM) localStorage.setItem('arcade_room', ROOM); } catch(e){}   // so the keypad page can recover it
   // link to the phone keypad (for Java/J2ME games on KEmulator), same room
   (function(){ const k = $('#keypadBtn'); if(k) k.href = 'pad2.html?room=' + encodeURIComponent(ROOM); })();
 
