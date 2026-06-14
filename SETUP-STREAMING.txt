@@ -182,11 +182,15 @@ WHAT IT DOES
   - KEYBOARD FALLBACK (other setups): buttons are sent as keyboard presses
     (RetroArch's default layout: arrows = D-pad, Z/X = B/A, A/S = Y/X,
     Q/W = L/R, E/T = L2/R2, Enter = Start, Shift = Select; SAVE=F2, LOAD=F4,
-    FF=Space). Map those keys inside the emulator once (every emulator lets
-    you bind keyboard keys to its pads) and the phone pad drives it. On this
-    path the analog stick only sends the D-pad arrows (8-way digital).
+    FF=Space). The LEFT ANALOG STICK sends its OWN keys — U/N/H/M
+    (up/down/left/right) — so bind the emulator's analog stick to U N H M and
+    the D-pad to the arrows. Map those keys inside the emulator once (every
+    emulator lets you bind keyboard keys to its pads) and the phone drives it.
+    (The stick also still presses the D-pad arrows, so it works even before you
+    bind U/N/H/M; the separate keys just let it move the real analog nub too.
+    It's 8-way digital on this path — for smooth analog use the virtual pad.)
       macOS host note: AppleScript can't hold arrow keys, so the D-pad sends
-      I/K/J/L there — bind those instead.
+      I/K/J/L there — bind those instead (the analog stick is still U/N/H/M).
 
 ------------------------------------------------------------
 4a. VIRTUAL XBOX CONTROLLER (Windows) — analog + all buttons, zero mapping
@@ -226,8 +230,9 @@ LIMITS / NOTES
     /stream/status ("muxError") if H.264 never appears.
   - The phone's analog stick is TRUE analog on the Windows virtual-gamepad
     path (ViGEmBus, section 4a). On the keyboard fallback paths it arrives as
-    8-way digital presses (the same keys as the D-pad). A Linux/macOS virtual
-    pad (uinput / a HID shim) is still planned.
+    8-way digital presses on its OWN keys (U/N/H/M) — separate from the D-pad
+    arrows, so you can bind the emulator's analog stick to it. A Linux/macOS
+    virtual pad (uinput / a HID shim) for smooth analog is still planned.
   - One host = one stream at a time (everyone watches the SAME game).
   - Streaming your WHOLE DESKTOP instead of just the game? Two fixes:
       * Fullscreen emulators (PCSX2/PPSSPP/xemu): they pass a -fullscreen

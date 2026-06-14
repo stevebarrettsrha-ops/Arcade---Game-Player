@@ -321,6 +321,16 @@ const OSAMAP = {
 };
 const OSAHOT = { save: 'code:120', load: 'code:118', ff_on: 'space', ff_off: 'space' };
 
+// Left analog stick on the KEYBOARD paths -> its OWN keys (U/N/H/M), held while
+// the stick is pushed past ATHRESH. Separate from the D-pad arrows (which the
+// stick also drives), so you can bind the emulator's analog stick to these and
+// the cross D-pad to the arrows. Chosen to not collide with any mapping above
+// on Windows, Linux or macOS. (The gamepad path uses true analog instead.)
+const AKEYMAP = { up: 'u', down: 'n', left: 'h', right: 'm' };   // xdotool / generic
+const AVKMAP  = { up: 0x55, down: 0x4E, left: 0x48, right: 0x4D }; // Windows VK: U N H M
+const AOSAMAP = { up: 'u', down: 'n', left: 'h', right: 'm' };   // macOS (holdable letters)
+const ATHRESH = 0.5;   // stick magnitude past which a direction counts as pressed
+
 function inputArgs(cfg, key, down, window) {           // xdotool argv (kept pure for tests)
   if (cfg.inputTool !== 'xdotool') return null;
   const act = down ? 'keydown' : 'keyup';
@@ -494,6 +504,7 @@ class StreamSession {
     for (const res of this._muxWaiters) { try { res.end(); } catch (e) {} }
     this._muxWaiters = []; this.muxInit = this.muxCodecs = null; this.lastFrame = null; this._muxNoAudio = false;
     this._winTitle = null;   // re-resolve the capture window for the next game
+    this._analog = null;     // drop any held analog-stick direction state
   }
   audioEnabled() { return !!audioCaptureArgs(this.cfg); }
   muxEnabled() { return this.cfg.mode !== 'mjpeg'; }
@@ -624,12 +635,32 @@ class StreamSession {
     if (!args) return;
     try { const p = spawn(args[0], args.slice(1), { stdio: 'ignore' }); p.on('error', () => {}); } catch (e) {}
   }
-  // analog left stick -> the virtual Xbox pad (only the gamepad path is analog;
-  // the keyboard paths already get the stick as 8-way digital direction presses)
+  // one analog-stick direction key (separate from the D-pad) for the keyboard paths
+  _analogKey(dir, down) {
+    const tool = resolveInputTool(this.cfg.inputTool);
+    if (tool === 'powershell') { const vk = AVKMAP[dir]; if (vk != null) psSend(vk, down); return; }
+    if (tool === 'osascript')  { const k = AOSAMAP[dir]; if (k) osaSend(k, down); return; }
+    if (tool === 'xdotool') {
+      const args = inputArgs({ inputTool: 'xdotool' }, AKEYMAP[dir], down, this.emu && this.emu.window);
+      if (args) { try { const p = spawn(args[0], args.slice(1), { stdio: 'ignore' }); p.on('error', () => {}); } catch (e) {} }
+    }
+  }
+  // left analog stick. Gamepad path = true analog; keyboard paths = held U/N/H/M
+  // keys (its own set, so the stick is independent of the D-pad arrows).
   injectAxis(x, y) {
-    if (resolveInputTool(this.cfg.inputTool) !== 'gamepad') return;
-    const cl = v => Math.max(-1, Math.min(1, +v || 0));
-    gpSend('a ' + cl(x).toFixed(3) + ' ' + cl(y).toFixed(3));
+    const tool = resolveInputTool(this.cfg.inputTool);
+    if (tool === 'none') return;
+    if (tool === 'gamepad') {
+      const cl = v => Math.max(-1, Math.min(1, +v || 0));
+      gpSend('a ' + cl(x).toFixed(3) + ' ' + cl(y).toFixed(3));
+      return;
+    }
+    x = +x || 0; y = +y || 0;
+    const want = { up: y < -ATHRESH, down: y > ATHRESH, left: x < -ATHRESH, right: x > ATHRESH };
+    const st = this._analog || (this._analog = { up: false, down: false, left: false, right: false });
+    for (const d of ['up', 'down', 'left', 'right']) {
+      if (want[d] !== st[d]) { st[d] = want[d]; this._analogKey(d, want[d]); }
+    }
   }
 }
 
@@ -819,6 +850,24 @@ if (require.main === module && process.argv.includes('--selftest')) {
   ok('keymap A->x B->z', KEYMAP.a === 'x' && KEYMAP.b === 'z');
   ok('hotkey save->F2', HOTKEY.save === 'F2');
   ok('VK map matches layout', VKMAP.a === 0x58 && VKMAP.b === 0x5A && VKMAP.up === 0x26 && VKHOT.save === 0x71);
+  ok('analog keys are separate from the D-pad', ['up','down','left','right'].every(d =>
+       AKEYMAP[d] && AKEYMAP[d] !== KEYMAP[d] && !Object.values(KEYMAP).includes(AKEYMAP[d])
+       && AVKMAP[d] != null && AVKMAP[d] !== VKMAP[d]));
+  {
+    // keyboard injectAxis: only crossing the threshold flips a direction (and is
+    // a no-op in 'none' mode); tracked so we emit one down/up per transition.
+    const sess = new StreamSession({ inputTool: 'none' });
+    let threw = false; try { sess.injectAxis(0.9, -0.9); sess.injectAxis(0, 0); } catch (e) { threw = true; }
+    ok('injectAxis safe in none mode', !threw && sess._analog == null);
+    const fired = [];
+    const fake = new StreamSession({ inputTool: 'xdotool' });
+    fake._analogKey = (d, on) => fired.push(d + (on ? '+' : '-'));
+    fake.injectAxis(0.2, 0.2);                 // inside deadzone -> nothing
+    fake.injectAxis(0.9, 0.0);                 // push right
+    fake.injectAxis(0.9, 0.0);                 // still right -> no repeat
+    fake.injectAxis(0.0, 0.0);                 // center -> release
+    ok('injectAxis fires one press+release per direction', fired.join(',') === 'right+,right-');
+  }
   ok('osaLine letter down/up', osaLine('x', true) === 'tell application "System Events" to key down "x"'
        && osaLine('x', false) === 'tell application "System Events" to key up "x"');
   ok('osaLine constants + key codes', osaLine('return', true).endsWith('key down return')
