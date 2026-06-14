@@ -6,5 +6,8 @@
   "needsRom": true,
   "system": "JAVA",
   "roms": "games/j2me",
-  "exts": [".jar", ".jad"]
+  "exts": [
+    ".jar",
+    ".jad"
+  ]
 }

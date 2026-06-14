@@ -6,5 +6,10 @@
   "needsRom": true,
   "system": "N64",
   "roms": "games/n64",
-  "exts": [".n64", ".z64", ".v64", ".zip"]
+  "exts": [
+    ".n64",
+    ".z64",
+    ".v64",
+    ".zip"
+  ]
 }

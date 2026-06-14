@@ -6,5 +6,8 @@
   "needsRom": true,
   "system": "XBOX",
   "roms": "games/xbox",
-  "exts": [".iso", ".xiso"]
+  "exts": [
+    ".iso",
+    ".xiso"
+  ]
 }
