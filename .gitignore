@@ -7,6 +7,11 @@ users/
 # downloaded emulator binaries (fetched by get-emulators.js) — never commit
 emulators/*/app/
 
+# virtual-controller native lib (user supplies it on the host) — never commit
+ViGEmClient.dll
+assets/ViGEmClient.dll
+emulators/ViGEmClient.dll
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db

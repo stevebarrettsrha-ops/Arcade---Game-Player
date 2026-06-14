@@ -22,6 +22,14 @@ choice /c YN /t 15 /d N /m "  Set them up now (downloads xemu + Java emulators)"
 if errorlevel 2 goto :run
 node get-emulators.js
 :run
+if exist "ViGEmClient.dll" (
+  echo   Virtual Xbox controller: ON ^(ViGEmClient.dll found^) - analog + all
+  echo   buttons work in every emulator, no key mapping needed.
+) else (
+  echo   Tip: install ViGEmBus + drop ViGEmClient.dll here for a real virtual
+  echo   Xbox pad ^(true analog, no key mapping^). See SETUP-STREAMING.txt 4a.
+)
+echo.
 set ARCADE_STREAM=1
 node server.js
 echo.

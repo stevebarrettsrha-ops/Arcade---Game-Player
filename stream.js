@@ -81,6 +81,28 @@ function resolveCapture(capture, platform) {
 function resolveInputTool(tool, platform) {
   return (!tool || tool === 'auto') ? defaultInputTool(platform) : tool;
 }
+// Windows virtual Xbox 360 pad (ViGEmBus). Needs ViGEmClient.dll alongside the
+// app (or via ARCADE_VIGEM_DLL). When present we drive a real controller instead
+// of faking keystrokes — every host emulator detects an Xbox pad natively, so
+// analog + all buttons work with no per-emulator key mapping.
+let _vigemDll = null;
+function findVigemDll() {
+  if (_vigemDll !== null) return _vigemDll;
+  _vigemDll = '';
+  if (process.platform !== 'win32') return _vigemDll;
+  const cands = [ process.env.ARCADE_VIGEM_DLL,
+    path.join(ROOT, 'ViGEmClient.dll'), path.join(ROOT, 'assets', 'ViGEmClient.dll'),
+    path.join(EMU_DIR, 'ViGEmClient.dll') ].filter(Boolean);
+  for (const c of cands) { try { if (fs.existsSync(c)) { _vigemDll = c; break; } } catch (e) {} }
+  return _vigemDll;
+}
+// Resolve the requested input mode: an explicit choice always wins; "auto" on
+// Windows upgrades to the virtual gamepad when ViGEmClient.dll is available.
+function pickInputTool(req) {
+  if (req && req !== 'auto') return req;
+  if (process.platform === 'win32' && findVigemDll()) return 'gamepad';
+  return 'auto';
+}
 
 /* ---- global capture/encode defaults (overridable via env) ---- */
 function config() {
@@ -92,7 +114,7 @@ function config() {
     fps:       e.ARCADE_STREAM_FPS     || '30',
     quality:   e.ARCADE_STREAM_QUALITY || '6',        // ffmpeg mjpeg -q:v (2 best .. 31 worst)
     ffmpeg:    e.ARCADE_STREAM_FFMPEG  || 'ffmpeg',
-    inputTool: e.ARCADE_STREAM_INPUT   || 'auto',     // auto | xdotool | powershell | osascript | none
+    inputTool: pickInputTool(e.ARCADE_STREAM_INPUT || 'auto'), // auto | gamepad | xdotool | powershell | osascript | none
     // transport: 'auto' lets each client pick — H.264 (synced A/V, MSE) on capable
     //   browsers, MJPEG+PCM on old TVs. 'mjpeg' forces the legacy path; 'h264'
     //   forces the muxed path (no MJPEG fallback served).
@@ -335,9 +357,26 @@ function osaSend(key, down) {
   }
   try { osaProc.stdin.write(osaLine(key, down) + '\n'); } catch (e) { osaProc = null; }
 }
+// Virtual Xbox pad helper (Windows / ViGEmBus). One persistent PowerShell that
+// holds the controller open; we stream it tiny lines: "b <name> <0|1>" for a
+// button, "a <lx> <ly>" for the left analog stick (floats -1..1).
+let gpProc = null;
+function gpSend(line) {
+  if (!gpProc) {
+    const dll = findVigemDll();
+    try {
+      gpProc = spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
+        path.join(ROOT, 'stream-gamepad.ps1')],
+        { stdio: ['pipe', 'ignore', 'ignore'], env: Object.assign({}, process.env, dll ? { ARCADE_VIGEM_DLL: dll } : {}) });
+      gpProc.on('error', () => { gpProc = null; });
+      gpProc.on('close', () => { gpProc = null; });
+    } catch (e) { gpProc = null; return; }
+  }
+  try { gpProc.stdin.write(line + '\n'); } catch (e) { gpProc = null; }
+}
 function stopInjectors() {
-  for (const p of [psProc, osaProc]) { if (p) { try { p.kill('SIGTERM'); } catch (e) {} } }
-  psProc = osaProc = null;
+  for (const p of [psProc, osaProc, gpProc]) { if (p) { try { p.kill('SIGTERM'); } catch (e) {} } }
+  psProc = osaProc = gpProc = null;
 }
 
 /* ---- resolve the EXACT window title gdigrab needs (Windows) ----
@@ -562,6 +601,12 @@ class StreamSession {
   inject(action, down) {
     const tool = resolveInputTool(this.cfg.inputTool);
     if (tool === 'none') return;
+    if (tool === 'gamepad') {
+      // save/load/fast-forward have no pad button -> send them as keyboard keys
+      if (action in VKHOT) { psSend(VKHOT[action], down); return; }
+      gpSend('b ' + action + ' ' + (down ? 1 : 0));
+      return;
+    }
     if (tool === 'powershell') {
       const vk = (action in VKHOT) ? VKHOT[action] : VKMAP[action];
       if (vk != null) psSend(vk, down);
@@ -578,6 +623,13 @@ class StreamSession {
     const args = inputArgs({ inputTool: 'xdotool' }, key, down, this.emu && this.emu.window);
     if (!args) return;
     try { const p = spawn(args[0], args.slice(1), { stdio: 'ignore' }); p.on('error', () => {}); } catch (e) {}
+  }
+  // analog left stick -> the virtual Xbox pad (only the gamepad path is analog;
+  // the keyboard paths already get the stick as 8-way digital direction presses)
+  injectAxis(x, y) {
+    if (resolveInputTool(this.cfg.inputTool) !== 'gamepad') return;
+    const cl = v => Math.max(-1, Math.min(1, +v || 0));
+    gpSend('a ' + cl(x).toFixed(3) + ' ' + cl(y).toFixed(3));
   }
 }
 
@@ -597,6 +649,7 @@ function active() { return !!(session && session.active); }
 function injectInput(msg) {
   if (!session || !session.active || !msg) return;
   if (msg.t === 'down' || msg.t === 'up') { session.inject(msg.b, msg.t === 'down'); return; }
+  if (msg.t === 'axis') { session.injectAxis(msg.x, msg.y); return; }
   if (msg.t === 'hk') {
     if (msg.a === 'ff_on')  return session.inject('ff_on', true);
     if (msg.a === 'ff_off') return session.inject('ff_off', false);
@@ -605,8 +658,8 @@ function injectInput(msg) {
       setTimeout(() => { try { session.inject(msg.a, false); } catch (e) {} }, 40);
     }
   }
-  // the analog stick also arrives as digital up/down/left/right presses, so games
-  // stay playable; true analog needs a virtual gamepad (uinput) — a later step
+  // On the keyboard paths the analog stick also arrives as digital up/down/left/
+  // right presses, so games stay playable; the gamepad path adds true analog above.
 }
 
 function handle(req, res, urlPath, q) {
@@ -699,6 +752,8 @@ if (require.main === module && process.argv.includes('--selftest')) {
   ok('resolveInputTool auto per-OS', resolveInputTool('auto', 'win32') === 'powershell'
        && resolveInputTool('auto', 'darwin') === 'osascript' && resolveInputTool('auto', 'linux') === 'xdotool');
   ok('resolveInputTool explicit kept', resolveInputTool('none', 'win32') === 'none');
+  ok('resolveInputTool passes gamepad through', resolveInputTool('gamepad', 'win32') === 'gamepad');
+  ok('pickInputTool keeps explicit choice', pickInputTool('powershell') === 'powershell' && pickInputTool('none') === 'none');
 
   const acfg = config();
   ok('audioCaptureArgs auto Linux -> pulse s16le', audioCaptureArgs(acfg, 'linux').join(' ')
@@ -814,7 +869,7 @@ if (require.main === module && process.argv.includes('--selftest')) {
   ok('session audioEnabled reflects config', new StreamSession(config()).audioEnabled() === true
        && new StreamSession(Object.assign({}, config(), { audio: 'none' })).audioEnabled() === false);
 
-  let threw = false; try { injectInput({ t: 'down', b: 'a' }); injectInput({ t: 'hk', a: 'save' }); } catch (e) { threw = true; }
+  let threw = false; try { injectInput({ t: 'down', b: 'a' }); injectInput({ t: 'hk', a: 'save' }); injectInput({ t: 'axis', x: 0.5, y: -0.5 }); } catch (e) { threw = true; }
   ok('injectInput safe when idle', !threw);
 
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}

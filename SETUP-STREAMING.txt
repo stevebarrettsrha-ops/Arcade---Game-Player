@@ -27,7 +27,12 @@ WHAT IT DOES
      sudo pacman -S ffmpeg xdotool
 
   Controller input needs ONE more thing per OS:
-    Windows : nothing — ARCADE injects keys itself (stream-input.ps1).
+    Windows : nothing required — ARCADE injects keys itself (stream-input.ps1).
+              BEST EXPERIENCE (recommended): install the ViGEmBus driver and
+              drop ViGEmClient.dll next to server.js. ARCADE then drives a
+              REAL virtual Xbox controller (stream-gamepad.ps1) instead of
+              faking keystrokes, so the analog stick + every button work in
+              EVERY emulator with NO per-emulator key mapping. See section 4a.
     macOS   : nothing to install, but grant the Terminal/Node both
               "Screen Recording" and "Accessibility" permission when asked
               (System Settings > Privacy & Security).
@@ -98,7 +103,10 @@ WHAT IT DOES
      ARCADE_STREAM_FPS=30
      ARCADE_STREAM_QUALITY=6       # MJPEG quality 2(best)..31 (smaller/faster)
      ARCADE_STREAM_VBITRATE=6M     # H.264 target bitrate (h264/auto mode)
-     ARCADE_STREAM_INPUT=auto      # auto | xdotool | powershell | osascript | none
+     ARCADE_STREAM_INPUT=auto      # auto | gamepad | xdotool | powershell | osascript | none
+                                   # auto = on Windows, use "gamepad" (virtual
+                                   # Xbox pad) if ViGEmClient.dll is present,
+                                   # else fall back to keyboard injection.
      ARCADE_STREAM_FFMPEG=ffmpeg   # path/override, e.g. for a Flatpak ffmpeg
      ARCADE_STREAM_AUDIO=auto       # auto | none | pulse|alsa|dshow|avfoundation
      ARCADE_STREAM_AUDIO_DEVICE=    # the sound source to capture (see below)
@@ -166,13 +174,43 @@ WHAT IT DOES
   - On a phone: tap "📱 Phone", scan the code — the phone is now the
     controller, and its Games drawer also lists the host games (PS2, XBOX,
     ...) so you can start them from the sofa.
-  - Buttons are sent to the emulator as keyboard presses (RetroArch's default
-    keyboard layout: arrows = D-pad, Z/X = B/A, A/S = Y/X, Q/W = L/R,
-    E/T = L2/R2, Enter = Start, Shift = Select; SAVE=F2, LOAD=F4, FF=Space).
-    Map those keys inside the emulator once (every emulator lets you bind
-    keyboard keys to its pads) and the phone pad drives it.
+  - VIRTUAL XBOX PAD (Windows, recommended — see 4a): if ViGEmBus +
+    ViGEmClient.dll are installed, ARCADE presents a real Xbox controller to
+    the host. Emulators detect it automatically — analog stick, triggers and
+    every button just work, with NO key mapping to do. This is the default on
+    Windows when the DLL is present.
+  - KEYBOARD FALLBACK (other setups): buttons are sent as keyboard presses
+    (RetroArch's default layout: arrows = D-pad, Z/X = B/A, A/S = Y/X,
+    Q/W = L/R, E/T = L2/R2, Enter = Start, Shift = Select; SAVE=F2, LOAD=F4,
+    FF=Space). Map those keys inside the emulator once (every emulator lets
+    you bind keyboard keys to its pads) and the phone pad drives it. On this
+    path the analog stick only sends the D-pad arrows (8-way digital).
       macOS host note: AppleScript can't hold arrow keys, so the D-pad sends
       I/K/J/L there — bind those instead.
+
+------------------------------------------------------------
+4a. VIRTUAL XBOX CONTROLLER (Windows) — analog + all buttons, zero mapping
+------------------------------------------------------------
+  Faking keystrokes means every emulator has to be re-bound to ARCADE's
+  keyboard layout, and the analog stick can only ever be 8-way digital.
+  A virtual controller fixes both at once. ONE-TIME setup on the host:
+
+    1. Install the ViGEmBus driver (free, open source):
+         https://github.com/nefarius/ViGEmBus/releases
+       Run the installer (ViGEmBus_Setup_x64.msi) and reboot if asked.
+
+    2. Get ViGEmClient.dll (the x64 build) and put it NEXT TO server.js
+       (the ARCADE folder). You can also point ARCADE at it elsewhere with
+         set ARCADE_VIGEM_DLL=C:\path\to\ViGEmClient.dll
+
+    3. Start ARCADE with start-windows-stream.bat as usual. On launch it
+       auto-detects the DLL and switches input to "gamepad" — you'll see a
+       virtual Xbox 360 pad appear in Windows "Game Controllers".
+
+  Now the phone pad drives a real controller: the analog stick is true
+  analog, L2/R2 are the triggers, and every button maps to its Xbox
+  equivalent — so you don't bind anything inside PPSSPP/PCSX2/xemu/etc.
+  Force it on/off with ARCADE_STREAM_INPUT=gamepad / =powershell.
 
 ------------------------------------------------------------
 LIMITS / NOTES
@@ -186,8 +224,10 @@ LIMITS / NOTES
   - H.264 needs an ffmpeg built with libx264 (the vast majority are). If it's
     missing, the encoder won't start and clients drop back to MJPEG; check
     /stream/status ("muxError") if H.264 never appears.
-  - The phone's analog stick arrives as 8-way digital presses (the same keys
-    as the D-pad). True analog needs a virtual gamepad (uinput) — planned.
+  - The phone's analog stick is TRUE analog on the Windows virtual-gamepad
+    path (ViGEmBus, section 4a). On the keyboard fallback paths it arrives as
+    8-way digital presses (the same keys as the D-pad). A Linux/macOS virtual
+    pad (uinput / a HID shim) is still planned.
   - One host = one stream at a time (everyone watches the SAME game).
   - Streaming your WHOLE DESKTOP instead of just the game? Two fixes:
       * Fullscreen emulators (PCSX2/PPSSPP/xemu): they pass a -fullscreen
