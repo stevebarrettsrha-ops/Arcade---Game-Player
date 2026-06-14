@@ -26,6 +26,8 @@ const ROOT    = __dirname;
 const EMU_DIR = path.join(ROOT, 'emulators');
 const DRY     = process.argv.includes('--dry-run') || process.argv.includes('-n');
 
+const fileExists = p => { try { return fs.existsSync(p); } catch (e) { return false; } };
+
 const C = { ok: '\x1b[32m', warn: '\x1b[33m', err: '\x1b[31m', dim: '\x1b[90m', off: '\x1b[0m' };
 const paint = process.stdout.isTTY;
 const col = (c, s) => paint ? c + s + C.off : s;
@@ -205,24 +207,27 @@ function main() {
       const cur = tokens[idx];
       const basename = path.basename(cur.replace(/\\/g, '/'));
       const curAbs = path.isAbsolute(cur) ? cur : path.join(ROOT, cur);
-      let found = fs.existsSync(curAbs) ? curAbs : null;
-      if (!found) found = locate(id, basename);
 
-      if (!found) {
-        missing++;
-        console.log(col(C.warn, '⚠ ' + label));
-        console.log(col(C.dim, '    could not find ' + basename + ' — install it, or drop a portable build in emulators/' + id + '/'));
+      // "already correct" means ONLY this: the path in the manifest really points
+      // at a file that exists right now. Anything else -> search and repoint, or
+      // report it missing. (Never rubber-stamp a default path that isn't there.)
+      if (fileExists(curAbs)) {
+        ready++;
+        console.log(col(C.ok, '✓ ' + label) + col(C.dim, '  path already correct (' + rel(curAbs) + ')'));
       } else {
-        const newCmd = rebuild(tokens, idx, found);
-        if (newCmd !== m.cmd) {
-          changed++;
-          console.log(col(C.ok, '✓ ' + label) + col(C.dim, '  found ' + rel(found)));
-          console.log(col(C.dim, '    cmd  ' + m.cmd));
-          console.log(col(C.ok,  '    ->   ' + newCmd));
-          m.cmd = newCmd;
+        const found = locate(id, basename);
+        if (!found) {
+          missing++;
+          console.log(col(C.warn, '⚠ ' + label));
+          console.log(col(C.dim, '    ' + cur));
+          console.log(col(C.dim, '    not found here — install ' + basename + ', or drop a portable build in emulators/' + id + '/'));
         } else {
-          ready++;
-          console.log(col(C.ok, '✓ ' + label) + col(C.dim, '  path already correct'));
+          changed++;
+          const newCmd = rebuild(tokens, idx, found);
+          console.log(col(C.ok, '✓ ' + label) + col(C.dim, '  found ' + rel(found)));
+          console.log(col(C.dim, '    was  ' + m.cmd));
+          console.log(col(C.ok,  '    now  ' + newCmd));
+          m.cmd = newCmd;
         }
       }
     }
