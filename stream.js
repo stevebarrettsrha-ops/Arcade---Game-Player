@@ -297,6 +297,7 @@ function launchArgs(emu, romPath) {
     .map(p => p.includes('{rom}') ? p.split('{rom}').join(romPath || '') : p)
     .filter(Boolean);
 }
+function fileExists(p) { try { return fs.existsSync(p); } catch (e) { return false; } }
 
 /* ---- controller -> RetroArch-style default keyboard mapping (pure) ----
    Same layout on every host OS, expressed in each injector's key names. */
@@ -514,7 +515,27 @@ class StreamSession {
     this._err = this._audioErr = this._muxErr = null;
     if (emu && emu.cmd) {
       const la = launchArgs(emu, romPath);
-      if (la && la.length) { try { this.emulator = spawn(la[0], la.slice(1), { stdio: 'ignore' }); this.emulator.on('error', e => { this._err = 'emulator: ' + e.message; }); } catch (e) { this._err = 'emulator: ' + e.message; } }
+      if (la && la.length) {
+        const exe = la[0];
+        // A path-style program (C:\..., /usr/..., ./foo) MUST exist or nothing
+        // launches and the page just spins. Bare commands (java, retroarch)
+        // resolve via PATH, so we let spawn try those and report async errors.
+        const isPath = /[\\/]/.test(exe) || /^[A-Za-z]:/.test(exe);
+        if (isPath && !fileExists(exe)) {
+          this._err = 'Emulator program not found: ' + exe +
+            ' — install it there, or fix "cmd" in emulators/' + (emu.id || '?') +
+            '/emulator.json (or run fix-emulator-paths).';
+          return { ok: false, error: this._err };
+        }
+        try {
+          this.emulator = spawn(la[0], la.slice(1), { stdio: 'ignore' });
+          this.emulator.on('error', e => { this._err = 'Could not launch emulator: ' + e.message +
+            (e.code === 'ENOENT' ? ' — is "' + exe + '" installed and on PATH?' : ''); });
+        } catch (e) {
+          this._err = 'Could not launch emulator: ' + e.message;
+          return { ok: false, error: this._err };
+        }
+      }
     }
     this.active = true;
     return { ok: true };
@@ -871,6 +892,17 @@ if (require.main === module && process.argv.includes('--selftest')) {
   const winArgs = launchArgs({ cmd: '"C:\\Program Files\\PCSX2\\pcsx2-qt.exe" -fullscreen {rom}' }, 'C:\\games\\a b.iso') || [];
   ok('launchArgs quoted path with spaces', winArgs.length === 3 && winArgs[0] === 'C:\\Program Files\\PCSX2\\pcsx2-qt.exe' && winArgs[2] === 'C:\\games\\a b.iso');
   ok('launchArgs {rom} inside a token', (launchArgs({ cmd: 'xemu --dvd_path={rom}' }, '/g/x.iso') || []).join(' ') === 'xemu --dvd_path=/g/x.iso');
+  {
+    // a path-style program that doesn't exist must fail LOUDLY (ok:false + reason),
+    // not silently arm a session that shows a blank stream forever.
+    const s = new StreamSession({});
+    const r = s.start({ id: 'ppsspp', cmd: '/no/such/dir/PPSSPP.exe {rom}' }, '');
+    ok('start reports a missing emulator program', r.ok === false && /not found/i.test(r.error) && s.active === false);
+    const s2 = new StreamSession({});
+    const r2 = s2.start({ id: 'menu' }, '');   // no cmd -> just arms the session
+    ok('start arms a no-cmd emulator', r2.ok === true && s2.active === true);
+    s2.stop();
+  }
 
   ok('inputArgs xdotool active window', (inputArgs({ inputTool: 'xdotool' }, 'x', true, '') || []).join(' ') === 'xdotool keydown x');
   ok('inputArgs xdotool by window name', (inputArgs({ inputTool: 'xdotool' }, 'x', true, 'PCSX2') || []).join(' ') === 'xdotool search --name PCSX2 windowfocus keydown x');
