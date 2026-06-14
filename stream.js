@@ -297,6 +297,29 @@ function launchArgs(emu, romPath) {
     .map(p => p.includes('{rom}') ? p.split('{rom}').join(romPath || '') : p)
     .filter(Boolean);
 }
+const fileExists = p => { try { return fs.existsSync(p); } catch (e) { return false; } };
+// bounded, breadth-first hunt for a file (case-insensitive basename) under root.
+// Used to self-heal a wrong emulator path by finding the program in its folder.
+function findInDir(root, basename, maxDepth, budget) {
+  const want = String(basename).toLowerCase();
+  const queue = [{ dir: root, depth: 0 }]; let visited = 0;
+  while (queue.length) {
+    const { dir, depth } = queue.shift();
+    if (visited++ > budget) break;
+    let entries; try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { continue; }
+    const subs = [];
+    for (const e of entries) {
+      const full = path.join(dir, e.name);
+      let isDir = false, isFile = false;
+      try { isDir = e.isDirectory(); isFile = e.isFile(); }
+      catch (x) { try { const st = fs.statSync(full); isDir = st.isDirectory(); isFile = st.isFile(); } catch (y) {} }
+      if (isFile && e.name.toLowerCase() === want) return full;
+      if (isDir && depth < maxDepth) subs.push(full);
+    }
+    for (const s of subs) queue.push({ dir: s, depth: depth + 1 });
+  }
+  return null;
+}
 // human, actionable reason when an emulator won't launch (pure, for tests too)
 function launchErrorMessage(exe, err, id) {
   if (err && err.code === 'ENOENT') {
@@ -546,11 +569,19 @@ class StreamSession {
     if (emu && emu.cmd) {
       const la = launchArgs(emu, romPath);
       if (la && la.length) {
-        const exe = la[0];
-        // Always TRY to launch — the real spawn is the source of truth. (We used
-        // to pre-check the file with existsSync, but that could false-negative a
-        // program that is actually installed and wrongly block it.) If the spawn
-        // fails, the 'error' event records a clear reason that the page surfaces.
+        // Self-heal the program path: if the manifest points at a file that
+        // isn't there (e.g. fix-emulator-paths never persisted, or a download
+        // extracted to a different subfolder), look for the same program name
+        // inside the emulator's own folder and launch THAT. Absolute result, so
+        // it works no matter the working directory.
+        let exe = la[0];
+        const isPath = /[\\/]/.test(exe) || /^[A-Za-z]:/.test(exe);
+        if (isPath && emu.id && !fileExists(exe)) {
+          const hit = findInDir(path.join(EMU_DIR, emu.id), path.basename(exe.replace(/\\/g, '/')), 6, 6000);
+          if (hit) { la[0] = hit; exe = hit; }
+        }
+        // The real spawn is the source of truth; if it still fails, the 'error'
+        // event records a clear reason that the page surfaces.
         try {
           this.emulator = spawn(la[0], la.slice(1), { stdio: 'ignore' });
           this.emulator.on('error', e => { this._err = launchErrorMessage(exe, e, emu.id); });
@@ -1025,6 +1056,18 @@ if (require.main === module && process.argv.includes('--selftest')) {
   ok('phone keys do not clash with face buttons', !PHONE_KEYS.some(k => ['a','b','x','y','start','select'].includes(k)));
   let pkThrew = false; try { injectInput({ t: 'down', b: 'num5', k: 1 }); injectInput({ t: 'up', b: 'num5', k: 1 }); injectInput({ t: 'down', b: 'fire', k: 1 }); } catch (e) { pkThrew = true; }
   ok('injectInput handles keyboard-forced phone keys when idle', !pkThrew);
+
+  {
+    // findInDir self-heals a wrong emulator path: the program lives in a deeper
+    // subfolder than the manifest says, and we still locate it by name.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'emu-'));
+    fs.mkdirSync(path.join(root, 'kemnnmod'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'kemnnmod', 'KEmulator.exe'), 'x');
+    const hit = findInDir(root, 'kemulator.exe', 6, 6000);   // case-insensitive
+    ok('findInDir locates a program in a subfolder', hit === path.join(root, 'kemnnmod', 'KEmulator.exe'));
+    ok('findInDir returns null when absent', findInDir(root, 'nope.exe', 6, 6000) === null);
+    try { fs.rmSync(root, { recursive: true, force: true }); } catch (e) {}
+  }
 
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
   console.log(`\n${pass} passed, ${fail} failed`);

@@ -6,5 +6,10 @@
   "needsRom": true,
   "system": "PS2",
   "roms": "games/ps2",
-  "exts": [".iso", ".chd", ".cso", ".gz"]
+  "exts": [
+    ".iso",
+    ".chd",
+    ".cso",
+    ".gz"
+  ]
 }
