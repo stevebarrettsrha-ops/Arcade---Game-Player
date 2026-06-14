@@ -203,8 +203,12 @@ WHAT IT DOES
          https://github.com/nefarius/ViGEmBus/releases
        Run the installer (ViGEmBus_Setup_x64.msi) and reboot if asked.
 
-    2. Get ViGEmClient.dll (the x64 build) and put it NEXT TO server.js
-       (the ARCADE folder). You can also point ARCADE at it elsewhere with
+    2. Get ViGEmClient.dll (the x64 build) NEXT TO server.js. Easiest:
+       double-click  download-vigem-windows.bat  (fetches it for you from
+       nefarius's official build server). Or grab it by hand from
+         https://buildbot.nefarius.at/builds/ViGEmClient/master/
+       (newest version > bin/release/x64/ > ViGEmClient.dll).
+       You can also keep it elsewhere and point ARCADE at it with
          set ARCADE_VIGEM_DLL=C:\path\to\ViGEmClient.dll
 
     3. Start ARCADE with start-windows-stream.bat as usual. On launch it
