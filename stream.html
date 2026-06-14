@@ -48,9 +48,24 @@
     catch(e){ return null; }
   }
 
+  // If the host couldn't launch the emulator (wrong/missing program path), show
+  // the reason instead of spinning on "Connecting…". The error may appear a beat
+  // late (async spawn failure), so keep checking for a few seconds.
+  let fatalShown = false;
+  function watchForHostError(){
+    let tries = 0;
+    const t = setInterval(async () => {
+      const s = await status();
+      if(s && s.error){ fatalShown = true; clearInterval(t); showMsg('⚠ ' + s.error); }
+      if(++tries > 12) clearInterval(t);   // ~6s
+    }, 500);
+  }
+
   // pick the transport once we know what the host offers and what we can decode
   (async function boot(){
     const st = await status();
+    if(st && st.error){ showMsg('⚠ ' + st.error); fatalShown = true; return; }
+    watchForHostError();
     const mode = st ? st.mode : 'auto';
     const audioCodec = (st && st.audio) ? ',mp4a.40.2' : '';
     const mime = 'video/mp4; codecs="avc1.42E01E' + audioCodec + '"';
