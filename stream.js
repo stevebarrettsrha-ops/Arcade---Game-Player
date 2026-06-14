@@ -297,7 +297,14 @@ function launchArgs(emu, romPath) {
     .map(p => p.includes('{rom}') ? p.split('{rom}').join(romPath || '') : p)
     .filter(Boolean);
 }
-function fileExists(p) { try { return fs.existsSync(p); } catch (e) { return false; } }
+// human, actionable reason when an emulator won't launch (pure, for tests too)
+function launchErrorMessage(exe, err, id) {
+  if (err && err.code === 'ENOENT') {
+    return 'Couldn\'t run "' + exe + '". The program isn\'t there — install it at that ' +
+      'path, or fix "cmd" in emulators/' + (id || '?') + '/emulator.json (or run fix-emulator-paths).';
+  }
+  return 'Couldn\'t launch the emulator: ' + ((err && err.message) || 'unknown error') + '.';
+}
 
 /* ---- controller -> RetroArch-style default keyboard mapping (pure) ----
    Same layout on every host OS, expressed in each injector's key names. */
@@ -517,28 +524,20 @@ class StreamSession {
       const la = launchArgs(emu, romPath);
       if (la && la.length) {
         const exe = la[0];
-        // A path-style program (C:\..., /usr/..., ./foo) MUST exist or nothing
-        // launches and the page just spins. Bare commands (java, retroarch)
-        // resolve via PATH, so we let spawn try those and report async errors.
-        const isPath = /[\\/]/.test(exe) || /^[A-Za-z]:/.test(exe);
-        if (isPath && !fileExists(exe)) {
-          this._err = 'Emulator program not found: ' + exe +
-            ' — install it there, or fix "cmd" in emulators/' + (emu.id || '?') +
-            '/emulator.json (or run fix-emulator-paths).';
-          return { ok: false, error: this._err };
-        }
+        // Always TRY to launch — the real spawn is the source of truth. (We used
+        // to pre-check the file with existsSync, but that could false-negative a
+        // program that is actually installed and wrongly block it.) If the spawn
+        // fails, the 'error' event records a clear reason that the page surfaces.
         try {
           this.emulator = spawn(la[0], la.slice(1), { stdio: 'ignore' });
-          this.emulator.on('error', e => { this._err = 'Could not launch emulator: ' + e.message +
-            (e.code === 'ENOENT' ? ' — is "' + exe + '" installed and on PATH?' : ''); });
+          this.emulator.on('error', e => { this._err = launchErrorMessage(exe, e, emu.id); });
         } catch (e) {
-          this._err = 'Could not launch emulator: ' + e.message;
-          return { ok: false, error: this._err };
+          this._err = launchErrorMessage(exe, e, emu.id);
         }
       }
     }
     this.active = true;
-    return { ok: true };
+    return { ok: true, error: this._err || undefined };
   }
   stop() {
     this.active = false;
@@ -893,15 +892,20 @@ if (require.main === module && process.argv.includes('--selftest')) {
   ok('launchArgs quoted path with spaces', winArgs.length === 3 && winArgs[0] === 'C:\\Program Files\\PCSX2\\pcsx2-qt.exe' && winArgs[2] === 'C:\\games\\a b.iso');
   ok('launchArgs {rom} inside a token', (launchArgs({ cmd: 'xemu --dvd_path={rom}' }, '/g/x.iso') || []).join(' ') === 'xemu --dvd_path=/g/x.iso');
   {
-    // a path-style program that doesn't exist must fail LOUDLY (ok:false + reason),
-    // not silently arm a session that shows a blank stream forever.
+    // start() must never PRE-block a launch (existsSync can false-negative an
+    // installed program); it always tries to spawn and reports real failures.
     const s = new StreamSession({});
     const r = s.start({ id: 'ppsspp', cmd: '/no/such/dir/PPSSPP.exe {rom}' }, '');
-    ok('start reports a missing emulator program', r.ok === false && /not found/i.test(r.error) && s.active === false);
+    ok('start always attempts the launch (no pre-block)', r.ok === true && s.active === true);
+    s.stop();
     const s2 = new StreamSession({});
     const r2 = s2.start({ id: 'menu' }, '');   // no cmd -> just arms the session
     ok('start arms a no-cmd emulator', r2.ok === true && s2.active === true);
     s2.stop();
+    // the failure reason is human + actionable, and names the right manifest
+    const msg = launchErrorMessage('C:\\Program Files\\PPSSPP\\PPSSPPWindows64.exe', { code: 'ENOENT' }, 'ppsspp');
+    ok('launchErrorMessage explains ENOENT + how to fix', /PPSSPPWindows64\.exe/.test(msg) && /emulators\/ppsspp\/emulator\.json/.test(msg));
+    ok('launchErrorMessage handles other errors', /EACCES/.test(launchErrorMessage('x', { code: 'EACCES', message: 'EACCES perm' }, 'x')));
   }
 
   ok('inputArgs xdotool active window', (inputArgs({ inputTool: 'xdotool' }, 'x', true, '') || []).join(' ') === 'xdotool keydown x');
