@@ -188,6 +188,7 @@
       <span class="sp"></span>
       <button class="tbtn" id="mp4Btn" hidden>4P: OFF</button>
       <button class="tbtn" id="gamesBtn">▤ Games</button>
+      <a class="tbtn" id="keypadBtn" href="#" style="text-decoration:none" title="Phone keypad for Java (J2ME) games">📱 Keypad</a>
       <button class="tbtn" id="editBtn">✎ Edit</button>
       <button class="tbtn" id="fsBtn">⛶ Full</button>
     </div>
@@ -257,6 +258,8 @@
   const Q = new URL(location.href);
   const ROOM = (Q.searchParams.get('room') || Q.searchParams.get('pad') || '').toUpperCase().slice(0,8);
   $('#room').textContent = ROOM || '????';
+  // link to the phone keypad (for Java/J2ME games on KEmulator), same room
+  (function(){ const k = $('#keypadBtn'); if(k) k.href = 'pad2.html?room=' + encodeURIComponent(ROOM); })();
 
   const SYS = {
     gba:{label:'GBA',accent:'#3fe0cf'}, nes:{label:'NES',accent:'#e0584f'},

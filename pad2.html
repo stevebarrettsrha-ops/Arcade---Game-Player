@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>ARCADE · Phone Keypad</title>
+<style>
+  :root{ --cyan:#3fe0cf; --amber:#f2b545; --bg:#06100f; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; }
+  html,body{ margin:0; height:100%; overflow:hidden; background:var(--bg); color:#dffaf5;
+    font-family:"Chakra Petch",system-ui,sans-serif; touch-action:none; overscroll-behavior:none; }
+  body{ position:fixed; inset:0; }
+
+  #pad{ position:fixed; inset:0; display:flex; flex-direction:column;
+    padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left)); }
+
+  /* top status bar */
+  .bar{ display:flex; align-items:center; gap:10px; height:34px; flex:0 0 auto; }
+  .dot{ width:9px; height:9px; border-radius:50%; background:#e0584f; box-shadow:0 0 8px #e0584f; transition:.2s; }
+  .dot.on{ background:#5fe0a0; box-shadow:0 0 8px #5fe0a0; }
+  .brand{ font-family:"Silkscreen",monospace; font-size:12px; letter-spacing:2px; color:var(--cyan); }
+  .room{ font-family:"Silkscreen",monospace; font-size:11px; letter-spacing:2px; color:var(--amber);
+    background:rgba(242,181,69,.12); padding:3px 8px; border-radius:6px; }
+  .sp{ flex:1; }
+  .tbtn{ font-family:"Chakra Petch",sans-serif; font-weight:700; font-size:12px; letter-spacing:1px; color:#bfeee7;
+    text-decoration:none; background:#152029; border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:6px 10px; cursor:pointer; }
+  .tbtn:active{ filter:brightness(1.4); }
+
+  .hint{ flex:0 0 auto; text-align:center; font-size:11px; color:#7fb9b0; padding:4px 0 6px; letter-spacing:.5px; }
+
+  /* play area: vertically stacked like a real handset */
+  .body{ flex:1; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:space-evenly; gap:10px; }
+
+  .pbtn{ touch-action:none; display:grid; place-items:center; color:#d6fbf4;
+    font-family:"Chakra Petch",sans-serif; font-weight:700; cursor:pointer;
+    background:linear-gradient(180deg,#26323b,#121a22); border:1px solid rgba(255,255,255,.10);
+    box-shadow:0 5px 0 rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.08);
+    transition:transform .04s,filter .04s,box-shadow .04s; border-radius:12px; }
+  .pbtn.on{ transform:translateY(4px); filter:brightness(1.55);
+    box-shadow:0 1px 0 rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.08); }
+
+  /* soft keys (top, like below a phone screen) */
+  .softs{ display:flex; gap:14px; width:100%; max-width:460px; }
+  .soft{ flex:1; height:8vh; min-height:46px; font-size:13px; letter-spacing:1px;
+    background:linear-gradient(180deg,#22303a,#101820); }
+  .soft .lbl{ font-size:10px; opacity:.6; }
+
+  /* D-pad cross + center fire (3x3 grid) */
+  .navwrap{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px;
+    width:54vw; max-width:240px; aspect-ratio:1/1; }
+  .navwrap .pbtn{ font-size:24px; }
+  .nav-up{ grid-area:1/2; } .nav-left{ grid-area:2/1; }
+  .fire{ grid-area:2/2; border-radius:50%; font-size:15px; letter-spacing:1px;
+    background:linear-gradient(180deg,#5fecdb,#16a899); color:#06100f; }
+  .nav-right{ grid-area:2/3; } .nav-down{ grid-area:3/2; }
+
+  /* numeric keypad 1-9, * 0 # */
+  .keys{ display:grid; grid-template-columns:repeat(3,1fr); gap:9px;
+    width:72vw; max-width:360px; }
+  .keys .pbtn{ aspect-ratio:1.5/1; font-size:22px; }
+  .keys .pbtn .sub{ display:block; font-size:9px; opacity:.5; margin-top:-2px; letter-spacing:1px; }
+
+  #toast{ position:fixed; left:50%; bottom:14px; transform:translateX(-50%); background:rgba(8,18,16,.95);
+    border:1px solid rgba(63,224,207,.4); color:#dffaf5; font-size:13px; padding:9px 14px; border-radius:10px;
+    opacity:0; transition:.2s; pointer-events:none; z-index:30; }
+  #toast.show{ opacity:1; }
+</style>
+</head>
+<body>
+  <div id="pad">
+    <div class="bar">
+      <span class="dot" id="dot"></span>
+      <span class="brand">ARCADE</span>
+      <span class="room" id="room">----</span>
+      <span class="sp"></span>
+      <a class="tbtn" id="gamepadBtn" href="#" title="Back to the gamepad">🎮 Gamepad</a>
+      <button class="tbtn" id="fsBtn">⛶ Full</button>
+    </div>
+    <div class="hint">JAVA PHONE KEYPAD · for KEmulator (J2ME) games</div>
+
+    <div class="body">
+      <!-- soft keys -->
+      <div class="softs">
+        <div class="pbtn soft" data-btn="soft1">◧ LEFT<span class="lbl">soft</span></div>
+        <div class="pbtn soft" data-btn="soft2">RIGHT ◨<span class="lbl">soft</span></div>
+      </div>
+
+      <!-- D-pad + fire -->
+      <div class="navwrap">
+        <div class="pbtn nav-up"    data-btn="up">▲</div>
+        <div class="pbtn nav-left"  data-btn="left">◀</div>
+        <div class="pbtn fire"      data-btn="fire">FIRE</div>
+        <div class="pbtn nav-right" data-btn="right">▶</div>
+        <div class="pbtn nav-down"  data-btn="down">▼</div>
+      </div>
+
+      <!-- numeric keypad -->
+      <div class="keys">
+        <div class="pbtn" data-btn="num1">1</div>
+        <div class="pbtn" data-btn="num2">2<span class="sub">ABC</span></div>
+        <div class="pbtn" data-btn="num3">3<span class="sub">DEF</span></div>
+        <div class="pbtn" data-btn="num4">4<span class="sub">GHI</span></div>
+        <div class="pbtn" data-btn="num5">5<span class="sub">JKL</span></div>
+        <div class="pbtn" data-btn="num6">6<span class="sub">MNO</span></div>
+        <div class="pbtn" data-btn="num7">7<span class="sub">PQRS</span></div>
+        <div class="pbtn" data-btn="num8">8<span class="sub">TUV</span></div>
+        <div class="pbtn" data-btn="num9">9<span class="sub">WXYZ</span></div>
+        <div class="pbtn" data-btn="star">✱</div>
+        <div class="pbtn" data-btn="num0">0</div>
+        <div class="pbtn" data-btn="hash">#</div>
+      </div>
+    </div>
+  </div>
+  <div id="toast"></div>
+
+<script>
+  const $ = s => document.querySelector(s);
+
+  // room code from URL (?room=CODE or ?pad=CODE)
+  const Q = new URL(location.href);
+  const ROOM = (Q.searchParams.get('room') || Q.searchParams.get('pad') || '').toUpperCase().slice(0,8);
+  $('#room').textContent = ROOM || '????';
+  $('#gamepadBtn').href = 'pad.html?room=' + encodeURIComponent(ROOM);
+
+  function vibe(ms){ try{ navigator.vibrate && navigator.vibrate(ms||12); }catch(e){} }
+  let toastT=null;
+  function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),1400); }
+
+  // stable controller id (kept consistent with the gamepad page)
+  const CID = (()=>{ try{ let c=sessionStorage.getItem('arcade_cid'); if(!c){ c=Math.random().toString(36).slice(2,10); sessionStorage.setItem('arcade_cid',c); } return c; }
+                     catch(e){ return Math.random().toString(36).slice(2,10); } })();
+
+  // ---- send to the host via the server relay (WebSocket, POST fallback) ----
+  function setLinked(on){ $('#dot').classList.toggle('on', !!on); }
+  let padWS = null, wsReady = false;
+  function openWS(){
+    if(!ROOM) return;
+    try{
+      const proto = location.protocol==='https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(proto+'//'+location.host+'/ws?room='+encodeURIComponent(ROOM)+'&role=pad');
+      ws.onopen = () => { padWS = ws; wsReady = true; setLinked(true); try{ ws.send(JSON.stringify({t:'hello', cid:CID})); }catch(e){} };
+      ws.onclose = () => { padWS = null; wsReady = false; setLinked(false); setTimeout(openWS, 1500); };
+      ws.onerror = () => { try{ ws.close(); }catch(e){} };
+    }catch(e){}
+  }
+  async function postMsg(o){
+    try{
+      const r = await fetch('/input?room='+encodeURIComponent(ROOM), { method:'POST', body:JSON.stringify(o), keepalive:true });
+      const j = await r.json().catch(()=>({}));
+      setLinked(j && j.displays > 0);
+    }catch(e){ setLinked(false); }
+  }
+  function sendMsg(o){
+    if(!ROOM) return;
+    if(wsReady && padWS){ try{ padWS.send(JSON.stringify(o)); return; }catch(e){ wsReady = false; } }
+    postMsg(o);
+  }
+  // k:1 => inject as a KEYBOARD key on the host (works even in gamepad mode), p:0 => single player
+  const send = (t,b) => sendMsg({ t, b, k:1, p:0 });
+
+  // ---- buttons (multitouch) ----
+  function press(el, on){ el.classList.toggle('on', on); }
+  const held = new Map();   // pointerId -> {el, btn}
+  function bindButtons(){
+    document.querySelectorAll('.pbtn[data-btn]').forEach(el=>{
+      const b = el.dataset.btn;
+      el.addEventListener('pointerdown', e=>{
+        e.preventDefault(); try{ el.setPointerCapture(e.pointerId); }catch(_){}
+        held.set(e.pointerId, { el, btn:b }); press(el,true); vibe(); send('down',b);
+      });
+      const release = e => {
+        const h = held.get(e.pointerId); if(!h) return; held.delete(e.pointerId);
+        press(h.el,false); send('up',h.btn);
+      };
+      el.addEventListener('pointerup', release);
+      el.addEventListener('pointercancel', release);
+    });
+    // safety net: if a pointer is lost, release everything still held
+    window.addEventListener('pointercancel', ()=>{ held.forEach(h=>{ press(h.el,false); send('up',h.btn); }); held.clear(); });
+    window.addEventListener('blur', ()=>{ held.forEach(h=>{ press(h.el,false); send('up',h.btn); }); held.clear(); });
+  }
+
+  // fullscreen toggle
+  $('#fsBtn').addEventListener('click', ()=>{
+    try{ if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }catch(e){}
+  });
+
+  bindButtons();
+  openWS();
+  if(!ROOM) toast('No room code — open this from the gamepad or the TV pairing QR.');
+</script>
+</body>
+</html>
