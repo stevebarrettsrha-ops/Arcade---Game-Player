@@ -165,11 +165,11 @@ function listGames(sub, exts) {
   let list = names
     .filter(f => exts.includes(path.extname(f).toLowerCase()))
     .map(f => {
-      let size = 0;
-      try { size = fs.statSync(path.join(dir, f)).size; } catch (e) {}
+      let size = 0, mtime = 0;
+      try { const st = fs.statSync(path.join(dir, f)); size = st.size; mtime = +st.mtime; } catch (e) {}
       return {
         name: f.replace(/\.[^.]+$/, ''), file: f,
-        ext: path.extname(f).toLowerCase().slice(1), size,
+        ext: path.extname(f).toLowerCase().slice(1), size, mtime,
         url:   '/games/' + sub + '/' + encodeURIComponent(f),
         thumb: '/thumb/' + sub + '/' + encodeURIComponent(f),
       };
@@ -751,6 +751,30 @@ const requestHandler = async (req, res) => {
     const system = q.searchParams.get('system'), game = q.searchParams.get('game');
     const st = savePaths(user, system, game, 'state'), sr = savePaths(user, system, game, 'srm');
     return jsonRes(res, { state: fs.existsSync(st.file), srm: fs.existsSync(sr.file) });
+  }
+  // every save this profile has, newest first — powers "Continue playing" on the
+  // home screen. game is the sanitised name on disk (safeGame of the game's title).
+  if (url === '/api/saves') {
+    const user = userForToken(q.searchParams.get('token'));
+    if (!user) return jsonRes(res, { ok: false, saves: [] }, 401);
+    const out = [];
+    const base = path.join(userDir(user), 'saves');
+    let systems = []; try { systems = fs.readdirSync(base); } catch (e) {}
+    for (const sys of systems) {
+      const dir = path.join(base, sys);
+      let names = []; try { names = fs.readdirSync(dir); } catch (e) { continue; }
+      const byGame = new Map();
+      for (const n of names) {
+        const m = /^(.*)\.(state|srm)$/.exec(n); if (!m) continue;
+        let st; try { st = fs.statSync(path.join(dir, n)); } catch (e) { continue; }
+        const g = byGame.get(m[1]) || { system: sys, game: m[1], state: false, srm: false, mtime: 0 };
+        g[m[2]] = true; g.mtime = Math.max(g.mtime, +st.mtime);
+        byGame.set(m[1], g);
+      }
+      for (const g of byGame.values()) out.push(g);
+    }
+    out.sort((a, b) => b.mtime - a.mtime);
+    return jsonRes(res, { ok: true, saves: out });
   }
 
   if (url === '/api/library') {

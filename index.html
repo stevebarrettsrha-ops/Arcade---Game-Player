@@ -144,6 +144,45 @@
   .card .meta .sz{margin-top:4px;font-size:10px;color:var(--muted);font-family:"Silkscreen",monospace;letter-spacing:.5px}
   @keyframes pop{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 
+  /* ---- HOME: hero carousel ---- */
+  .hero{position:relative;border-radius:22px;overflow:hidden;margin:4px 0 30px;min-height:min(340px,46vh);
+    display:flex;flex-direction:column;justify-content:flex-end;
+    border:1px solid var(--glass-line);box-shadow:var(--shadow);background:#0a0e12;animation:rise .5s ease both}
+  .hero .hbg{position:absolute;inset:0;overflow:hidden}
+  .hero .hbg img{width:100%;height:100%;object-fit:cover;filter:blur(26px) saturate(1.15) brightness(.75);transform:scale(1.25)}
+  .hero .hshade{position:absolute;inset:0;background:
+      linear-gradient(180deg,rgba(8,11,15,.15),rgba(8,11,15,.86) 78%),
+      linear-gradient(100deg,rgba(8,11,15,.82) 0,transparent 55%),
+      radial-gradient(120% 140% at 88% 0%,color-mix(in srgb,var(--haccent,#3fe0cf) 26%,transparent),transparent 60%)}
+  .hero .hin{position:relative;z-index:1;padding:clamp(22px,4vw,40px);display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+  .hbadge{display:inline-flex;align-items:center;gap:8px;font-family:"Silkscreen",monospace;font-size:9.5px;letter-spacing:1.5px;
+    color:#bfeee7;background:rgba(5,8,10,.55);border:1px solid color-mix(in srgb,var(--haccent,#3fe0cf) 40%,transparent);border-radius:999px;padding:6px 12px}
+  .htitle{font-family:"Silkscreen",monospace;font-size:clamp(20px,4.2vw,34px);line-height:1.15;color:var(--ink);
+    text-shadow:0 2px 18px rgba(0,0,0,.6);max-width:26ch}
+  .hsub{font-size:14.5px;color:var(--muted);max-width:60ch;line-height:1.55}
+  .hsub b{color:var(--amber)}
+  .hacts{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .hero .btn{--accent:var(--haccent,#3fe0cf)}
+  .hdots{position:absolute;right:18px;bottom:18px;z-index:2;display:flex;gap:7px}
+  .hdots button{appearance:none;border:0;cursor:pointer;width:9px;height:9px;border-radius:99px;padding:0;
+    background:rgba(233,242,243,.25);transition:.25s}
+  .hdots button[data-on]{width:26px;background:var(--haccent,#3fe0cf)}
+
+  /* ---- HOME: horizontal shelves ---- */
+  .shelf{margin:0 0 28px}
+  .shelf-bar{display:flex;align-items:baseline;gap:12px;margin:0 0 12px}
+  .shelf-bar h2{margin:0;font-size:18px;font-weight:600}
+  .shelf-bar .note{font-family:"Silkscreen",monospace;font-size:9.5px;letter-spacing:1px;color:var(--faint)}
+  .shelf-bar .seeall{margin-left:auto;appearance:none;background:none;border:0;cursor:pointer;font-family:inherit;
+    font-size:13px;font-weight:600;color:var(--cyan);padding:4px 6px;border-radius:8px;white-space:nowrap}
+  .shelfrow{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 12px;scroll-snap-type:x proximity;scrollbar-width:thin}
+  .shelfrow::-webkit-scrollbar{height:8px}
+  .shelfrow::-webkit-scrollbar-thumb{background:rgba(127,185,176,.25);border-radius:99px}
+  .shelfrow::-webkit-scrollbar-track{background:transparent}
+  .shelfrow .card{flex:0 0 158px;scroll-snap-align:start}
+  .card .rankno{position:absolute;z-index:2;left:6px;bottom:52px;font-family:"Silkscreen",monospace;font-weight:700;
+    font-size:56px;line-height:1;color:rgba(233,242,243,.16);text-shadow:0 2px 10px rgba(0,0,0,.35);pointer-events:none}
+
   .empty{grid-column:1/-1;border:1px dashed var(--glass-line);border-radius:var(--radius);padding:34px 26px;text-align:center;color:var(--muted);background:rgba(255,255,255,.02)}
   .empty .big{font-family:"Silkscreen",monospace;font-size:13px;color:var(--ink);margin-bottom:10px;letter-spacing:1px}
   .pspbanner{grid-column:1/-1;background:linear-gradient(180deg,rgba(195,199,207,.10),rgba(195,199,207,.03));
@@ -423,6 +462,7 @@
       setStatus(false);
     }
     render();
+    refreshSaves();   // fills "Continue playing" once the profile's saves arrive
   }
   function totalGames(){ return SYS.reduce((a,s)=>a+((LIB[s.key]||[]).length),0); }
   function setStatus(ok){
@@ -438,18 +478,21 @@
     if(s.length < 2 && words[0]) s = words[0].slice(0,2);
     return (s || '??').toUpperCase();
   }
-  let activeTab = 'gba';
+  let activeTab = 'home';
   function buildTabs(){
     const tabs = $('#tabs');
-    tabs.innerHTML = SYS.map(s =>
+    tabs.innerHTML = '<button class="tab" data-tab="home">⌂ HOME</button>' + SYS.map(s =>
       '<button class="tab" data-tab="'+s.key+'">'+s.label+' <span class="n" id="n-'+s.key+'">0</span></button>'
     ).join('') + '<span class="spacer"></span><button class="mini" id="refresh">↻ Rescan</button>';
     tabs.querySelectorAll('.tab').forEach(t => {
-      t.style.setProperty('--ta', 'linear-gradient(180deg,color-mix(in srgb,'+SYSMAP[t.dataset.tab].accent+' 75%,#fff),'+SYSMAP[t.dataset.tab].accent+')');
+      const sm = SYSMAP[t.dataset.tab];
+      if(sm) t.style.setProperty('--ta', 'linear-gradient(180deg,color-mix(in srgb,'+sm.accent+' 75%,#fff),'+sm.accent+')');
       t.onclick = () => switchTab(t.dataset.tab);
     });
     $('#refresh').onclick = loadLibrary;
-    $('#panels').innerHTML = SYS.map(s =>
+    $('#panels').innerHTML =
+      '<section class="panel" id="panel-home"><div id="hero" hidden></div><div id="homeShelves"></div></section>' +
+      SYS.map(s =>
       '<section class="panel" id="panel-'+s.key+'"><div class="shelf-head"><h2>'+s.full+'</h2>'+
       '<span class="count" id="count-'+s.key+'"></span></div><div class="gridcards" id="grid-'+s.key+'"></div></section>'
     ).join('');
@@ -458,7 +501,7 @@
   function switchTab(key){
     activeTab = key;
     document.querySelectorAll('#tabs .tab').forEach(t => t.toggleAttribute('data-active', t.dataset.tab===key));
-    SYS.forEach(s => { const p=$('#panel-'+s.key); if(p) p.classList.toggle('live', s.key===key); });
+    document.querySelectorAll('#panels .panel').forEach(p => p.classList.toggle('live', p.id === 'panel-'+key));
   }
   function render(){
     const sb = $('#streamBtn'); if(sb) sb.hidden = !LIB.stream;   // show host-emulators entry only in streaming mode
@@ -468,6 +511,37 @@
       const n=$('#n-'+s.key); if(n) n.textContent = items.length;
       renderShelf(s, items);
     });
+    renderHome();
+  }
+  function cardLaunch(sysKey, g){
+    sysKey==='j2me' ? launchJ2ME(g) : sysKey==='psp' ? launchPSP(g) : launchEmu(sysKey, g.url, g.name);
+  }
+  // one portrait game card, shared by the system grids and the home shelves.
+  // opts: { delay: '0.1s', rank: 3, badge: '💾 SAVE' }
+  function gameCard(sysKey, g, opts){
+    opts = opts || {};
+    const s = SYSMAP[sysKey];
+    const c = document.createElement('button');
+    c.className = 'card';
+    c.style.setProperty('--accent', s.accent);
+    if(opts.delay) c.style.animationDelay = opts.delay;
+    c.title = g.name + (g.ext ? ' · ' + g.ext.toUpperCase() : '') + (g.size ? ' · ' + fmt(g.size) : '');
+    c.innerHTML =
+      '<div class="art"><div class="glyph">'+esc(initials(g.name))+'</div>'+
+        (g.thumb ? '<img class="cover" loading="lazy" alt="">' : '')+
+        '<div class="sheen"></div><div class="play">▶</div></div>'+
+      (opts.rank ? '<span class="rankno">'+opts.rank+'</span>' : '')+
+      '<span class="chip">'+s.label+'</span>'+
+      (opts.badge ? '<span class="badge">'+opts.badge+'</span>' : '')+
+      '<div class="meta"><div class="nm">'+esc(g.name)+'</div></div>';
+    const img = c.querySelector('.cover');
+    if(img){
+      img.onload  = function(){ if(this.naturalWidth && this.naturalWidth < 96) this.classList.add('pix'); this.classList.add('show'); };
+      img.onerror = function(){ this.remove(); };
+      img.src = g.thumb + '?shape=portrait';   // boxart-shaped generated covers (real art is untouched)
+    }
+    c.onclick = () => cardLaunch(sysKey, g);
+    return c;
   }
   function renderShelf(s, items){
     const grid = $('#grid-'+s.key), count = $('#count-'+s.key);
@@ -493,29 +567,174 @@
       e.innerHTML = '<div class="big">NO GAMES YET</div>Drop '+s.exts+' files into <code>games/'+s.key+'</code>, then press <b>Rescan</b>.';
       grid.appendChild(e); return;
     }
-    items.forEach((g,i) => {
-      const c = document.createElement('button');
-      c.className = 'card';
-      c.style.setProperty('--accent', s.accent);
-      c.style.animationDelay = (i*0.03)+'s';
-      c.title = g.name + (g.ext ? ' · ' + g.ext.toUpperCase() : '') + ' · ' + fmt(g.size);
-      c.innerHTML =
-        '<div class="art"><div class="glyph">'+esc(initials(g.name))+'</div>'+
-          (g.thumb ? '<img class="cover" loading="lazy" alt="">' : '')+
-          '<div class="sheen"></div><div class="play">▶</div></div>'+
-        '<span class="chip">'+s.label+'</span>'+
-        '<div class="meta"><div class="nm">'+esc(g.name)+'</div></div>';
-      const img = c.querySelector('.cover');
-      if(img){
-        img.onload  = function(){ if(this.naturalWidth && this.naturalWidth < 96) this.classList.add('pix'); this.classList.add('show'); };
-        img.onerror = function(){ this.remove(); };
-        img.src = g.thumb + '?shape=portrait';   // boxart-shaped generated covers (real art is untouched)
-      }
-      c.onclick = () => (s.key==='j2me' ? launchJ2ME(g) : s.key==='psp' ? launchPSP(g) : launchEmu(s.key, g.url, g.name));
-      grid.appendChild(c);
-    });
+    items.forEach((g,i) => grid.appendChild(gameCard(s.key, g, { delay:(i*0.03)+'s' })));
   }
   const esc = s => s.replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+
+  /* ===== HOME: hero carousel + behavioural shelves =====
+     "Continue playing" comes from the profile's server saves (/api/saves),
+     "Top new" from file mtimes — the server already knew both; the home
+     screen finally asks. */
+  let SAVES = [];   // this profile's saves, newest first: {system, game, state, srm, mtime}
+  async function refreshSaves(){
+    SAVES = [];
+    if(TOKEN){
+      try{
+        const j = await (await fetch('/api/saves?token='+encodeURIComponent(TOKEN),{cache:'no-store'})).json();
+        if(j && j.ok) SAVES = j.saves || [];
+      }catch(e){}
+    }
+    renderHome();
+  }
+  // the server stores saves under a sanitised name — apply the same transform to match
+  const safeGameJS = s => String(s||'').replace(/[^A-Za-z0-9 ._()\[\]+-]/g,'_').slice(0,120) || 'game';
+  function continueList(){
+    const out = [];
+    for(const sv of SAVES){
+      if(!SYSMAP[sv.system]) continue;
+      const g = (LIB[sv.system]||[]).find(g => safeGameJS(g.name) === sv.game);
+      if(g) out.push({ sys: sv.system, g });
+      if(out.length >= 12) break;
+    }
+    return out;
+  }
+  function newestList(){
+    const out = [];
+    SYS.forEach(s => (LIB[s.key]||[]).forEach(g => out.push({ sys:s.key, g })));
+    out.sort((a,b) => (b.g.mtime||0) - (a.g.mtime||0));
+    return out.slice(0, 8);
+  }
+  function makeShelf(title, note, cards, onSeeAll, seeLbl){
+    const sh = document.createElement('section'); sh.className = 'shelf';
+    const bar = document.createElement('div'); bar.className = 'shelf-bar';
+    bar.innerHTML = '<h2></h2><span class="note"></span>';
+    bar.querySelector('h2').textContent = title;
+    bar.querySelector('.note').textContent = note || '';
+    if(onSeeAll){
+      const b = document.createElement('button'); b.className = 'seeall';
+      b.textContent = (seeLbl || 'See all') + ' →'; b.onclick = onSeeAll;
+      bar.appendChild(b);
+    }
+    const row = document.createElement('div'); row.className = 'shelfrow';
+    cards.forEach(c => row.appendChild(c));
+    sh.appendChild(bar); sh.appendChild(row);
+    return sh;
+  }
+  function hostCard(e, g){
+    const c = document.createElement('button'); c.className = 'card'; c.style.setProperty('--accent', '#c3c7cf');
+    c.innerHTML = '<div class="art"><div class="glyph">🎮</div><div class="sheen"></div><div class="play">▶</div></div>'+
+      '<span class="chip">'+esc(e.system||'HOST')+'</span><span class="badge">HOST</span>'+
+      '<div class="meta"><div class="nm">'+esc(g.name)+'</div></div>';
+    c.onclick = () => startStream(e, g.file);
+    return c;
+  }
+  function renderHome(){
+    const heroEl = $('#hero'), shelves = $('#homeShelves');
+    if(!heroEl || !shelves) return;
+    buildHero(heroEl);
+    shelves.innerHTML = '';
+    const cont = continueList();
+    if(cont.length) shelves.appendChild(makeShelf('Continue playing', 'SAVES · '+(USERDISP||'').toUpperCase(),
+      cont.map(it => gameCard(it.sys, it.g, { badge:'💾 SAVE' }))));
+    const fresh = newestList();
+    if(fresh.length > 1) shelves.appendChild(makeShelf('Top new in your library', 'BY DATE ADDED',
+      fresh.map((it,i) => gameCard(it.sys, it.g, { rank:i+1 }))));
+    if(LIB.stream){
+      const cards = [];
+      (LIB.emulators||[]).forEach(e => (e.games||[]).slice(0,8).forEach(g => cards.push(hostCard(e, g))));
+      if(cards.length) shelves.appendChild(makeShelf('Plays on the host', 'STREAMED · PHONES ARE PADS',
+        cards, openStreamPicker, 'All host emulators'));
+    }
+    SYS.forEach(s => {
+      const items = LIB[s.key]||[];
+      if(!items.length) return;
+      shelves.appendChild(makeShelf(s.full, items.length + (items.length===1?' GAME':' GAMES'),
+        items.slice(0,12).map(g => gameCard(s.key, g)), () => switchTab(s.key)));
+    });
+    if(!shelves.children.length){
+      const e = document.createElement('div'); e.className = 'empty';
+      e.innerHTML = '<div class="big">NO GAMES YET</div>Drop game files into the <code>games/*</code> folders next to the server, then press <b>↻ Rescan</b>.';
+      shelves.appendChild(e);
+    }
+  }
+
+  /* ---- hero carousel: one game (or platform feature) merchandised at a time ---- */
+  let heroSlides = [], heroIdx = 0, heroTimer = null;
+  function buildHeroSlides(){
+    const slides = [];
+    const cont = continueList();
+    if(cont.length){
+      const it = cont[0], s = SYSMAP[it.sys];
+      slides.push({ accent:s.accent, thumb:it.g.thumb+'?shape=portrait',
+        badge:'💾 CONTINUE PLAYING'+(USERDISP && USERDISP!=='Guest' ? ' · '+esc(USERDISP.toUpperCase()) : ''),
+        title:it.g.name, sub:s.label+' — you have a save; it loads automatically when the game starts.',
+        cta:'▶ Continue', act:() => cardLaunch(it.sys, it.g) });
+    }
+    const fresh = newestList();
+    if(fresh.length){
+      const it = fresh[0], s = SYSMAP[it.sys];
+      slides.push({ accent:s.accent, thumb:it.g.thumb+'?shape=portrait',
+        badge:'★ NEW IN YOUR LIBRARY', title:it.g.name,
+        sub:s.full+' — the newest file in your games folders.',
+        cta:'▶ Play', act:() => cardLaunch(it.sys, it.g) });
+    }
+    if(LIB.stream && (LIB.emulators||[]).some(e => (e.games||[]).length || !e.needsRom)){
+      slides.push({ accent:'#c3c7cf', thumb:null,
+        badge:'🖥️ STREAMING MODE ON', title:'Big consoles, every screen',
+        sub:'PS2, XBOX and more run on the host computer and stream here — phones are the controllers.',
+        cta:'Browse host games', act:openStreamPicker });
+    }
+    if(totalGames() > 0){
+      slides.push({ accent:'#f2b545', thumb:null,
+        badge:'📱 GAME NIGHT', title:'Phones are the controllers',
+        sub:'Scan a QR code and up to four phones become gamepads for the game on this screen — <b>SAVE</b>, <b>TURBO</b> and fast-forward included.',
+        cta:'📱 Pair a phone', act:() => { const p=$('#pairPanel'); if(p.hidden){ ensurePairing(); p.hidden=false; } window.scrollTo({top:0, behavior:'smooth'}); } });
+    }
+    if(!slides.length){
+      slides.push({ accent:'#3fe0cf', thumb:null,
+        badge:'GET STARTED', title:'Add your first game',
+        sub:'Drop legally-owned game files into the <b>games/*</b> folders next to the server, then rescan.',
+        cta:'↻ Rescan', act:loadLibrary });
+    }
+    return slides;
+  }
+  function buildHero(el){
+    heroSlides = buildHeroSlides();
+    if(heroIdx >= heroSlides.length) heroIdx = 0;
+    renderHeroSlide(el);
+    if(heroTimer) clearInterval(heroTimer);
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches;
+    if(heroSlides.length > 1 && !reduce){
+      heroTimer = setInterval(() => {
+        if(document.body.classList.contains('playing')) return;
+        const h = $('#hero'); if(!h) return;
+        try{ if(h.matches(':hover') || h.contains(document.activeElement)) return; }catch(e){}   // never advance under the user
+        heroIdx = (heroIdx + 1) % heroSlides.length;
+        renderHeroSlide(h);
+      }, 8000);
+    }
+  }
+  function renderHeroSlide(el){
+    const sl = heroSlides[heroIdx];
+    if(!sl){ el.hidden = true; return; }
+    el.hidden = false;
+    el.className = 'hero';
+    el.style.setProperty('--haccent', sl.accent);
+    el.innerHTML =
+      '<div class="hbg">'+(sl.thumb ? '<img alt="" src="'+sl.thumb+'">' : '')+'</div><div class="hshade"></div>'+
+      '<div class="hin"><span class="hbadge">'+sl.badge+'</span>'+
+      '<div class="htitle">'+esc(sl.title)+'</div>'+
+      '<div class="hsub">'+sl.sub+'</div>'+
+      '<div class="hacts"><button class="btn" id="heroCta">'+sl.cta+'</button></div></div>'+
+      (heroSlides.length > 1
+        ? '<div class="hdots">'+heroSlides.map((_,i)=>'<button data-i="'+i+'"'+(i===heroIdx?' data-on':'')+' aria-label="slide '+(i+1)+'"></button>').join('')+'</div>'
+        : '');
+    $('#heroCta').onclick = sl.act;
+    el.querySelectorAll('.hdots button').forEach(b => b.onclick = () => {
+      heroIdx = +b.dataset.i; renderHeroSlide(el);
+      const nb = el.querySelector('.hdots button[data-i="'+heroIdx+'"]'); if(nb) nb.focus();
+    });
+  }
 
   /* ---- 4-player / multitap ---- */
   // cores that need a core option to expose ports 3-4 (others either do 4 natively, e.g. N64,
@@ -595,11 +814,11 @@
       const name=$('#newName').value.trim();
       if(name.length<2){ $('#pinErr').textContent='Pick a name first (2+ letters).'; pinBuf=''; renderDots(); return; }
       const r=await postJson('/api/user/create',{username:name,pin});
-      if(r&&r.ok){ setSession(r.name, name, r.token); hideLogin(); toast('Profile created — saves go to '+name); }
+      if(r&&r.ok){ setSession(r.name, name, r.token); hideLogin(); toast('Profile created — saves go to '+name); refreshSaves(); }
       else { $('#pinErr').textContent=(r&&r.error)||'Could not create.'; pinBuf=''; renderDots(); }
     } else {
       const r=await postJson('/api/user/login',{username:pinName,pin});
-      if(r&&r.ok){ setSession(r.name, pinName, r.token); hideLogin(); toast('Welcome back, '+pinName); }
+      if(r&&r.ok){ setSession(r.name, pinName, r.token); hideLogin(); toast('Welcome back, '+pinName); refreshSaves(); }
       else { $('#pinErr').textContent=(r&&r.error)||'Wrong PIN.'; pinBuf=''; renderDots(); }
     }
   }
@@ -640,6 +859,16 @@
   /* ---- launch an EmulatorJS system on this screen ---- */
   function launchEmu(system, url, name){
     curGame = { system, url, name };
+    // profiles no longer block the library — nudge once per session instead,
+    // so guests know server-side saves exist without being forced to sign in
+    if(!TOKEN){
+      try{
+        if(!sessionStorage.getItem('arcade_nudged')){
+          sessionStorage.setItem('arcade_nudged','1');
+          toast('Playing as Guest — tap 👤 to keep saves in a profile');
+        }
+      }catch(e){}
+    }
     document.body.classList.add('playing');
     showStage('gbaStage');
     // make sure the in-page emulator surface is visible (not the PSP chooser)
@@ -1149,7 +1378,7 @@
   if($('#streamBack')) $('#streamBack').onclick = ejectAll;
   // player profiles
   $('#userChip').onclick = showLogin;
-  $('#guestBtn').onclick = () => { setGuest(); hideLogin(); };
+  $('#guestBtn').onclick = () => { setGuest(); hideLogin(); refreshSaves(); };
   $('#newProfileBtn').onclick = () => openPin('create');
   $('#pinBack').onclick = backToList;
   buildKeypad();
@@ -1197,7 +1426,7 @@
     if(!cands.length) return;
     const cur = document.activeElement;
     const next = (!cur || cands.indexOf(cur) === -1)
-      ? (scope.querySelector('.panel.live .card') || cands[0])    // first press lands on the grid
+      ? (scope.querySelector('.panel.live #heroCta, .panel.live .card') || cands[0])   // first press: hero CTA, else the grid
       : spatialNext(cur, cands, e.key);
     if(next){ next.focus(); try{ next.scrollIntoView({block:'nearest', inline:'nearest'}); }catch(_){} e.preventDefault(); }
   });
@@ -1208,9 +1437,9 @@
     location.replace('pad.html?room=' + encodeURIComponent(padParam.toUpperCase().slice(0,8)));
   }
   else {
+    // land straight on Home as Guest — profiles live behind the 👤 chip and are
+    // only needed for server-side saves (a one-time toast says so on launch)
     loadLibrary(); initDisplay();
-    let chosen=false; try{ chosen = !!(sessionStorage.getItem('arcade_token')||sessionStorage.getItem('arcade_guest')); }catch(e){}
-    if(!chosen) showLogin();   // first visit this session: pick a profile (or Guest)
   }
 </script>
 </body>
