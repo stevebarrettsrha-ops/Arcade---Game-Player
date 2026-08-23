@@ -18,6 +18,7 @@
     --radius:18px;--shadow:0 30px 60px -20px rgba(0,0,0,.7);
   }
   *{box-sizing:border-box}
+  [hidden]{display:none!important}   /* the hidden attribute must always win over class display rules */
   html,body{margin:0;height:100%}
   body{background:var(--bg);color:var(--ink);font-family:"Chakra Petch",system-ui,sans-serif;
     -webkit-font-smoothing:antialiased;min-height:100%;overflow-x:hidden;position:relative}
@@ -109,31 +110,41 @@
   .shelf-head h2{margin:0;font-size:20px;font-weight:600}
   .shelf-head .count{font-family:"Silkscreen",monospace;font-size:11px;color:var(--faint)}
 
-  .gridcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:16px}
-  .card{position:relative;border-radius:var(--radius);overflow:hidden;cursor:pointer;text-align:left;
+  /* keyboard / TV-remote focus: always visible, in the item's own accent */
+  button:focus-visible,a:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+  /* portrait (2:3) game cards — boxart-shaped, art fills the card, title overlaid */
+  .gridcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px}
+  .card{--accent:var(--cyan);position:relative;aspect-ratio:2/3;border-radius:var(--radius);overflow:hidden;cursor:pointer;text-align:left;padding:0;
+    font-family:inherit;color:var(--ink);
     background:linear-gradient(160deg,rgba(28,40,48,.7),rgba(12,18,24,.55));border:1px solid var(--glass-line);
-    backdrop-filter:blur(12px);box-shadow:var(--shadow);transition:transform .25s,border-color .25s;animation:pop .5s both}
-  .card:hover{transform:translateY(-5px);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
-  .card .art{height:104px;position:relative;overflow:hidden;
-    background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 24%,#0b1116),#0a0e12)}
-  .card .art .glyph{position:absolute;inset:0;z-index:0;display:grid;place-items:center;font-family:"Silkscreen",monospace;
-    font-size:30px;letter-spacing:1px;color:color-mix(in srgb,var(--accent) 78%,#fff);opacity:.92;text-shadow:0 0 18px color-mix(in srgb,var(--accent) 60%,transparent)}
+    box-shadow:var(--shadow);transition:transform .25s,border-color .25s;animation:pop .5s both}
+  .card:hover,.card:focus-visible{transform:translateY(-5px);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+  .card:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+  .card .art{position:absolute;inset:0;overflow:hidden;
+    background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 24%,#0b1116),#0a0e12)}
+  .card .art .glyph{position:absolute;inset:0 0 18% 0;z-index:0;display:grid;place-items:center;font-family:"Silkscreen",monospace;
+    font-size:34px;letter-spacing:1px;color:color-mix(in srgb,var(--accent) 78%,#fff);opacity:.92;text-shadow:0 0 18px color-mix(in srgb,var(--accent) 60%,transparent)}
   .card .art .cover{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:cover;background:#0a0e12;opacity:0;transition:opacity .35s}
   .card .art .cover.show{opacity:1}
-  .card .art .cover.pix{object-fit:contain;image-rendering:pixelated;padding:16px;background:
-      radial-gradient(120% 120% at 50% 25%,color-mix(in srgb,var(--accent) 16%,#0a0e12),#0a0e12)}
+  .card .art .cover.pix{object-fit:contain;image-rendering:pixelated;padding:22px 18px 30%;background:
+      radial-gradient(120% 120% at 50% 30%,color-mix(in srgb,var(--accent) 16%,#0a0e12),#0a0e12)}
   .card .art .sheen{position:absolute;inset:0;z-index:2;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.16) 45%,transparent 60%);transform:translateX(-60%);transition:transform .6s}
-  .card:hover .art .sheen{transform:translateX(60%)}
-  .card .art .play{position:absolute;z-index:3;right:10px;bottom:10px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+  .card:hover .art .sheen,.card:focus-visible .art .sheen{transform:translateX(60%)}
+  .card .art .play{position:absolute;z-index:4;right:10px;bottom:64px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
     background:color-mix(in srgb,var(--accent) 90%,#fff);color:#06100f;font-size:14px;box-shadow:0 6px 16px rgba(0,0,0,.4);transform:scale(.6);opacity:0;transition:.25s}
-  .card:hover .art .play{transform:scale(1);opacity:1}
-  .card .meta{padding:12px 13px 14px}
-  .card .meta .nm{font-size:14px;font-weight:600;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.5em}
-  .card .meta .sz{margin-top:5px;font-size:11px;color:var(--faint);font-family:"Silkscreen",monospace;letter-spacing:.5px}
-  .card{--accent:var(--cyan)}
+  .card:hover .art .play,.card:focus-visible .art .play{transform:scale(1);opacity:1}
+  .card .chip{position:absolute;z-index:3;top:9px;left:9px;font-family:"Silkscreen",monospace;font-size:9px;letter-spacing:1px;
+    color:var(--accent);background:rgba(5,8,10,.66);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:6px;padding:4px 7px}
+  .card .badge{position:absolute;z-index:3;top:9px;right:9px;font-family:"Silkscreen",monospace;font-size:9px;letter-spacing:1px;
+    color:#06100f;background:linear-gradient(180deg,#ffe08a,var(--amber));border-radius:6px;padding:4px 7px}
+  .card .meta{position:absolute;left:0;right:0;bottom:0;z-index:3;padding:36px 12px 12px;
+    background:linear-gradient(transparent,rgba(5,8,10,.94) 72%)}
+  .card .meta .nm{font-size:13.5px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .card .meta .sz{margin-top:4px;font-size:10px;color:var(--muted);font-family:"Silkscreen",monospace;letter-spacing:.5px}
   @keyframes pop{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 
-  .empty{border:1px dashed var(--glass-line);border-radius:var(--radius);padding:34px 26px;text-align:center;color:var(--muted);background:rgba(255,255,255,.02)}
+  .empty{grid-column:1/-1;border:1px dashed var(--glass-line);border-radius:var(--radius);padding:34px 26px;text-align:center;color:var(--muted);background:rgba(255,255,255,.02)}
   .empty .big{font-family:"Silkscreen",monospace;font-size:13px;color:var(--ink);margin-bottom:10px;letter-spacing:1px}
   .pspbanner{grid-column:1/-1;background:linear-gradient(180deg,rgba(195,199,207,.10),rgba(195,199,207,.03));
     border:1px solid rgba(195,199,207,.25);border-radius:14px;padding:16px 18px;margin-bottom:14px}
@@ -226,71 +237,6 @@
   .pair .pstat{margin-top:8px;font-size:12px;color:var(--faint)}
   .pair .pstat.good{color:var(--cyan)}
 
-  /* phone controller */
-  .padmode,.padmode body{height:100%;overflow:hidden;overscroll-behavior:none}
-  .padroot{position:fixed;inset:0;z-index:200;background:radial-gradient(130% 100% at 50% -10%,#0e1620,#06090d);
-    display:flex;flex-direction:column;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-  .padroot[hidden]{display:none}
-  .padbar{display:flex;align-items:center;gap:9px;padding:9px 16px;font-family:"Silkscreen",monospace;font-size:11px;color:var(--muted);letter-spacing:1px}
-  .padbar b{color:var(--cyan);margin-left:4px}
-  .padtoggle{margin-left:auto;display:flex;gap:6px}
-  .ptg{appearance:none;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--muted);
-    font-family:"Chakra Petch",sans-serif;font-size:12px;font-weight:600;padding:7px 11px;border-radius:9px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-  .ptg[data-on="1"]{background:linear-gradient(180deg,#5fecdb,var(--cyan));color:#06100f;border-color:transparent}
-  .conn{width:11px;height:11px;border-radius:50%;background:#c8593f;box-shadow:0 0 8px #c8593f;transition:.2s}
-  .conn.ok{background:var(--cyan);box-shadow:0 0 9px var(--cyan)}
-  #padPlay{flex:1;display:flex;flex-direction:column}
-  #padPlay[hidden]{display:none}
-  .padextra{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:4px 14px 0}
-  .ebtn{appearance:none;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:var(--muted);
-    font-family:"Silkscreen",monospace;font-size:10px;letter-spacing:.5px;padding:9px 12px;border-radius:9px;cursor:pointer;
-    -webkit-tap-highlight-color:transparent;touch-action:none}
-  .ebtn:active{filter:brightness(1.3)}
-  .ebtn[data-on="1"]{color:#06100f;border-color:transparent;background:linear-gradient(180deg,#ffe08a,var(--amber))}
-  #bFF[data-on="1"]{background:linear-gradient(180deg,#7df3e7,var(--cyan))}
-  .padshoulders{display:flex;justify-content:space-between;padding:6px 16px 0}
-  .shgrp{display:flex;gap:8px}
-  .pbtn{touch-action:none;display:grid;place-items:center;color:#d6fbf4;font-family:"Chakra Petch",sans-serif;font-weight:700;cursor:pointer;
-    background:linear-gradient(180deg,#26323b,#121a22);border:1px solid rgba(255,255,255,.08);
-    box-shadow:0 5px 0 rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.08);transition:transform .04s,filter .04s,box-shadow .04s}
-  .pbtn.on{transform:translateY(4px);filter:brightness(1.45);box-shadow:0 1px 0 rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.08)}
-  .pbtn.sh{width:17vw;max-width:118px;height:7.5vh;min-height:42px;border-radius:12px;font-size:15px;letter-spacing:2px}
-  .padmain{flex:1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 4.5vw}
-  /* analog thumbstick (8-way, diagonals) */
-  .dpad{position:relative;width:44vmin;height:44vmin;max-width:300px;max-height:300px;border-radius:50%;
-    background:radial-gradient(circle at 50% 38%,#1b2832,#0c131a);border:1px solid rgba(255,255,255,.08);
-    box-shadow:inset 0 8px 22px rgba(0,0,0,.65),inset 0 -2px 0 rgba(255,255,255,.04);display:grid;place-items:center;touch-action:none}
-  .dpad .dcross{position:absolute;inset:20%;opacity:.45;pointer-events:none;border-radius:8px;
-    background:linear-gradient(#33474f,#33474f) center/24% 100% no-repeat,linear-gradient(#33474f,#33474f) center/100% 24% no-repeat}
-  .knob{width:44%;height:44%;border-radius:50%;pointer-events:none;
-    background:linear-gradient(180deg,#43586580,#1d2a34);border:1px solid rgba(255,255,255,.16);
-    box-shadow:0 6px 14px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.18);transition:transform .04s}
-  .dpad.live{border-color:color-mix(in srgb,var(--cyan) 45%,transparent)}
-  .midbtns{display:flex;flex-direction:column;gap:16px;align-items:center}
-  .pbtn.pill{padding:11px 16px;border-radius:999px;font-size:10px;letter-spacing:1.5px;font-family:"Silkscreen",monospace;transform:rotate(-20deg)}
-  .pbtn.pill.on{transform:rotate(-20deg) translateY(4px)}
-  .actions{position:relative;width:44vmin;height:44vmin;max-width:300px;max-height:300px}
-  .pbtn.ab{position:absolute;width:42%;height:42%;border-radius:50%;font-size:24px;border-color:rgba(255,255,255,.28)}
-  .pbtn.ab.x{left:29%;top:0;background:linear-gradient(180deg,#bdb2ff,#7b6fe0);color:#06100f}
-  .pbtn.ab.y{left:0;top:29%;background:linear-gradient(180deg,#8bd07a,#4f9b3e);color:#06100f}
-  .pbtn.ab.a{right:0;top:29%;background:linear-gradient(180deg,#5fecdb,#16a899);color:#06100f}
-  .pbtn.ab.b{left:29%;bottom:0;background:linear-gradient(180deg,#ffd884,#dca02a);color:#06100f}
-  /* phone library list */
-  .padlib{flex:1;display:flex;flex-direction:column;min-height:0;padding:0 14px 14px}
-  .padlib[hidden]{display:none}
-  .padlibhead{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12.5px;padding:6px 2px 12px}
-  .padlibhead .ptg{margin-left:auto;padding:6px 10px}
-  .pliblist{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:9px;touch-action:pan-y}
-  .plrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;
-    background:linear-gradient(160deg,rgba(28,40,48,.7),rgba(12,18,24,.6));border:1px solid var(--glass-line);
-    border-radius:12px;padding:13px 14px;color:var(--ink);font-family:inherit;-webkit-tap-highlight-color:transparent}
-  .plrow:active{filter:brightness(1.25)}
-  .plrow .plk{font-family:"Silkscreen",monospace;font-size:9px;padding:5px 7px;border-radius:6px;flex:none}
-  .plrow.gba  .plk{color:var(--cyan);background:color-mix(in srgb,var(--cyan) 14%,transparent)}
-  .plrow.j2me .plk{color:var(--amber);background:color-mix(in srgb,var(--amber) 14%,transparent)}
-  .plrow .pln{flex:1;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .plrow .plgo{color:var(--cyan);font-size:15px;flex:none}
-  .plempty{color:var(--faint);text-align:center;padding:30px 10px;font-size:13px}
   @keyframes rise{to{opacity:1;transform:translateY(0)}}
   @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important}}
   /* solo play directly on a phone: keep the video pinned to the top so EmulatorJS's
@@ -440,54 +386,6 @@
   <footer>ARCADE home server · GBA runs in-page (EmulatorJS / mGBA) · Java Phone via FreeJ2ME-web · supply your own legally-owned game files.</footer>
 </div>
 
-<!-- PHONE CONTROLLER (shown only when opened with ?pad=CODE) -->
-<div id="padRoot" class="padroot" hidden>
-  <div class="padbar">
-    <span class="conn" id="conn"></span>ROOM <b id="padCodeLbl">----</b>
-    <span class="padtoggle">
-      <button class="ptg" id="tgLib">📚 Games</button>
-      <button class="ptg" id="tgPad" data-on="1">🎮 Pad</button>
-    </span>
-  </div>
-
-  <!-- gamepad view -->
-  <div id="padPlay">
-    <div class="padextra">
-      <button class="ebtn" id="bTurbo">⚡ TURBO</button>
-      <button class="ebtn" data-hk="save">⤓ SAVE</button>
-      <button class="ebtn" data-hk="load">⤒ LOAD</button>
-      <button class="ebtn" id="bFF">≫ FF</button>
-    </div>
-    <div class="padshoulders">
-      <div class="shgrp"><div class="pbtn sh" data-btn="l2">L2</div><div class="pbtn sh" data-btn="l">L</div></div>
-      <div class="shgrp"><div class="pbtn sh" data-btn="r">R</div><div class="pbtn sh" data-btn="r2">R2</div></div>
-    </div>
-    <div class="padmain">
-      <div class="dpad" id="stick">
-        <div class="dcross"></div>
-        <div class="knob" id="knob"></div>
-      </div>
-      <div class="midbtns">
-        <div class="pbtn pill" data-btn="select">SELECT</div>
-        <div class="pbtn pill" data-btn="start">START</div>
-      </div>
-      <div class="actions">
-        <div class="pbtn ab x" data-btn="x">X</div>
-        <div class="pbtn ab y" data-btn="y">Y</div>
-        <div class="pbtn ab a" data-btn="a">A</div>
-        <div class="pbtn ab b" data-btn="b">B</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- library view (pick a game to launch on the TV) -->
-  <div id="padLib" class="padlib" hidden>
-    <div class="padlibhead">Pick a game — it launches on the TV
-      <button class="ptg" id="padLibRefresh">↻</button></div>
-    <div class="pliblist" id="plibList">loading…</div>
-  </div>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <script>
@@ -600,17 +498,18 @@
       c.className = 'card';
       c.style.setProperty('--accent', s.accent);
       c.style.animationDelay = (i*0.03)+'s';
+      c.title = g.name + (g.ext ? ' · ' + g.ext.toUpperCase() : '') + ' · ' + fmt(g.size);
       c.innerHTML =
         '<div class="art"><div class="glyph">'+esc(initials(g.name))+'</div>'+
           (g.thumb ? '<img class="cover" loading="lazy" alt="">' : '')+
           '<div class="sheen"></div><div class="play">▶</div></div>'+
-        '<div class="meta"><div class="nm">'+esc(g.name)+'</div>'+
-          '<div class="sz">'+(g.ext?g.ext.toUpperCase()+' · ':'')+fmt(g.size)+'</div></div>';
+        '<span class="chip">'+s.label+'</span>'+
+        '<div class="meta"><div class="nm">'+esc(g.name)+'</div></div>';
       const img = c.querySelector('.cover');
       if(img){
         img.onload  = function(){ if(this.naturalWidth && this.naturalWidth < 96) this.classList.add('pix'); this.classList.add('show'); };
         img.onerror = function(){ this.remove(); };
-        img.src = g.thumb;
+        img.src = g.thumb + '?shape=portrait';   // boxart-shaped generated covers (real art is untouched)
       }
       c.onclick = () => (s.key==='j2me' ? launchJ2ME(g) : s.key==='psp' ? launchPSP(g) : launchEmu(s.key, g.url, g.name));
       grid.appendChild(c);
@@ -841,8 +740,10 @@
       const c = document.createElement('button'); c.className = 'card'; c.style.setProperty('--accent', '#c3c7cf');
       c.innerHTML = '<div class="art"><div class="glyph">🖥️</div>'+
         (e.icon ? '<img class="cover show" src="'+esc(e.icon)+'" alt="">' : '')+
-        '<div class="play">▶</div></div><div class="meta"><div class="nm">'+esc(e.name)+'</div>'+
-        '<div class="sz">'+(e.system?esc(e.system)+' · ':'')+(n? n+(n===1?' GAME':' GAMES')+' · ':'')+'RUNS ON HOST</div></div>';
+        '<div class="sheen"></div><div class="play">▶</div></div>'+
+        '<span class="badge">HOST</span>'+
+        '<div class="meta"><div class="nm">'+esc(e.name)+'</div>'+
+        '<div class="sz">'+(e.system?esc(e.system)+' · ':'')+(n? n+(n===1?' GAME':' GAMES'):'MENU')+'</div></div>';
       c.onclick = () => (n ? openStreamGames(e) : startStream(e));
       list.appendChild(c);
     });
@@ -855,12 +756,14 @@
     list.innerHTML = '';
     const mk = (head, sub, onclick) => {
       const c = document.createElement('button'); c.className = 'card'; c.style.setProperty('--accent', '#c3c7cf');
-      c.innerHTML = '<div class="art"><div class="glyph">'+head+'</div><div class="play">▶</div></div>'+
+      c.innerHTML = '<div class="art"><div class="glyph">'+head+'</div><div class="sheen"></div><div class="play">▶</div></div>'+
+        '<span class="badge">HOST</span>'+
         '<div class="meta"><div class="nm"></div><div class="sz">'+sub+'</div></div>';
       c.querySelector('.nm').textContent = '';
       c.onclick = onclick; list.appendChild(c); return c;
     };
     const back = mk('‹', 'BACK', openStreamPicker); back.querySelector('.nm').textContent = 'All emulators';
+    const bb = back.querySelector('.badge'); if(bb) bb.remove();
     if(!e.needsRom){ const m = mk('🖥️', 'NO GAME — HOST MENU', () => startStream(e)); m.querySelector('.nm').textContent = 'Open '+e.name; }
     (e.games||[]).forEach(g => {
       const c = mk('🎮', (e.system?esc(e.system)+' · ':'')+'ON HOST', () => startStream(e, g.file));
@@ -1224,131 +1127,6 @@
     if(pend){ try{ sessionStorage.removeItem('arcade_launch'); }catch(e){} setTimeout(()=>{ try{ doLaunch(JSON.parse(pend)); }catch(e){} }, 60); }
   }
 
-  /* ---- phone side ---- */
-  function setConn(ok){ $('#conn').classList.toggle('ok', !!ok); }
-  function sendMsg(obj){
-    fetch('/input?room='+encodeURIComponent(ROOM), {method:'POST', keepalive:true, headers:{'Content-Type':'application/json'}, body:JSON.stringify(obj)})
-      .then(r=>setConn(r.ok)).catch(()=>setConn(false));
-  }
-  function send(t, b){ sendMsg(b ? {t,b} : {t}); }
-  function vibe(){ try{ navigator.vibrate && navigator.vibrate(8); }catch(e){} }
-
-  let TURBO = false;   // when on, holding A/B auto-fires
-  function bindButtons(){
-    document.querySelectorAll('.pbtn[data-btn]').forEach(el => {
-      const btn = el.dataset.btn;
-      const fire = (btn==='a' || btn==='b');
-      el.addEventListener('pointerdown', e => {
-        e.preventDefault(); try{el.setPointerCapture(e.pointerId);}catch(_){}
-        if(el._on) return; el._on=true; el.classList.add('on'); vibe();
-        if(TURBO && fire){ let on=false; el._turbo=setInterval(()=>{ on=!on; send(on?'down':'up', btn); }, 60); }
-        else send('down', btn);
-      });
-      const off = () => {
-        if(!el._on) return; el._on=false; el.classList.remove('on');
-        if(el._turbo){ clearInterval(el._turbo); el._turbo=null; }
-        send('up', btn);
-      };
-      el.addEventListener('pointerup', off);
-      el.addEventListener('pointercancel', off);
-      el.addEventListener('contextmenu', e => e.preventDefault());
-    });
-  }
-  function bindExtras(){
-    const tb = $('#bTurbo');
-    tb.onclick = () => { TURBO=!TURBO; tb.toggleAttribute('data-on', TURBO); vibe(); toast('Turbo '+(TURBO?'ON — hold A or B to auto-fire':'off')); };
-    document.querySelectorAll('.ebtn[data-hk]').forEach(b => {
-      b.onclick = () => { sendMsg({t:'hk', a:b.dataset.hk}); vibe(); toast(b.dataset.hk==='save'?'Saved state on the TV':'Loaded state on the TV'); };
-    });
-    const ff = $('#bFF');
-    ff.addEventListener('pointerdown', e => { e.preventDefault(); try{ff.setPointerCapture(e.pointerId);}catch(_){} ff.setAttribute('data-on','1'); sendMsg({t:'hk', a:'ff_on'}); vibe(); });
-    const ffoff = () => { if(!ff.hasAttribute('data-on'))return; ff.removeAttribute('data-on'); sendMsg({t:'hk', a:'ff_off'}); };
-    ff.addEventListener('pointerup', ffoff);
-    ff.addEventListener('pointercancel', ffoff);
-    ff.addEventListener('contextmenu', e=>e.preventDefault());
-  }
-  // analog thumbstick -> digital 8-way (dpad) AND analog axis (for N64/PS1)
-  function bindStick(){
-    const stick = $('#stick'), knob = $('#knob');
-    if(!stick) return;
-    let pid = null, lastAxisT = 0;
-    const active = {up:false,down:false,left:false,right:false};
-    const setDir = (d,on) => { if(active[d]===on) return; active[d]=on; send(on?'down':'up', d); };
-    const clearAll = () => ['up','down','left','right'].forEach(d=>setDir(d,false));
-    const sendAxis = (x,y) => {
-      const now = performance.now();
-      const zero = (x===0 && y===0);
-      if(!zero && now-lastAxisT < 45) return;     // throttle continuous moves
-      lastAxisT = now;
-      sendMsg({t:'axis', x:+x.toFixed(3), y:+y.toFixed(3)});
-    };
-    function move(e){
-      if(e.pointerId!==pid) return;
-      const r = stick.getBoundingClientRect();
-      const cx = r.left+r.width/2, cy = r.top+r.height/2;
-      const dx = e.clientX-cx, dy = e.clientY-cy;
-      const max = r.width*0.5, dead = max*0.30;
-      const dist = Math.hypot(dx,dy);
-      let kx=dx, ky=dy; if(dist>max){ kx=dx/dist*max; ky=dy/dist*max; }
-      knob.style.transform = `translate(${kx}px,${ky}px)`;
-      let ax=0, ay=0;
-      const want = {up:false,down:false,left:false,right:false};
-      if(dist>dead){
-        ax = Math.max(-1,Math.min(1, dx/max)); ay = Math.max(-1,Math.min(1, dy/max));
-        const deg = (Math.atan2(dy,dx)*180/Math.PI+360)%360;        // 0=right 90=down 180=left 270=up
-        const oct = Math.round(deg/45)%8;                            // 8 sectors of 45°
-        [['right'],['right','down'],['down'],['down','left'],['left'],['left','up'],['up'],['up','right']][oct].forEach(d=>want[d]=true);
-      }
-      sendAxis(ax, ay);
-      ['up','down','left','right'].forEach(d=>setDir(d,want[d]));
-    }
-    stick.addEventListener('pointerdown', e=>{ e.preventDefault(); pid=e.pointerId; try{stick.setPointerCapture(pid);}catch(_){} stick.classList.add('live'); vibe(); move(e); });
-    stick.addEventListener('pointermove', move);
-    const end = e=>{ if(e.pointerId!==pid)return; pid=null; knob.style.transform='translate(0,0)'; stick.classList.remove('live'); clearAll(); sendAxis(0,0); };
-    stick.addEventListener('pointerup', end);
-    stick.addEventListener('pointercancel', end);
-    stick.addEventListener('contextmenu', e=>e.preventDefault());
-  }
-
-  // phone view switching + library
-  function showPad(){ $('#padPlay').hidden=false; $('#padLib').hidden=true; $('#tgPad').setAttribute('data-on','1'); $('#tgLib').removeAttribute('data-on'); }
-  function showLib(){ $('#padPlay').hidden=true; $('#padLib').hidden=false; $('#tgLib').setAttribute('data-on','1'); $('#tgPad').removeAttribute('data-on'); loadPadLib(); }
-  async function loadPadLib(){
-    const list = $('#plibList');
-    try{
-      const lib = await (await fetch('/api/library',{cache:'no-store'})).json();
-      const items = [];
-      SYS.forEach(s => (lib[s.key]||[]).forEach(g => items.push({...g, sys:s.key})));
-      if(!items.length){ list.innerHTML='<div class="plempty">No games yet.<br>Drop files into the games/* folders.</div>'; return; }
-      list.innerHTML='';
-      items.forEach(g=>{
-        const s = SYSMAP[g.sys] || {};
-        const row=document.createElement('button');
-        row.className='plrow';
-        row.style.setProperty('--accent', s.accent || '#3fe0cf');
-        row.innerHTML='<span class="plk">'+(s.label||g.sys.toUpperCase())+'</span><span class="pln">'+esc(g.name)+'</span><span class="plgo">▶</span>';
-        row.onclick=()=>{ sendMsg({t:'launch', system:g.sys, url:g.url, name:g.name}); vibe(); showPad(); };
-        list.appendChild(row);
-      });
-    }catch(e){ list.innerHTML='<div class="plempty">Can\'t reach the server.</div>'; }
-  }
-
-  function initController(code){
-    ROOM = code;
-    document.documentElement.classList.add('padmode');
-    document.querySelector('.wrap').style.display = 'none';
-    $('#padRoot').hidden = false;
-    $('#padCodeLbl').textContent = code;
-    bindButtons(); bindStick(); bindExtras();
-    $('#tgPad').onclick = showPad;
-    $('#tgLib').onclick = showLib;
-    $('#padLibRefresh').onclick = loadPadLib;
-    send('hello');
-    setInterval(()=>{ if(!document.querySelector('.pbtn.on') && !$('#stick').classList.contains('live')) send('ping'); }, 8000);
-    window.addEventListener('pagehide', ()=>{ try{ navigator.sendBeacon('/input?room='+encodeURIComponent(code), JSON.stringify({t:'bye'})); }catch(e){} });
-    showLib();   // start on the games list so you can launch something on the TV
-  }
-
   /* ---- bootstrap ---- */
   // add ?debug=1 to the address to make EmulatorJS log every file it loads
   // (and the exact one that fails) to the browser console (F12).
@@ -1376,6 +1154,53 @@
   $('#pinBack').onclick = backToList;
   buildKeypad();
   loadSession();
+
+  /* ---- 10-foot navigation: TV remotes (and keyboards) send arrow keys ----
+     Arrows move focus spatially between the visible buttons — tabs, cards, top
+     actions — and Enter presses the focused one (native button behaviour).
+     Inactive while a game is playing (the emulator needs the arrow keys) and
+     inside text fields; works the same inside the profile picker. */
+  function navScope(){
+    const login = $('#login');
+    if(login && !login.hidden) return login;                      // profile picker open
+    if(document.body.classList.contains('playing')) return null;  // emulator owns the keys
+    return document.querySelector('.wrap');
+  }
+  function spatialNext(cur, cands, key){
+    const c = cur.getBoundingClientRect();
+    const cx = c.left + c.width/2, cy = c.top + c.height/2;
+    let best = null, bestScore = Infinity;
+    for(const el of cands){
+      if(el === cur) continue;
+      const r = el.getBoundingClientRect();
+      const dx = (r.left + r.width/2) - cx, dy = (r.top + r.height/2) - cy;
+      let p, o;                                  // p: distance ahead, o: sideways drift
+      if(key==='ArrowLeft')      { if(dx >= -4) continue; p = -dx; o = Math.abs(dy); }
+      else if(key==='ArrowRight'){ if(dx <=  4) continue; p =  dx; o = Math.abs(dy); }
+      else if(key==='ArrowUp')   { if(dy >= -4) continue; p = -dy; o = Math.abs(dx); }
+      else                       { if(dy <=  4) continue; p =  dy; o = Math.abs(dx); }
+      const score = p + o*2.5;                   // prefer the straight-ahead neighbour
+      if(score < bestScore){ bestScore = score; best = el; }
+    }
+    return best;
+  }
+  document.addEventListener('keydown', e => {
+    if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) return;
+    const t = e.target;
+    if(t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA' || t.tagName==='SELECT' || t.isContentEditable)) return;
+    const scope = navScope(); if(!scope) return;
+    const cands = [...scope.querySelectorAll('button, a[href]')].filter(el => {
+      if(el.disabled) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 4 && r.height > 4;        // skip hidden panels / collapsed items
+    });
+    if(!cands.length) return;
+    const cur = document.activeElement;
+    const next = (!cur || cands.indexOf(cur) === -1)
+      ? (scope.querySelector('.panel.live .card') || cands[0])    // first press lands on the grid
+      : spatialNext(cur, cands, e.key);
+    if(next){ next.focus(); try{ next.scrollIntoView({block:'nearest', inline:'nearest'}); }catch(_){} e.preventDefault(); }
+  });
 
   const padParam = new URLSearchParams(location.search).get('pad');
   if(padParam){

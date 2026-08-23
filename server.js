@@ -310,7 +310,10 @@ function monogram(name){
   if(w.length===1) return w[0].slice(0,2).toUpperCase();
   return (w[0][0]+w[1][0]).toUpperCase();
 }
-function genCover(kind, name){
+// shape: '' (landscape 320x140, the historic tile) or 'portrait' (300x450,
+// boxart-shaped — used by the library's portrait cards via /thumb/...?shape=portrait)
+function genCover(kind, name, shape){
+  const W = shape === 'portrait' ? 300 : 320, H = shape === 'portrait' ? 450 : 140;
   const accent = ACCENTS[kind] || '#7a8290';
   const h = hashStr(kind + '|' + name);
   const c = shiftHue(accent, (h % 46) - 23);     // stay in the system's colour family
@@ -320,20 +323,25 @@ function genCover(kind, name){
   let pat = '';
   if (style === 0) {                              // dot grid
     let d=''; const o=h%6;
-    for(let y=18;y<140;y+=22) for(let x=14+(((y/22)|0)%2?11:0);x<320;x+=22) d+=`<circle cx='${x+o}' cy='${y}' r='2.2'/>`;
+    for(let y=18;y<H;y+=22) for(let x=14+(((y/22)|0)%2?11:0);x<W;x+=22) d+=`<circle cx='${x+o}' cy='${y}' r='2.2'/>`;
     pat = `<g fill='${c}' fill-opacity='0.10'>${d}</g>`;
   } else if (style === 1) {                       // diagonal stripes
-    let d=''; for(let x=-140;x<340;x+=26) d+=`<line x1='${x}' y1='0' x2='${x+140}' y2='140'/>`;
+    let d=''; for(let x=-H;x<W+20;x+=26) d+=`<line x1='${x}' y1='0' x2='${x+H}' y2='${H}'/>`;
     pat = `<g stroke='${c}' stroke-opacity='0.09' stroke-width='9'>${d}</g>`;
   } else {                                        // nested frames
-    let d=''; for(let i=0;i<6;i++){ const m=8+i*13; d+=`<rect x='${m}' y='${m}' width='${320-2*m}' height='${140-2*m}' rx='9'/>`; }
+    let d=''; for(let i=0;i<9;i++){ const m=8+i*13; if(W-2*m<=0 || H-2*m<=0) break; d+=`<rect x='${m}' y='${m}' width='${W-2*m}' height='${H-2*m}' rx='9'/>`; }
     pat = `<g fill='none' stroke='${c}' stroke-opacity='0.08' stroke-width='3'>${d}</g>`;
   }
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='320' height='140' viewBox='0 0 320 140'>`+
+  const monoSize = shape === 'portrait' ? 92 : 62;
+  const monoY = shape === 'portrait' ? Math.round(H * 0.52) : 82;
+  // portrait tiles skip the corner label: the library card draws its own system chip there
+  const labelTxt = shape === 'portrait' ? ''
+    : `<text x='16' y='28' font-family='Arial,Helvetica,sans-serif' font-weight='700' font-size='12' letter-spacing='2' fill='${c}'>${svgEsc(label)}</text>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${W}' height='${H}' viewBox='0 0 ${W} ${H}'>`+
     `<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='${top}'/><stop offset='1' stop-color='${bot}'/></linearGradient></defs>`+
-    `<rect width='320' height='140' fill='url(#g)'/>${pat}`+
-    `<text x='160' y='82' font-family='Arial,Helvetica,sans-serif' font-weight='800' font-size='62' fill='${c}' fill-opacity='0.24' text-anchor='middle' dominant-baseline='middle'>${svgEsc(mono)}</text>`+
-    `<text x='16' y='26' font-family='Arial,Helvetica,sans-serif' font-weight='700' font-size='12' letter-spacing='2' fill='${c}'>${svgEsc(label)}</text>`+
+    `<rect width='${W}' height='${H}' fill='url(#g)'/>${pat}`+
+    `<text x='${W/2}' y='${monoY}' font-family='Arial,Helvetica,sans-serif' font-weight='800' font-size='${monoSize}' fill='${c}' fill-opacity='0.24' text-anchor='middle' dominant-baseline='middle'>${svgEsc(mono)}</text>`+
+    labelTxt+
     `</svg>`;
   return { data: Buffer.from(svg, 'utf8'), ct: 'image/svg+xml' };
 }
@@ -493,14 +501,14 @@ function readRawBody(req, max, cb){
 const jsonRes = (res, obj, code) => { res.writeHead(code || 200, { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-cache' }); res.end(JSON.stringify(obj)); };
 
 /* ---- resolve a thumbnail for one game ---- */
-async function resolveThumb(kind, file) {
+async function resolveThumb(kind, file, shape) {
   if (!SYS_KEYS.includes(kind)) return null;
   const dir = path.join(GAMES, kind);
   const full = path.join(dir, file);
   if (path.dirname(full) !== dir || !fs.existsSync(full)) return null;
 
   let st; try { st = fs.statSync(full); } catch (e) { return null; }
-  const key = kind + '|' + file + '|' + st.size + '|' + (+st.mtime);
+  const key = kind + '|' + file + '|' + st.size + '|' + (+st.mtime) + '|' + (shape || '');
   if (thumbCache.has(key)) return thumbCache.get(key);
 
   const base = file.replace(/\.[^.]+$/, '');
@@ -516,7 +524,7 @@ async function resolveThumb(kind, file) {
   if (!result && ext === '.pbp') result = pbpIcon(full);      // 4. ICON0.PNG inside a PSP/PS1 EBOOT
   if (!result && kind === 'psp' && ext === '.iso') result = isoIcon(full); // 5. ICON0.PNG inside a PSP ISO
   if (!result && kind === 'gba' && BOXART) result = await gbaBoxart(base);  // 6. live GBA box-art (legacy)
-  if (!result) result = genCover(kind, base);                 // 7. always: generated offline cover tile
+  if (!result) result = genCover(kind, base, shape);          // 7. always: generated offline cover tile
 
   thumbCache.set(key, result);
   return result;
@@ -760,7 +768,8 @@ const requestHandler = async (req, res) => {
   if (tm) {
     let file; try { file = decodeURIComponent(tm[2]); } catch (e) { res.writeHead(400); return res.end(); }
     try {
-      const t = await resolveThumb(tm[1], file);
+      const shape = q.searchParams.get('shape') === 'portrait' ? 'portrait' : '';
+      const t = await resolveThumb(tm[1], file, shape);
       if (!t) { res.writeHead(404); return res.end(); }
       // Covers rarely change, so let the browser keep them and revalidate with an
       // ETag instead of re-downloading every card's image every couple of minutes.
