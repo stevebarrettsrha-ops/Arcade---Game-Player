@@ -12,60 +12,48 @@
 </style>
 <style>
   :root{
-    --bg:#080b0f;--ink:#e9f2f3;--muted:#8499a0;--faint:#5b6c72;
-    --glass:rgba(20,30,37,.55);--glass-line:rgba(120,200,205,.18);
+    --bg:#0e1120;--ink:#eef0f6;--muted:#9aa1b5;--faint:#6b7186;
+    --panel:rgba(255,255,255,.05);--panel2:rgba(255,255,255,.08);--line:rgba(255,255,255,.10);
+    --glass:rgba(255,255,255,.05);--glass-line:rgba(255,255,255,.10);
     --cyan:#3fe0cf;--amber:#f2b545;--violet:#9b8bff;
-    --radius:18px;--shadow:0 30px 60px -20px rgba(0,0,0,.7);
+    --radius:12px;--shadow:0 18px 40px -18px rgba(0,0,0,.55);
   }
   *{box-sizing:border-box}
   [hidden]{display:none!important}   /* the hidden attribute must always win over class display rules */
   html,body{margin:0;height:100%}
   body{background:var(--bg);color:var(--ink);font-family:"Chakra Petch",system-ui,sans-serif;
     -webkit-font-smoothing:antialiased;min-height:100%;overflow-x:hidden;position:relative}
-  .bg-mesh{position:fixed;inset:0;z-index:-3;overflow:hidden;background:
-      radial-gradient(120% 90% at 12% -5%,#102229 0,transparent 55%),
-      radial-gradient(110% 80% at 92% 110%,#1a1530 0,transparent 55%),
-      linear-gradient(180deg,#080b0f,#0a0f14 60%,#070a0d)}
-  .blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.42;mix-blend-mode:screen;animation:drift 26s ease-in-out infinite}
-  .blob.a{width:46vmax;height:46vmax;left:-10vmax;top:-14vmax;background:radial-gradient(circle,#0f6e66,transparent 70%)}
-  .blob.b{width:40vmax;height:40vmax;right:-12vmax;bottom:-16vmax;background:radial-gradient(circle,#5a3fae,transparent 70%);animation-delay:-9s}
-  @keyframes drift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(4vmax,3vmax) scale(1.08)}66%{transform:translate(-3vmax,2vmax) scale(.95)}}
-  .grid{position:fixed;inset:0;z-index:-2;background-image:
-      linear-gradient(rgba(120,200,205,.045) 1px,transparent 1px),
-      linear-gradient(90deg,rgba(120,200,205,.045) 1px,transparent 1px);
-    background-size:46px 46px;mask-image:radial-gradient(120% 100% at 50% 0%,#000 30%,transparent 90%)}
-  .scan{position:fixed;inset:0;z-index:60;pointer-events:none;
-    background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px);opacity:.32;mix-blend-mode:multiply}
-  .vig{position:fixed;inset:0;z-index:-1;pointer-events:none;box-shadow:inset 0 0 28vmax rgba(0,0,0,.6)}
+  /* quiet, static backdrop — deep navy fading into purple, no effects */
+  .bg-mesh{position:fixed;inset:0;z-index:-3;background:
+      radial-gradient(90% 70% at 85% 100%,#241a44 0,transparent 60%),
+      radial-gradient(70% 55% at 10% 108%,#301b3f 0,transparent 55%),
+      linear-gradient(180deg,#0d1020,#101226 55%,#131132)}
 
-  .wrap{max-width:1100px;margin:0 auto;padding:clamp(20px,4vw,48px) clamp(16px,4vw,32px) 80px}
-  header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;
-    opacity:0;transform:translateY(14px);animation:rise .7s .05s cubic-bezier(.2,.8,.2,1) forwards}
-  .brand{display:flex;flex-direction:column;gap:6px}
-  .mark{font-family:"Silkscreen",monospace;font-weight:700;letter-spacing:1px;font-size:clamp(26px,5.4vw,44px);line-height:.95;
-    color:transparent;background:linear-gradient(92deg,var(--cyan),#bdfff5 55%,var(--cyan));-webkit-background-clip:text;background-clip:text;
-    text-shadow:0 0 22px rgba(63,224,207,.25)}
-  .mark .dot{color:var(--amber);-webkit-text-fill-color:var(--amber)}
-  .tag{color:var(--muted);font-size:13px;letter-spacing:.14em;text-transform:uppercase}
+  .wrap{max-width:1180px;margin:0 auto;padding:clamp(16px,3vw,32px) clamp(16px,4vw,32px) 80px}
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    opacity:0;transform:translateY(10px);animation:rise .6s .05s cubic-bezier(.2,.8,.2,1) forwards}
+  .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .mark{font-weight:700;letter-spacing:.02em;font-size:clamp(20px,3.4vw,26px);line-height:1;color:var(--ink)}
+  .mark .dot{color:var(--violet)}
+  .tag{color:var(--faint);font-size:12.5px}
   .topacts{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  .status{display:flex;align-items:center;gap:9px;padding:8px 14px;border-radius:999px;background:var(--glass);
-    border:1px solid var(--glass-line);backdrop-filter:blur(10px);font-size:12.5px;color:var(--muted)}
-  .led{width:9px;height:9px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:pulse 2.4s infinite}
-  .led.off{background:#c8593f;box-shadow:0 0 10px #c8593f;animation:none}
-  @keyframes pulse{50%{opacity:.4}}
+  .status{display:flex;align-items:center;gap:9px;padding:8px 14px;border-radius:999px;background:var(--panel);
+    border:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+  .led{width:8px;height:8px;border-radius:50%;background:#5fe0a0}
+  .led.off{background:#e0584f}
 
-  .tabs{display:flex;gap:8px;margin:26px 0 18px;flex-wrap:wrap;
-    opacity:0;transform:translateY(14px);animation:rise .7s .16s cubic-bezier(.2,.8,.2,1) forwards}
-  .tab{appearance:none;border:1px solid var(--glass-line);background:var(--glass);color:var(--muted);
-    font-family:inherit;font-size:13.5px;font-weight:600;letter-spacing:.04em;padding:10px 18px;border-radius:11px;cursor:pointer;
-    display:flex;align-items:center;gap:9px;backdrop-filter:blur(10px);transition:.2s}
-  .tab .n{font-family:"Silkscreen",monospace;font-size:10px;opacity:.8}
-  .tab[data-active]{color:#06100f;border-color:transparent;background:var(--ta,linear-gradient(180deg,#7df3e7,var(--cyan)))}
+  .tabs{display:flex;gap:6px;margin:22px 0 18px;flex-wrap:wrap;align-items:center;
+    opacity:0;transform:translateY(10px);animation:rise .6s .14s cubic-bezier(.2,.8,.2,1) forwards}
+  .tab{appearance:none;border:1px solid transparent;background:transparent;color:var(--muted);
+    font-family:inherit;font-size:14px;font-weight:600;padding:9px 16px;border-radius:999px;cursor:pointer;
+    display:flex;align-items:center;gap:8px;transition:.15s}
+  .tab:hover{color:var(--ink);background:var(--panel)}
+  .tab .n{font-size:11px;opacity:.7}
+  .tab[data-active]{color:var(--ink);background:var(--panel2);border-color:var(--line)}
   .spacer{flex:1}
-  .mini{appearance:none;border:1px solid var(--glass-line);background:transparent;color:var(--muted);
-    font-family:inherit;font-size:13px;padding:10px 14px;border-radius:11px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:.2s}
-  .mini:hover{color:var(--ink);border-color:rgba(255,255,255,.25)}
-  #userChip{color:var(--cyan);border-color:color-mix(in srgb,var(--cyan) 35%,transparent)}
+  .mini{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);
+    font-family:inherit;font-size:13px;font-weight:600;padding:9px 14px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:.15s}
+  .mini:hover{background:var(--panel2);border-color:rgba(255,255,255,.22)}
   #perfBtn.on{color:var(--amber);border-color:color-mix(in srgb,var(--amber) 45%,transparent);background:color-mix(in srgb,var(--amber) 10%,transparent)}
 
   /* ---- player login ---- */
@@ -74,7 +62,7 @@
   #login[hidden]{display:none}
   .loginbox{width:100%;max-width:440px;background:linear-gradient(180deg,#101a22,#0a1117);
     border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:26px 24px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.55)}
-  .lhead{font-family:"Silkscreen",monospace;font-size:18px;letter-spacing:2px;color:var(--cyan)}
+  .lhead{font-size:19px;font-weight:700;letter-spacing:.05em;color:var(--ink)}
   .lsub{color:var(--muted);font-size:13px;margin:8px 0 18px}
   .plist{display:flex;flex-direction:column;gap:8px;max-height:34vh;overflow:auto;margin-bottom:12px}
   .pchip{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
@@ -103,144 +91,126 @@
   .keypad button:active{filter:brightness(1.5);transform:translateY(2px)}
   .keypad button.wide{grid-column:span 1}
 
-  .panel{display:none}
-  .panel.live{display:block;animation:rise .45s ease forwards}
 
-  .shelf-head{display:flex;align-items:baseline;gap:12px;margin:6px 0 16px}
-  .shelf-head h2{margin:0;font-size:20px;font-weight:600}
-  .shelf-head .count{font-family:"Silkscreen",monospace;font-size:11px;color:var(--faint)}
+  /* keyboard / TV-remote focus: always visible */
+  button:focus-visible,a:focus-visible{outline:2px solid rgba(238,240,246,.9);outline-offset:2px}
 
-  /* keyboard / TV-remote focus: always visible, in the item's own accent */
-  button:focus-visible,a:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-
-  /* portrait (2:3) game cards — boxart-shaped, art fills the card, title overlaid */
-  .gridcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px}
-  .card{--accent:var(--cyan);position:relative;aspect-ratio:2/3;border-radius:var(--radius);overflow:hidden;cursor:pointer;text-align:left;padding:0;
-    font-family:inherit;color:var(--ink);
-    background:linear-gradient(160deg,rgba(28,40,48,.7),rgba(12,18,24,.55));border:1px solid var(--glass-line);
-    box-shadow:var(--shadow);transition:transform .25s,border-color .25s;animation:pop .5s both}
-  .card:hover,.card:focus-visible{transform:translateY(-5px);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
-  .card:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+  /* ---- game cards: art only — name + Play appear on hover / focus ---- */
+  .gridcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px}
+  .card{--accent:var(--cyan);position:relative;aspect-ratio:16/9;border-radius:var(--radius);overflow:hidden;cursor:pointer;text-align:left;padding:0;
+    font-family:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);
+    box-shadow:var(--shadow);transition:transform .2s,border-color .2s;animation:pop .4s both}
+  .card:hover,.card:focus-visible{transform:translateY(-3px);border-color:rgba(255,255,255,.30)}
+  .card:focus-visible{outline:3px solid rgba(238,240,246,.95);outline-offset:3px}
   .card .art{position:absolute;inset:0;overflow:hidden;
-    background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 24%,#0b1116),#0a0e12)}
-  .card .art .glyph{position:absolute;inset:0 0 18% 0;z-index:0;display:grid;place-items:center;font-family:"Silkscreen",monospace;
-    font-size:34px;letter-spacing:1px;color:color-mix(in srgb,var(--accent) 78%,#fff);opacity:.92;text-shadow:0 0 18px color-mix(in srgb,var(--accent) 60%,transparent)}
-  .card .art .cover{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:cover;background:#0a0e12;opacity:0;transition:opacity .35s}
+    background:linear-gradient(150deg,color-mix(in srgb,var(--accent) 16%,#151829),#12141f)}
+  .card .art .glyph{position:absolute;inset:0;z-index:0;display:grid;place-items:center;
+    font-size:30px;font-weight:700;letter-spacing:2px;color:color-mix(in srgb,var(--accent) 65%,#fff);opacity:.55}
+  .card .art .cover{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .3s}
   .card .art .cover.show{opacity:1}
-  .card .art .cover.pix{object-fit:contain;image-rendering:pixelated;padding:22px 18px 30%;background:
-      radial-gradient(120% 120% at 50% 30%,color-mix(in srgb,var(--accent) 16%,#0a0e12),#0a0e12)}
-  .card .art .sheen{position:absolute;inset:0;z-index:2;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.16) 45%,transparent 60%);transform:translateX(-60%);transition:transform .6s}
-  .card:hover .art .sheen,.card:focus-visible .art .sheen{transform:translateX(60%)}
-  .card .art .play{position:absolute;z-index:4;right:10px;bottom:64px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
-    background:color-mix(in srgb,var(--accent) 90%,#fff);color:#06100f;font-size:14px;box-shadow:0 6px 16px rgba(0,0,0,.4);transform:scale(.6);opacity:0;transition:.25s}
-  .card:hover .art .play,.card:focus-visible .art .play{transform:scale(1);opacity:1}
-  .card .chip{position:absolute;z-index:3;top:9px;left:9px;font-family:"Silkscreen",monospace;font-size:9px;letter-spacing:1px;
-    color:var(--accent);background:rgba(5,8,10,.66);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:6px;padding:4px 7px}
-  .card .badge{position:absolute;z-index:3;top:9px;right:9px;font-family:"Silkscreen",monospace;font-size:9px;letter-spacing:1px;
-    color:#06100f;background:linear-gradient(180deg,#ffe08a,var(--amber));border-radius:6px;padding:4px 7px}
-  .card .meta{position:absolute;left:0;right:0;bottom:0;z-index:3;padding:36px 12px 12px;
-    background:linear-gradient(transparent,rgba(5,8,10,.94) 72%)}
-  .card .meta .nm{font-size:13.5px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .card .meta .sz{margin-top:4px;font-size:10px;color:var(--muted);font-family:"Silkscreen",monospace;letter-spacing:.5px}
-  @keyframes pop{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  .card .art .cover.tall{object-fit:contain}     /* portrait boxart inside the wide frame */
+  .card .art .cover.pix{object-fit:contain;image-rendering:pixelated;padding:12%}
+  .card .chip{position:absolute;z-index:3;top:8px;left:8px;font-size:10.5px;font-weight:700;letter-spacing:.06em;
+    color:#dfe3ef;background:rgba(10,12,22,.62);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+  .card .badge{position:absolute;z-index:3;top:8px;right:8px;font-size:10.5px;font-weight:700;letter-spacing:.04em;
+    color:#151725;background:#ffd884;border-radius:6px;padding:4px 8px}
+  .card .meta{position:absolute;left:0;right:0;bottom:0;z-index:3;padding:30px 12px 10px;
+    display:flex;align-items:flex-end;justify-content:space-between;gap:10px;
+    background:linear-gradient(transparent,rgba(8,10,18,.94) 62%);
+    opacity:0;transform:translateY(4px);transition:.18s}
+  .card:hover .meta,.card:focus-visible .meta{opacity:1;transform:none}
+  .card .meta .nm{font-size:14px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .card .meta .go{flex:none;font-size:12.5px;font-weight:700;color:var(--ink);
+    background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 12px;white-space:nowrap}
+  @keyframes pop{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 
-  /* ---- HOME: hero carousel ---- */
-  .hero{position:relative;border-radius:22px;overflow:hidden;margin:4px 0 30px;min-height:min(340px,46vh);
-    display:flex;flex-direction:column;justify-content:flex-end;
-    border:1px solid var(--glass-line);box-shadow:var(--shadow);background:#0a0e12;animation:rise .5s ease both}
+  /* ---- hero: full-bleed art, copy on the right, thumbnail slide selectors ---- */
+  .hero{position:relative;border-radius:16px;overflow:hidden;margin:2px 0 22px;min-height:min(430px,54vh);
+    border:1px solid var(--line);box-shadow:var(--shadow);background:#12141f;animation:rise .5s ease both}
   .hero .hbg{position:absolute;inset:0;overflow:hidden}
-  .hero .hbg img{width:100%;height:100%;object-fit:cover;filter:blur(26px) saturate(1.15) brightness(.75);transform:scale(1.25)}
+  .hero .hbg img{width:100%;height:100%;object-fit:cover}
+  .hero .hbg img.tall{filter:blur(22px) brightness(.8);transform:scale(1.3)}   /* portrait art: cinematic fill */
   .hero .hshade{position:absolute;inset:0;background:
-      linear-gradient(180deg,rgba(8,11,15,.15),rgba(8,11,15,.86) 78%),
-      linear-gradient(100deg,rgba(8,11,15,.82) 0,transparent 55%),
-      radial-gradient(120% 140% at 88% 0%,color-mix(in srgb,var(--haccent,#3fe0cf) 26%,transparent),transparent 60%)}
-  .hero .hin{position:relative;z-index:1;padding:clamp(22px,4vw,40px);display:flex;flex-direction:column;gap:12px;align-items:flex-start}
-  .hbadge{display:inline-flex;align-items:center;gap:8px;font-family:"Silkscreen",monospace;font-size:9.5px;letter-spacing:1.5px;
-    color:#bfeee7;background:rgba(5,8,10,.55);border:1px solid color-mix(in srgb,var(--haccent,#3fe0cf) 40%,transparent);border-radius:999px;padding:6px 12px}
-  .htitle{font-family:"Silkscreen",monospace;font-size:clamp(20px,4.2vw,34px);line-height:1.15;color:var(--ink);
-    text-shadow:0 2px 18px rgba(0,0,0,.6);max-width:26ch}
-  .hsub{font-size:14.5px;color:var(--muted);max-width:60ch;line-height:1.55}
-  .hsub b{color:var(--amber)}
-  .hacts{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .hero .btn{--accent:var(--haccent,#3fe0cf)}
-  .hdots{position:absolute;right:18px;bottom:18px;z-index:2;display:flex;gap:7px}
-  .hdots button{appearance:none;border:0;cursor:pointer;width:9px;height:9px;border-radius:99px;padding:0;
-    background:rgba(233,242,243,.25);transition:.25s}
-  .hdots button[data-on]{width:26px;background:var(--haccent,#3fe0cf)}
+      linear-gradient(90deg,transparent 26%,rgba(10,11,22,.9) 74%),
+      linear-gradient(0deg,rgba(10,11,22,.78),transparent 44%)}
+  .hero .hin{position:absolute;right:clamp(18px,5vw,64px);top:0;bottom:92px;z-index:1;max-width:min(46%,430px);
+    display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:12px}
+  @media(max-width:640px){.hero .hin{left:18px;right:18px;max-width:none}}
+  .hbadge{font-size:11.5px;font-weight:700;letter-spacing:.08em;color:#cdd3e6;background:rgba(10,12,22,.55);
+    border:1px solid color-mix(in srgb,var(--haccent,#fff) 30%,transparent);border-radius:999px;padding:6px 12px}
+  .htitle{font-size:clamp(22px,3.6vw,34px);font-weight:700;line-height:1.15;color:var(--ink);
+    text-wrap:balance;text-shadow:0 2px 16px rgba(0,0,0,.55)}
+  .hsub{font-size:14.5px;color:#c6cbdd;line-height:1.55;text-shadow:0 1px 8px rgba(0,0,0,.5)}
+  .hsub b{color:#fff}
+  .hacts{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:4px}
+  .hpause{appearance:none;cursor:pointer;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);
+    background:rgba(10,12,22,.5);color:var(--ink);font-size:13px;display:grid;place-items:center}
+  .hpause:hover{background:rgba(255,255,255,.12)}
+  .hthumbs{position:absolute;left:0;right:0;bottom:16px;z-index:2;display:flex;gap:10px;justify-content:center}
+  .hthumbs button{appearance:none;cursor:pointer;padding:0;width:92px;aspect-ratio:16/9;border-radius:8px;overflow:hidden;
+    border:2px solid transparent;background:#1a1d30;opacity:.6;transition:.2s;display:grid;place-items:center;color:var(--ink)}
+  .hthumbs button img{width:100%;height:100%;object-fit:cover;display:block}
+  .hthumbs button .em{font-size:20px}
+  .hthumbs button[data-on]{border-color:#fff;opacity:1}
+  .hthumbs button:hover{opacity:1}
+  @media(max-width:560px){.hthumbs button{width:58px}}
 
-  /* ---- HOME: horizontal shelves ---- */
-  .shelf{margin:0 0 28px}
-  .shelf-bar{display:flex;align-items:baseline;gap:12px;margin:0 0 12px}
-  .shelf-bar h2{margin:0;font-size:18px;font-weight:600}
-  .shelf-bar .note{font-family:"Silkscreen",monospace;font-size:9.5px;letter-spacing:1px;color:var(--faint)}
-  .shelf-bar .seeall{margin-left:auto;appearance:none;background:none;border:0;cursor:pointer;font-family:inherit;
-    font-size:13px;font-weight:600;color:var(--cyan);padding:4px 6px;border-radius:8px;white-space:nowrap}
-  .shelfrow{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 12px;scroll-snap-type:x proximity;scrollbar-width:thin}
-  .shelfrow::-webkit-scrollbar{height:8px}
-  .shelfrow::-webkit-scrollbar-thumb{background:rgba(127,185,176,.25);border-radius:99px}
-  .shelfrow::-webkit-scrollbar-track{background:transparent}
-  .shelfrow .card{flex:0 0 158px;scroll-snap-align:start}
-  .card .rankno{position:absolute;z-index:2;left:6px;bottom:52px;font-family:"Silkscreen",monospace;font-weight:700;
-    font-size:56px;line-height:1;color:rgba(233,242,243,.16);text-shadow:0 2px 10px rgba(0,0,0,.35);pointer-events:none}
+  /* ---- emulator picker: a collapsible dropdown chooses what the grid shows ---- */
+  .pickrow{display:flex;gap:12px;align-items:center;margin:2px 0 14px;flex-wrap:wrap}
+  .pick{appearance:none;cursor:pointer;display:flex;align-items:center;gap:10px;font-family:inherit;font-weight:700;font-size:15px;
+    color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 16px}
+  .pick:hover{background:var(--panel2)}
+  .pick .caret{font-size:11px;color:var(--muted);transition:transform .2s}
+  .pick[data-open] .caret{transform:rotate(180deg)}
+  .pickrow .count{font-size:12.5px;color:var(--faint)}
+  .picklist{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;margin:0 0 16px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;animation:rise .2s ease both}
+  .pk{appearance:none;cursor:pointer;display:flex;align-items:center;gap:10px;text-align:left;font-family:inherit;font-size:13.5px;font-weight:600;
+    color:var(--muted);background:transparent;border:1px solid transparent;border-radius:9px;padding:10px 12px}
+  .pk:hover{color:var(--ink);background:var(--panel2)}
+  .pk[data-on]{color:var(--ink);background:var(--panel2);border-color:var(--line)}
+  .pk .pl{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pk .n{font-size:11px;color:var(--faint)}
+  .pk .sw{width:9px;height:9px;border-radius:3px;flex:none}
 
   /* ---- search overlay (🔍 button or the / key) ---- */
-  #search{position:fixed;inset:0;z-index:75;background:rgba(4,8,10,.82);backdrop-filter:blur(8px);
+  #search{position:fixed;inset:0;z-index:75;background:rgba(9,11,22,.86);backdrop-filter:blur(8px);
     overflow:auto;padding:6vh clamp(14px,4vw,32px) 48px}
-  .searchbox{max-width:1000px;margin:0 auto}
-  .srow{display:flex;align-items:center;gap:10px;background:#0e1820;border:1px solid var(--glass-line);
-    border-radius:14px;padding:6px 8px 6px 16px;margin-bottom:22px}
+  .searchbox{max-width:1100px;margin:0 auto}
+  .srow{display:flex;align-items:center;gap:10px;background:#151827;border:1px solid var(--line);
+    border-radius:12px;padding:6px 8px 6px 16px;margin-bottom:22px}
   .srow .sicon{font-size:16px}
   #searchInput{flex:1;min-width:0;background:none;border:0;outline:none;color:var(--ink);
     font-family:inherit;font-size:17px;padding:10px 0}
   #searchInput::placeholder{color:var(--faint)}
   .snote{grid-column:1/-1;color:var(--muted);text-align:center;padding:36px 16px;font-size:14px;line-height:1.6}
-  .snote code{background:rgba(63,224,207,.1);color:var(--cyan);padding:2px 7px;border-radius:5px;font-size:13px}
+  .snote code{background:var(--panel2);color:var(--ink);padding:2px 7px;border-radius:5px;font-size:13px}
   /* on-screen keys: type a search with a TV remote (arrows + OK) */
   #osk{margin:-8px 0 22px;display:flex;flex-direction:column;gap:8px}
   .oskrow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-  .oskkey{appearance:none;cursor:pointer;font-family:"Silkscreen",monospace;font-size:12px;color:#d6fbf4;
-    background:#0e1820;border:1px solid rgba(255,255,255,.12);border-radius:9px;min-width:44px;padding:11px 0;text-align:center}
+  .oskkey{appearance:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;color:var(--ink);
+    background:#151827;border:1px solid var(--line);border-radius:9px;min-width:44px;padding:11px 0;text-align:center}
   .oskkey:hover{border-color:rgba(255,255,255,.3)}
   .oskkey.wide{min-width:86px;padding:11px 14px}
-  #oskBtn.on{color:var(--cyan);border-color:color-mix(in srgb,var(--cyan) 45%,transparent);background:color-mix(in srgb,var(--cyan) 10%,transparent)}
-
-  /* ---- Game night: pairing as a first-class home section ---- */
-  .gamenight{display:flex;gap:22px;align-items:center;margin:0 0 28px;padding:20px;border-radius:18px;
-    background:linear-gradient(160deg,color-mix(in srgb,var(--amber) 9%,transparent),rgba(12,18,24,.5));
-    border:1px solid color-mix(in srgb,var(--amber) 30%,transparent)}
-  .gamenight .gnqr{width:132px;height:132px;flex:none;border-radius:12px;background:#dffaf5;display:grid;place-items:center;overflow:hidden}
-  .gamenight .gnqr img,.gamenight .gnqr canvas{width:100%!important;height:100%!important;display:block}
-  .gamenight .gnqr:empty::after{content:"no QR (offline)";font-size:10px;color:#0a4;font-family:"Silkscreen",monospace;text-align:center;padding:8px}
-  .gnbody{min-width:0}
-  .gnhead{font-family:"Silkscreen",monospace;font-size:10px;color:var(--amber);letter-spacing:2px}
-  .gntitle{font-size:19px;font-weight:700;margin:6px 0 5px}
-  .gnsub{font-size:13.5px;color:var(--muted);line-height:1.55;max-width:62ch}
-  .gnsub b{color:var(--ink)}
-  .gnrow{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:10px}
-  .gnurl{font-family:"Silkscreen",monospace;font-size:11px;color:var(--cyan);word-break:break-all}
-  .gnstat{margin-top:8px;font-size:12px;color:var(--faint)}
-  .gnstat.good{color:var(--cyan)}
-  @media(max-width:600px){.gamenight{flex-direction:column;align-items:flex-start}}
+  #oskBtn.on{border-color:rgba(255,255,255,.35);background:var(--panel2)}
 
   /* header avatar: the signed-in profile's own colour */
   .uav{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;flex:none;
-    font-family:"Silkscreen",monospace;font-size:8px;color:#06100f;font-weight:700}
+    font-size:9px;color:#12142a;font-weight:700}
 
   /* ---- chrome-lite: heavy effects off for weak TVs ----
-     Turns on with ⚡ Performance mode or prefers-reduced-motion: the animated
-     blur blobs, scanlines and backdrop blurs cost real frames on TV browsers. */
-  body.lite .blob,body.lite .scan{display:none}
-  body.lite .status,body.lite .tab,body.lite .help,body.lite .toast,body.lite .pair,body.lite #search{backdrop-filter:none}
-  body.lite #search{background:rgba(4,8,10,.95)}
+     Turns on with ⚡ Performance mode or prefers-reduced-motion: backdrop blurs
+     and the hero's blur fill cost real frames on TV browsers. */
+  body.lite .status,body.lite .help,body.lite .toast,body.lite .pair,body.lite #search{backdrop-filter:none}
+  body.lite #search{background:rgba(9,11,22,.96)}
   body.lite .card{animation:none}
-  body.lite .card .art .sheen{display:none}
-  body.lite .hero .hbg img{filter:brightness(.5);transform:none}
+  body.lite .hero .hbg img.tall{filter:brightness(.45);transform:none}
 
-  .empty{grid-column:1/-1;border:1px dashed var(--glass-line);border-radius:var(--radius);padding:34px 26px;text-align:center;color:var(--muted);background:rgba(255,255,255,.02)}
-  .empty .big{font-family:"Silkscreen",monospace;font-size:13px;color:var(--ink);margin-bottom:10px;letter-spacing:1px}
+  .empty{grid-column:1/-1;border:1px dashed var(--line);border-radius:var(--radius);padding:34px 26px;text-align:center;color:var(--muted);background:var(--panel)}
+  .empty .big{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px;letter-spacing:.04em}
   .pspbanner{grid-column:1/-1;background:linear-gradient(180deg,rgba(195,199,207,.10),rgba(195,199,207,.03));
     border:1px solid rgba(195,199,207,.25);border-radius:14px;padding:16px 18px;margin-bottom:14px}
-  .pspbanner .pb-h{font-family:"Silkscreen",monospace;font-size:12px;letter-spacing:1px;color:#dfe3ea;margin-bottom:10px}
+  .pspbanner .pb-h{font-size:14px;font-weight:700;letter-spacing:.04em;color:#dfe3ea;margin-bottom:10px}
   .pspbanner .pb-row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
   .pspbanner .pb-btn.primary{font-family:"Chakra Petch",sans-serif;font-weight:700;font-size:14px;color:#06100f;cursor:pointer;
     background:linear-gradient(180deg,#dfe3ea,#aeb4c0);border:none;border-radius:10px;padding:11px 16px;white-space:nowrap}
@@ -252,18 +222,20 @@
   .empty.amber code{background:rgba(242,181,69,.12);color:var(--amber)}
   .empty .load{margin-top:16px}
 
-  .btn{appearance:none;border:0;cursor:pointer;font-family:inherit;font-weight:600;font-size:14px;letter-spacing:.03em;
-    padding:11px 16px;border-radius:11px;color:#06100f;background:linear-gradient(180deg,color-mix(in srgb,var(--accent,#3fe0cf) 92%,#fff),var(--accent,#3fe0cf));
-    box-shadow:0 1px 0 rgba(255,255,255,.4) inset,0 -3px 0 rgba(0,0,0,.18) inset;transition:transform .12s,filter .2s}
-  .btn:hover{filter:brightness(1.06)} .btn:active{transform:translateY(2px)}
-  .btn.ghost{background:transparent;color:var(--accent,#3fe0cf);border:1px solid color-mix(in srgb,var(--accent,#3fe0cf) 40%,transparent);box-shadow:none}
-  .btn.ghost:hover{background:color-mix(in srgb,var(--accent,#3fe0cf) 10%,transparent)}
+  .btn{appearance:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:14px;
+    padding:11px 18px;border-radius:9px;color:var(--ink);background:var(--panel2);border:1px solid var(--line);
+    transition:background .15s,transform .12s}
+  .btn:hover{background:rgba(255,255,255,.16)} .btn:active{transform:translateY(1px)}
+  .btn.primary{background:#e9ecf6;color:#12142a;border-color:transparent}
+  .btn.primary:hover{background:#fff}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  .btn.ghost:hover{background:var(--panel)}
 
   /* stages */
   .stage{display:none} .stage.live{display:block;animation:rise .5s ease forwards}
   body.playing .libview{display:none}
   .stagebar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 18px;flex-wrap:wrap}
-  .stagebar .title{font-family:"Silkscreen",monospace;font-size:13px;letter-spacing:1px}
+  .stagebar .title{font-size:15px;font-weight:700;letter-spacing:.04em}
   .stagebar .acts{display:flex;gap:10px;flex-wrap:wrap}
   .bezel{border-radius:22px;padding:18px;background:linear-gradient(160deg,#161d23,#0a0e12);border:1px solid rgba(255,255,255,.07);
     box-shadow:var(--shadow),inset 0 0 0 1px rgba(0,0,0,.4)}
@@ -301,7 +273,7 @@
   .help{margin-top:20px;background:var(--glass);border:1px solid var(--glass-line);border-radius:14px;padding:16px 18px;backdrop-filter:blur(10px)}
   .help h3{margin:0 0 10px;font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
   .keys{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 16px;font-size:13px;color:var(--muted)}
-  .keys b{color:var(--ink);font-weight:600;font-family:"Silkscreen",monospace;font-size:11px;margin-right:8px}
+  .keys b{color:var(--ink);font-weight:700;font-size:12.5px;margin-right:8px}
 
   footer{margin-top:38px;color:var(--faint);font-size:12px;text-align:center;line-height:1.7}
   /* toast (launch/save feedback) */
@@ -317,15 +289,15 @@
   .pair[hidden]{display:none}
   .pair .qr{width:150px;height:150px;flex:none;border-radius:12px;background:#dffaf5;display:grid;place-items:center;overflow:hidden}
   .pair .qr img,.pair .qr canvas{width:100%!important;height:100%!important;display:block}
-  .pair .qr:empty::after{content:"no QR (offline)";font-size:10px;color:#0a4;font-family:"Silkscreen",monospace;text-align:center;padding:8px}
+  .pair .qr:empty::after{content:"no QR (offline)";font-size:11px;font-weight:700;color:#0a4;text-align:center;padding:8px}
   .pair .pairtext{min-width:0}
   .pair .pl{font-size:12.5px;color:var(--muted);margin:2px 0}
-  .pair .purl{font-family:"Silkscreen",monospace;font-size:15px;color:var(--cyan);word-break:break-all;margin:4px 0 8px}
-  .pair .pairtext b{color:var(--amber);font-family:"Silkscreen",monospace}
-  .mpbtn{margin-top:8px;font-family:"Silkscreen",monospace;font-size:10px;letter-spacing:1px;color:#bfeee7;
-    background:#152029;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:8px 12px;cursor:pointer}
-  .mpbtn:hover{filter:brightness(1.2)}
-  .mpbtn.on{color:#06100f;background:linear-gradient(180deg,#9be0a5,#3fc06a);border-color:transparent;font-weight:700}
+  .pair .purl{font-size:14px;font-weight:600;color:var(--ink);word-break:break-all;margin:4px 0 8px}
+  .pair .pairtext b{color:var(--amber);font-weight:700}
+  .mpbtn{margin-top:8px;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--ink);
+    background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}
+  .mpbtn:hover{background:rgba(255,255,255,.16)}
+  .mpbtn.on{color:#12142a;background:#9be0a5;border-color:transparent}
   .pair .pstat{margin-top:8px;font-size:12px;color:var(--faint)}
   .pair .pstat.good{color:var(--cyan)}
 
@@ -340,14 +312,13 @@
 </style>
 </head>
 <body>
-<div class="bg-mesh"><span class="blob a"></span><span class="blob b"></span></div>
-<div class="grid"></div><div class="vig"></div><div class="scan"></div>
+<div class="bg-mesh"></div>
 
 <div class="wrap">
   <header class="top">
     <div class="brand">
-      <div class="mark">ARCADE<span class="dot">·</span>DECK</div>
-      <div class="tag">home game server · your folder, your games</div>
+      <div class="mark">▲ arcade<span class="dot">·</span>deck</div>
+      <div class="tag">your folder, your games — on every screen</div>
     </div>
     <div class="topacts">
       <button class="mini" id="userChip">👤 Guest</button>
@@ -406,10 +377,17 @@
     </div>
   </div>
 
-  <!-- LIBRARY -->
+  <!-- LIBRARY: hero + one collapsible emulator picker + an art-only game grid -->
   <div class="libview">
-    <nav class="tabs" id="tabs"></nav>
-    <div id="panels"></div>
+    <div id="hero" hidden></div>
+    <div class="pickrow">
+      <button class="pick" id="sysPick">🎮 <span id="sysPickLbl">All systems</span> <span class="caret">▾</span></button>
+      <span class="count" id="pickCount"></span>
+      <span class="spacer"></span>
+      <button class="mini" id="refresh">↻ Rescan</button>
+    </div>
+    <div class="picklist" id="sysList" hidden></div>
+    <div class="gridcards" id="gameGrid"></div>
   </div>
 
   <!-- GBA STAGE -->
@@ -546,46 +524,81 @@
     if(s.length < 2 && words[0]) s = words[0].slice(0,2);
     return (s || '??').toUpperCase();
   }
-  let activeTab = 'home';
-  function buildTabs(){
-    const tabs = $('#tabs');
-    tabs.innerHTML = '<button class="tab" data-tab="home">⌂ HOME</button>' + SYS.map(s =>
-      '<button class="tab" data-tab="'+s.key+'">'+s.label+' <span class="n" id="n-'+s.key+'">0</span></button>'
-    ).join('') + '<span class="spacer"></span><button class="mini" id="refresh">↻ Rescan</button>';
-    tabs.querySelectorAll('.tab').forEach(t => {
-      const sm = SYSMAP[t.dataset.tab];
-      if(sm) t.style.setProperty('--ta', 'linear-gradient(180deg,color-mix(in srgb,'+sm.accent+' 75%,#fff),'+sm.accent+')');
-      t.onclick = () => switchTab(t.dataset.tab);
-    });
-    $('#refresh').onclick = loadLibrary;
-    $('#panels').innerHTML =
-      '<section class="panel" id="panel-home"><div id="hero" hidden></div><div id="homeShelves"></div></section>' +
-      SYS.map(s =>
-      '<section class="panel" id="panel-'+s.key+'"><div class="shelf-head"><h2>'+s.full+'</h2>'+
-      '<span class="count" id="count-'+s.key+'"></span></div><div class="gridcards" id="grid-'+s.key+'"></div></section>'
-    ).join('');
-    switchTab(activeTab);
+  /* ---- what the grid shows: everything, one system, or one host emulator.
+     The collapsible picker (🎮 dropdown) sets this; the choice sticks per tab. */
+  let SEL = { type:'all' };
+  try{ const s = JSON.parse(sessionStorage.getItem('arcade_sel')||'null'); if(s && s.type) SEL = s; }catch(e){}
+  function saveSel(){ try{ sessionStorage.setItem('arcade_sel', JSON.stringify(SEL)); }catch(e){} }
+  function selEmu(){ return (LIB.emulators||[]).find(e => e.id === SEL.id) || null; }
+  function hostGamesCount(){ return (LIB.emulators||[]).reduce((a,e) => a + (e.games||[]).length, 0); }
+  function selLabel(){
+    if(SEL.type==='sys' && SYSMAP[SEL.key]) return SYSMAP[SEL.key].full;
+    if(SEL.type==='host'){ const e = selEmu(); if(e) return e.name + ' — on host'; }
+    return 'All systems';
   }
-  function switchTab(key){
-    activeTab = key;
-    document.querySelectorAll('#tabs .tab').forEach(t => t.toggleAttribute('data-active', t.dataset.tab===key));
-    document.querySelectorAll('#panels .panel').forEach(p => p.classList.toggle('live', p.id === 'panel-'+key));
+  function selItems(){                    // -> [{kind:'game'|'host', sys?, e?, g}]
+    const items = [];
+    if(SEL.type==='sys'){
+      (LIB[SEL.key]||[]).forEach(g => items.push({ kind:'game', sys:SEL.key, g }));
+      return items;
+    }
+    if(SEL.type==='host'){
+      const e = selEmu();
+      if(e){
+        (e.games||[]).forEach(g => items.push({ kind:'host', e, g }));
+        if(!e.needsRom) items.push({ kind:'host', e, g:{ name:e.name + ' (emulator menu)', file:'' } });
+      }
+      return items;
+    }
+    SYS.forEach(s => (LIB[s.key]||[]).forEach(g => items.push({ kind:'game', sys:s.key, g })));
+    (LIB.emulators||[]).forEach(e => (e.games||[]).forEach(g => items.push({ kind:'host', e, g })));
+    items.sort((a,b) => a.g.name.localeCompare(b.g.name, undefined, { numeric:true }));
+    return items;
+  }
+  function setSel(sel){ SEL = sel; saveSel(); closePicker(); renderPicker(); renderGrid(); }
+  function openPicker(){ buildPickList(); $('#sysList').hidden = false; $('#sysPick').setAttribute('data-open','1'); }
+  function closePicker(){ $('#sysList').hidden = true; $('#sysPick').removeAttribute('data-open'); }
+  function togglePicker(){ $('#sysList').hidden ? openPicker() : closePicker(); }
+  function buildPickList(){
+    const list = $('#sysList'); list.innerHTML = '';
+    const mk = (label, n, accent, sel, on) => {
+      const b = document.createElement('button'); b.className = 'pk';
+      if(on) b.setAttribute('data-on','');
+      b.innerHTML = '<span class="sw"></span><span class="pl"></span><span class="n"></span>';
+      b.querySelector('.sw').style.background = accent || 'rgba(255,255,255,.35)';
+      b.querySelector('.pl').textContent = label;
+      b.querySelector('.n').textContent = n;
+      b.onclick = () => setSel(sel);
+      list.appendChild(b);
+    };
+    mk('All systems', totalGames() + hostGamesCount(), null, { type:'all' }, SEL.type==='all');
+    SYS.forEach(s => {
+      const n = (LIB[s.key]||[]).length;
+      if(!n && s.key!=='psp') return;                       // PSP stays listed: its PPSSPP entry matters even empty
+      mk(s.full, n, s.accent, { type:'sys', key:s.key }, SEL.type==='sys' && SEL.key===s.key);
+    });
+    (LIB.emulators||[]).forEach(e =>
+      mk('🖥️ '+e.name, (e.games||[]).length || 'menu', '#c3c7cf', { type:'host', id:e.id }, SEL.type==='host' && SEL.id===e.id));
+  }
+  function renderPicker(){
+    $('#sysPickLbl').textContent = selLabel();
+    const items = selItems();
+    $('#pickCount').textContent = items.length ? items.length + (items.length===1 ? ' game' : ' games') : '';
   }
   function render(){
     const sb = $('#streamBtn'); if(sb) sb.hidden = !LIB.stream;   // show host-emulators entry only in streaming mode
-    if(!$('#tabs').dataset.built){ buildTabs(); $('#tabs').dataset.built='1'; }
-    SYS.forEach(s => {
-      const items = LIB[s.key] || [];
-      const n=$('#n-'+s.key); if(n) n.textContent = items.length;
-      renderShelf(s, items);
-    });
+    // a rescan may have removed what was selected — fall back to everything
+    if(SEL.type==='sys' && !SYSMAP[SEL.key]) SEL = { type:'all' };
+    if(SEL.type==='host' && !selEmu()) SEL = { type:'all' };
+    renderPicker();
     renderHome();
   }
   function cardLaunch(sysKey, g){
     sysKey==='j2me' ? launchJ2ME(g) : sysKey==='psp' ? launchPSP(g) : launchEmu(sysKey, g.url, g.name);
   }
-  // one portrait game card, shared by the system grids and the home shelves.
-  // opts: { delay: '0.1s', rank: 3, badge: '💾 SAVE' }
+  // one game card: art only — the name and a Play chip fade in on hover/focus.
+  // Wide art fills the frame; portrait boxart is letterboxed ('tall'); tiny
+  // embedded icons render pixel-sharp ('pix'). opts: { delay:'0.1s' }
   function gameCard(sysKey, g, opts){
     opts = opts || {};
     const s = SYSMAP[sysKey];
@@ -593,49 +606,62 @@
     c.className = 'card';
     c.style.setProperty('--accent', s.accent);
     if(opts.delay) c.style.animationDelay = opts.delay;
-    c.title = g.name + (g.ext ? ' · ' + g.ext.toUpperCase() : '') + (g.size ? ' · ' + fmt(g.size) : '');
+    c.title = g.name + ' · ' + s.label + (g.size ? ' · ' + fmt(g.size) : '');
+    const saved = hasSave(sysKey, g.name);
     c.innerHTML =
       '<div class="art"><div class="glyph">'+esc(initials(g.name))+'</div>'+
-        (g.thumb ? '<img class="cover" loading="lazy" alt="">' : '')+
-        '<div class="sheen"></div><div class="play">▶</div></div>'+
-      (opts.rank ? '<span class="rankno">'+opts.rank+'</span>' : '')+
+        (g.thumb ? '<img class="cover" loading="lazy" alt="">' : '')+'</div>'+
       '<span class="chip">'+s.label+'</span>'+
-      (opts.badge ? '<span class="badge">'+opts.badge+'</span>' : '')+
-      '<div class="meta"><div class="nm">'+esc(g.name)+'</div></div>';
+      (saved ? '<span class="badge">💾 SAVE</span>' : '')+
+      '<div class="meta"><div class="nm">'+esc(g.name)+'</div>'+
+      '<span class="go">'+(saved ? '▶ Continue' : '▶ Play')+'</span></div>';
     const img = c.querySelector('.cover');
     if(img){
-      img.onload  = function(){ if(this.naturalWidth && this.naturalWidth < 96) this.classList.add('pix'); this.classList.add('show'); };
+      img.onload  = function(){
+        if(this.naturalWidth && this.naturalWidth < 96) this.classList.add('pix');
+        else if(this.naturalHeight > this.naturalWidth) this.classList.add('tall');
+        this.classList.add('show');
+      };
       img.onerror = function(){ this.remove(); };
-      img.src = g.thumb + '?shape=portrait';   // boxart-shaped generated covers (real art is untouched)
+      img.src = g.thumb;
     }
     c.onclick = () => cardLaunch(sysKey, g);
     return c;
   }
-  function renderShelf(s, items){
-    const grid = $('#grid-'+s.key), count = $('#count-'+s.key);
-    if(!grid) return;
-    count.textContent = items.length ? items.length + (items.length===1?' game':' games') : '';
+  function pspBanner(){
+    const banner = document.createElement('div');
+    banner.className = 'pspbanner';
+    banner.innerHTML =
+      '<div class="pb-h">Two PSP engines</div>'+
+      '<div class="pb-row">'+
+        '<button class="pb-btn primary" id="ppssppBtn">▸ Open PPSSPP'+(LIB.pspWeb?' (offline copy)':'')+'</button>'+
+        '<span class="pb-note">Real PPSSPP — best compatibility, its own controls. '+
+          (LIB.pspWeb ? 'Running your local offline copy.' : 'Opens the PPSSPP web app; use its <b>Install</b> option once online to keep it offline.')+'</span>'+
+      '</div>'+
+      '<div class="pb-sub">Below: the built-in (beta) PSP core — works with the phone pad, but crashes often. Needs PSP mode'+(LIB.isolated?' (ON).':' — currently OFF.')+'</div>';
+    const pb = banner.querySelector('#ppssppBtn'); if(pb) pb.onclick = openPPSSPP;
+    return banner;
+  }
+  function renderGrid(){
+    const grid = $('#gameGrid'); if(!grid) return;
     grid.innerHTML = '';
-    if(s.key==='psp'){
-      const banner = document.createElement('div');
-      banner.className = 'pspbanner';
-      banner.innerHTML =
-        '<div class="pb-h">Two PSP engines</div>'+
-        '<div class="pb-row">'+
-          '<button class="pb-btn primary" id="ppssppBtn">▸ Open PPSSPP'+(LIB.pspWeb?' (offline copy)':'')+'</button>'+
-          '<span class="pb-note">Real PPSSPP — best compatibility, its own controls. '+
-            (LIB.pspWeb ? 'Running your local offline copy.' : 'Opens the PPSSPP web app; use its <b>Install</b> option once online to keep it offline.')+'</span>'+
-        '</div>'+
-        '<div class="pb-sub">Below: the built-in (beta) PSP core — works with the phone pad, but crashes often. Needs PSP mode'+(LIB.isolated?' (ON).':' — currently OFF.')+'</div>';
-      grid.appendChild(banner);
-      const pb = banner.querySelector('#ppssppBtn'); if(pb) pb.onclick = openPPSSPP;
-    }
+    if(SEL.type==='sys' && SEL.key==='psp') grid.appendChild(pspBanner());
+    const items = selItems();
     if(!items.length){
       const e = document.createElement('div'); e.className = 'empty';
-      e.innerHTML = '<div class="big">NO GAMES YET</div>Drop '+s.exts+' files into <code>games/'+s.key+'</code>, then press <b>Rescan</b>.';
-      grid.appendChild(e); return;
+      if(SEL.type==='sys'){
+        const s = SYSMAP[SEL.key];
+        e.innerHTML = '<div class="big">NO GAMES YET</div>Drop '+s.exts+' files into <code>games/'+SEL.key+'</code> on the host, then press <b>↻ Rescan</b>.';
+      } else if(SEL.type==='host'){
+        e.innerHTML = '<div class="big">NO GAMES LISTED</div>Point this emulator’s <code>roms</code> folder at your games in its <code>emulator.json</code> on the host.';
+      } else {
+        e.innerHTML = '<div class="big">NO GAMES YET</div>Drop game files into the <code>games/*</code> folders next to the server, then press <b>↻ Rescan</b>.';
+      }
+      grid.appendChild(e);
+      return;
     }
-    items.forEach((g,i) => grid.appendChild(gameCard(s.key, g, { delay:(i*0.03)+'s' })));
+    items.forEach((it,i) => grid.appendChild(
+      it.kind==='host' ? hostCard(it.e, it.g) : gameCard(it.sys, it.g, { delay:(Math.min(i,20)*0.02)+'s' })));
   }
   const esc = s => s.replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 
@@ -656,6 +682,7 @@
   }
   // the server stores saves under a sanitised name — apply the same transform to match
   const safeGameJS = s => String(s||'').replace(/[^A-Za-z0-9 ._()\[\]+-]/g,'_').slice(0,120) || 'game';
+  function hasSave(sys, name){ const k = safeGameJS(name); return SAVES.some(sv => sv.system===sys && sv.game===k); }
   function continueList(){
     const out = [];
     for(const sv of SAVES){
@@ -672,97 +699,32 @@
     out.sort((a,b) => (b.g.mtime||0) - (a.g.mtime||0));
     return out.slice(0, 8);
   }
-  function makeShelf(title, note, cards, onSeeAll, seeLbl){
-    const sh = document.createElement('section'); sh.className = 'shelf';
-    const bar = document.createElement('div'); bar.className = 'shelf-bar';
-    bar.innerHTML = '<h2></h2><span class="note"></span>';
-    bar.querySelector('h2').textContent = title;
-    bar.querySelector('.note').textContent = note || '';
-    if(onSeeAll){
-      const b = document.createElement('button'); b.className = 'seeall';
-      b.textContent = (seeLbl || 'See all') + ' →'; b.onclick = onSeeAll;
-      bar.appendChild(b);
-    }
-    const row = document.createElement('div'); row.className = 'shelfrow';
-    cards.forEach(c => row.appendChild(c));
-    sh.appendChild(bar); sh.appendChild(row);
-    return sh;
-  }
   function hostCard(e, g){
     const c = document.createElement('button'); c.className = 'card'; c.style.setProperty('--accent', '#c3c7cf');
-    c.innerHTML = '<div class="art"><div class="glyph">🎮</div><div class="sheen"></div><div class="play">▶</div></div>'+
+    c.title = g.name + ' · runs on the host';
+    c.innerHTML = '<div class="art"><div class="glyph">🎮</div>'+
+      (e.icon ? '<img class="cover show" src="'+esc(e.icon)+'" alt="">' : '')+'</div>'+
       '<span class="chip">'+esc(e.system||'HOST')+'</span><span class="badge">HOST</span>'+
-      '<div class="meta"><div class="nm">'+esc(g.name)+'</div></div>';
+      '<div class="meta"><div class="nm">'+esc(g.name)+'</div><span class="go">▶ Play on host</span></div>';
     c.onclick = () => startStream(e, g.file);
     return c;
   }
-  // Game night: the pairing feature as a first-class home section — inline QR,
-  // live player readout (via setPairStat) and the 2P/4P toggle (via updateMpBtn)
-  function gameNightCard(){
-    const sec = document.createElement('section');
-    sec.className = 'gamenight'; sec.id = 'gameNight';
-    sec.innerHTML =
-      '<div class="gnqr" id="gnQR"></div>'+
-      '<div class="gnbody">'+
-        '<div class="gnhead">🎉 GAME NIGHT</div>'+
-        '<div class="gntitle">Phones become the controllers</div>'+
-        '<div class="gnsub">Scan the code on each phone — the first is <b>Player 1</b>, the next <b>Player 2</b>, up to four. '+
-          'Every phone gets an analog stick, all the buttons, and a Games drawer to launch anything on this screen.</div>'+
-        '<div class="gnrow">'+
-          '<span class="gnurl" id="gnURL">…</span>'+
-          '<button class="mpbtn" id="gnMp">2-PLAYER MODE</button>'+
-        '</div>'+
-        '<div class="gnstat" id="gnStat">waiting for a controller…</div>'+
-      '</div>';
-    pairingInfo().then(info => {
-      const u = sec.querySelector('#gnURL'); if(u) u.textContent = info.url + ' · room ' + info.code;
-      makeQR(sec.querySelector('#gnQR'), info.url);
-    });
-    sec.querySelector('#gnMp').onclick = () => setFourPlayer(!fourPlayer);
-    return sec;
-  }
   function renderHome(){
-    const heroEl = $('#hero'), shelves = $('#homeShelves');
-    if(!heroEl || !shelves) return;
-    buildHero(heroEl);
-    shelves.innerHTML = '';
-    const cont = continueList();
-    if(cont.length) shelves.appendChild(makeShelf('Continue playing', 'SAVES · '+(USERDISP||'').toUpperCase(),
-      cont.map(it => gameCard(it.sys, it.g, { badge:'💾 SAVE' }))));
-    const fresh = newestList();
-    if(fresh.length > 1) shelves.appendChild(makeShelf('Top new in your library', 'BY DATE ADDED',
-      fresh.map((it,i) => gameCard(it.sys, it.g, { rank:i+1 }))));
-    if(LIB.stream){
-      const cards = [];
-      (LIB.emulators||[]).forEach(e => (e.games||[]).slice(0,8).forEach(g => cards.push(hostCard(e, g))));
-      if(cards.length) shelves.appendChild(makeShelf('Plays on the host', 'STREAMED · PHONES ARE PADS',
-        cards, openStreamPicker, 'All host emulators'));
-    }
-    if(totalGames() > 0){
-      shelves.appendChild(gameNightCard());
-      updateMpBtn(); renderPlayers();      // re-apply live state onto the fresh card
-    }
-    SYS.forEach(s => {
-      const items = LIB[s.key]||[];
-      if(!items.length) return;
-      shelves.appendChild(makeShelf(s.full, items.length + (items.length===1?' GAME':' GAMES'),
-        items.slice(0,12).map(g => gameCard(s.key, g)), () => switchTab(s.key)));
-    });
-    if(!shelves.children.length){
-      const e = document.createElement('div'); e.className = 'empty';
-      e.innerHTML = '<div class="big">NO GAMES YET</div>Drop game files into the <code>games/*</code> folders next to the server, then press <b>↻ Rescan</b>.';
-      shelves.appendChild(e);
-    }
+    const heroEl = $('#hero');
+    if(heroEl) buildHero(heroEl);
+    renderPicker();
+    renderGrid();                          // SAVE badges come from the freshest SAVES
   }
 
-  /* ---- hero carousel: one game (or platform feature) merchandised at a time ---- */
-  let heroSlides = [], heroIdx = 0, heroTimer = null;
+  /* ---- hero carousel: one game (or platform feature) merchandised at a time.
+     Full-bleed art, copy on the right, thumbnail slide selectors + pause. ---- */
+  let heroSlides = [], heroIdx = 0, heroTimer = null, heroPaused = false;
   function buildHeroSlides(){
     const slides = [];
     const cont = continueList();
     if(cont.length){
       const it = cont[0], s = SYSMAP[it.sys];
-      slides.push({ accent:s.accent, thumb:it.g.thumb+'?shape=portrait',
+      slides.push({ accent:s.accent, thumb:it.g.thumb,
         badge:'💾 CONTINUE PLAYING'+(USERDISP && USERDISP!=='Guest' ? ' · '+esc(USERDISP.toUpperCase()) : ''),
         title:it.g.name, sub:s.label+' — you have a save; it loads automatically when the game starts.',
         cta:'▶ Continue', act:() => cardLaunch(it.sys, it.g) });
@@ -770,29 +732,29 @@
     const fresh = newestList();
     if(fresh.length){
       const it = fresh[0], s = SYSMAP[it.sys];
-      slides.push({ accent:s.accent, thumb:it.g.thumb+'?shape=portrait',
+      slides.push({ accent:s.accent, thumb:it.g.thumb,
         badge:'★ NEW IN YOUR LIBRARY', title:it.g.name,
-        sub:s.full+' — the newest file in your games folders.',
+        sub:s.full+' — no download, no install: pick it and play, on any screen in the house.',
         cta:'▶ Play', act:() => cardLaunch(it.sys, it.g) });
     }
     if(LIB.stream && (LIB.emulators||[]).some(e => (e.games||[]).length || !e.needsRom)){
-      slides.push({ accent:'#c3c7cf', thumb:null,
+      slides.push({ accent:'#c3c7cf', thumb:null, icon:'🖥️',
         badge:'🖥️ STREAMING MODE ON', title:'Big consoles, every screen',
         sub:'PS2, XBOX and more run on the host computer and stream here — phones are the controllers.',
         cta:'Browse host games', act:openStreamPicker });
     }
     if(totalGames() > 0){
-      slides.push({ accent:'#f2b545', thumb:null,
+      slides.push({ accent:'#f2b545', thumb:null, icon:'📱',
         badge:'📱 GAME NIGHT', title:'Phones are the controllers',
         sub:'Scan a QR code and up to four phones become gamepads for the game on this screen — <b>SAVE</b>, <b>TURBO</b> and fast-forward included.',
         cta:'📱 Show the code', act:() => {
-          switchTab('home');
-          const gn = $('#gameNight');
-          if(gn) gn.scrollIntoView({ behavior:'smooth', block:'center' });
+          const p = $('#pairPanel');
+          if(p.hidden){ ensurePairing(); p.hidden = false; }
+          window.scrollTo({ top:0, behavior:'smooth' });
         } });
     }
     if(!slides.length){
-      slides.push({ accent:'#3fe0cf', thumb:null,
+      slides.push({ accent:'#9b8bff', thumb:null, icon:'▲',
         badge:'GET STARTED', title:'Add your first game',
         sub:'Drop legally-owned game files into the <b>games/*</b> folders next to the server, then rescan.',
         cta:'↻ Rescan', act:loadLibrary });
@@ -807,7 +769,7 @@
     const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches;
     if(heroSlides.length > 1 && !reduce){
       heroTimer = setInterval(() => {
-        if(document.body.classList.contains('playing')) return;
+        if(heroPaused || document.body.classList.contains('playing')) return;
         const h = $('#hero'); if(!h) return;
         try{ if(h.matches(':hover') || h.contains(document.activeElement)) return; }catch(e){}   // never advance under the user
         heroIdx = (heroIdx + 1) % heroSlides.length;
@@ -822,18 +784,31 @@
     el.className = 'hero';
     el.style.setProperty('--haccent', sl.accent);
     el.innerHTML =
-      '<div class="hbg">'+(sl.thumb ? '<img alt="" src="'+sl.thumb+'">' : '')+'</div><div class="hshade"></div>'+
+      '<div class="hbg">'+(sl.thumb ? '<img alt="" id="heroBg">' : '')+'</div><div class="hshade"></div>'+
       '<div class="hin"><span class="hbadge">'+sl.badge+'</span>'+
       '<div class="htitle">'+esc(sl.title)+'</div>'+
       '<div class="hsub">'+sl.sub+'</div>'+
-      '<div class="hacts"><button class="btn" id="heroCta">'+sl.cta+'</button></div></div>'+
+      '<div class="hacts"><button class="btn primary" id="heroCta">'+sl.cta+'</button>'+
+        (heroSlides.length > 1 ? '<button class="hpause" id="heroPause" title="Pause or resume the carousel">'+(heroPaused?'▶':'⏸')+'</button>' : '')+
+      '</div></div>'+
       (heroSlides.length > 1
-        ? '<div class="hdots">'+heroSlides.map((_,i)=>'<button data-i="'+i+'"'+(i===heroIdx?' data-on':'')+' aria-label="slide '+(i+1)+'"></button>').join('')+'</div>'
+        ? '<div class="hthumbs">'+heroSlides.map((s,i) =>
+            '<button data-i="'+i+'"'+(i===heroIdx?' data-on':'')+' aria-label="slide '+(i+1)+'">'+
+            (s.thumb ? '<img alt="" src="'+s.thumb+'">' : '<span class="em">'+(s.icon||'▶')+'</span>')+
+            '</button>').join('')+'</div>'
         : '');
+    const bg = el.querySelector('#heroBg');
+    if(bg){
+      // wide art (incl. the generated SVG tiles) shows sharp; portrait boxart gets a cinematic blur-fill
+      bg.onload = function(){ if(this.naturalHeight > this.naturalWidth) this.classList.add('tall'); };
+      bg.src = sl.thumb;
+    }
     $('#heroCta').onclick = sl.act;
-    el.querySelectorAll('.hdots button').forEach(b => b.onclick = () => {
+    const hp = $('#heroPause');
+    if(hp) hp.onclick = () => { heroPaused = !heroPaused; hp.textContent = heroPaused ? '▶' : '⏸'; };
+    el.querySelectorAll('.hthumbs button').forEach(b => b.onclick = () => {
       heroIdx = +b.dataset.i; renderHeroSlide(el);
-      const nb = el.querySelector('.hdots button[data-i="'+heroIdx+'"]'); if(nb) nb.focus();
+      const nb = el.querySelector('.hthumbs button[data-i="'+heroIdx+'"]'); if(nb) nb.focus();
     });
   }
 
@@ -1176,11 +1151,10 @@
       const n = (e.games||[]).length;
       const c = document.createElement('button'); c.className = 'card'; c.style.setProperty('--accent', '#c3c7cf');
       c.innerHTML = '<div class="art"><div class="glyph">🖥️</div>'+
-        (e.icon ? '<img class="cover show" src="'+esc(e.icon)+'" alt="">' : '')+
-        '<div class="sheen"></div><div class="play">▶</div></div>'+
-        '<span class="badge">HOST</span>'+
+        (e.icon ? '<img class="cover show" src="'+esc(e.icon)+'" alt="">' : '')+'</div>'+
+        '<span class="chip">'+(e.system?esc(e.system):'HOST')+'</span><span class="badge">HOST</span>'+
         '<div class="meta"><div class="nm">'+esc(e.name)+'</div>'+
-        '<div class="sz">'+(e.system?esc(e.system)+' · ':'')+(n? n+(n===1?' GAME':' GAMES'):'MENU')+'</div></div>';
+        '<span class="go">'+(n? n+(n===1?' game ▸':' games ▸'):'▶ Open')+'</span></div>';
       c.onclick = () => (n ? openStreamGames(e) : startStream(e));
       list.appendChild(c);
     });
@@ -1193,9 +1167,9 @@
     list.innerHTML = '';
     const mk = (head, sub, onclick) => {
       const c = document.createElement('button'); c.className = 'card'; c.style.setProperty('--accent', '#c3c7cf');
-      c.innerHTML = '<div class="art"><div class="glyph">'+head+'</div><div class="sheen"></div><div class="play">▶</div></div>'+
+      c.innerHTML = '<div class="art"><div class="glyph">'+head+'</div></div>'+
         '<span class="badge">HOST</span>'+
-        '<div class="meta"><div class="nm"></div><div class="sz">'+sub+'</div></div>';
+        '<div class="meta"><div class="nm"></div><span class="go">'+sub+'</span></div>';
       c.querySelector('.nm').textContent = '';
       c.onclick = onclick; list.appendChild(c); return c;
     };
@@ -1655,7 +1629,7 @@
     if(!cands.length) return;
     const cur = document.activeElement;
     const next = (!cur || cands.indexOf(cur) === -1)
-      ? (scope.querySelector('.panel.live #heroCta, .panel.live .card') || cands[0])   // first press: hero CTA, else the grid
+      ? (scope.querySelector('#heroCta, #gameGrid .card') || cands[0])   // first press: hero CTA, else the grid
       : spatialNext(cur, cands, e.key);
     if(next){ next.focus(); try{ next.scrollIntoView({block:'nearest', inline:'nearest'}); }catch(_){} e.preventDefault(); }
   });
@@ -1673,6 +1647,16 @@
   if($('#searchClose')) $('#searchClose').onclick = closeSearch;
   if($('#searchInput')) $('#searchInput').oninput = e => renderSearch(e.target.value);
   if($('#oskBtn')) $('#oskBtn').onclick = () => toggleOSK();
+  // emulator picker + rescan
+  if($('#sysPick')) $('#sysPick').onclick = togglePicker;
+  if($('#refresh')) $('#refresh').onclick = loadLibrary;
+  document.addEventListener('click', e => {           // clicking elsewhere collapses the picker
+    const list = $('#sysList');
+    if(list && !list.hidden && !e.target.closest('#sysList') && !e.target.closest('#sysPick')) closePicker();
+  });
+  document.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && $('#sysList') && !$('#sysList').hidden) closePicker();
+  });
 
   const padParam = new URLSearchParams(location.search).get('pad');
   if(padParam){

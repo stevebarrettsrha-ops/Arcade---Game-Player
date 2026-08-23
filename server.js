@@ -318,7 +318,7 @@ function genCover(kind, name, shape){
   const h = hashStr(kind + '|' + name);
   const c = shiftHue(accent, (h % 46) - 23);     // stay in the system's colour family
   const top = mixBlack(c, 0.80), bot = mixBlack(c, 0.55);
-  const mono = monogram(name), label = LABELS[kind] || kind.toUpperCase();
+  const mono = monogram(name);
   const style = h % 3;
   let pat = '';
   if (style === 0) {                              // dot grid
@@ -334,14 +334,11 @@ function genCover(kind, name, shape){
   }
   const monoSize = shape === 'portrait' ? 92 : 62;
   const monoY = shape === 'portrait' ? Math.round(H * 0.52) : 82;
-  // portrait tiles skip the corner label: the library card draws its own system chip there
-  const labelTxt = shape === 'portrait' ? ''
-    : `<text x='16' y='28' font-family='Arial,Helvetica,sans-serif' font-weight='700' font-size='12' letter-spacing='2' fill='${c}'>${svgEsc(label)}</text>`;
+  // no baked-in corner label: every card in the UI draws its own system chip
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${W}' height='${H}' viewBox='0 0 ${W} ${H}'>`+
     `<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='${top}'/><stop offset='1' stop-color='${bot}'/></linearGradient></defs>`+
     `<rect width='${W}' height='${H}' fill='url(#g)'/>${pat}`+
     `<text x='${W/2}' y='${monoY}' font-family='Arial,Helvetica,sans-serif' font-weight='800' font-size='${monoSize}' fill='${c}' fill-opacity='0.24' text-anchor='middle' dominant-baseline='middle'>${svgEsc(mono)}</text>`+
-    labelTxt+
     `</svg>`;
   return { data: Buffer.from(svg, 'utf8'), ct: 'image/svg+xml' };
 }
