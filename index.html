@@ -195,6 +195,36 @@
   #searchInput::placeholder{color:var(--faint)}
   .snote{grid-column:1/-1;color:var(--muted);text-align:center;padding:36px 16px;font-size:14px;line-height:1.6}
   .snote code{background:rgba(63,224,207,.1);color:var(--cyan);padding:2px 7px;border-radius:5px;font-size:13px}
+  /* on-screen keys: type a search with a TV remote (arrows + OK) */
+  #osk{margin:-8px 0 22px;display:flex;flex-direction:column;gap:8px}
+  .oskrow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .oskkey{appearance:none;cursor:pointer;font-family:"Silkscreen",monospace;font-size:12px;color:#d6fbf4;
+    background:#0e1820;border:1px solid rgba(255,255,255,.12);border-radius:9px;min-width:44px;padding:11px 0;text-align:center}
+  .oskkey:hover{border-color:rgba(255,255,255,.3)}
+  .oskkey.wide{min-width:86px;padding:11px 14px}
+  #oskBtn.on{color:var(--cyan);border-color:color-mix(in srgb,var(--cyan) 45%,transparent);background:color-mix(in srgb,var(--cyan) 10%,transparent)}
+
+  /* ---- Game night: pairing as a first-class home section ---- */
+  .gamenight{display:flex;gap:22px;align-items:center;margin:0 0 28px;padding:20px;border-radius:18px;
+    background:linear-gradient(160deg,color-mix(in srgb,var(--amber) 9%,transparent),rgba(12,18,24,.5));
+    border:1px solid color-mix(in srgb,var(--amber) 30%,transparent)}
+  .gamenight .gnqr{width:132px;height:132px;flex:none;border-radius:12px;background:#dffaf5;display:grid;place-items:center;overflow:hidden}
+  .gamenight .gnqr img,.gamenight .gnqr canvas{width:100%!important;height:100%!important;display:block}
+  .gamenight .gnqr:empty::after{content:"no QR (offline)";font-size:10px;color:#0a4;font-family:"Silkscreen",monospace;text-align:center;padding:8px}
+  .gnbody{min-width:0}
+  .gnhead{font-family:"Silkscreen",monospace;font-size:10px;color:var(--amber);letter-spacing:2px}
+  .gntitle{font-size:19px;font-weight:700;margin:6px 0 5px}
+  .gnsub{font-size:13.5px;color:var(--muted);line-height:1.55;max-width:62ch}
+  .gnsub b{color:var(--ink)}
+  .gnrow{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:10px}
+  .gnurl{font-family:"Silkscreen",monospace;font-size:11px;color:var(--cyan);word-break:break-all}
+  .gnstat{margin-top:8px;font-size:12px;color:var(--faint)}
+  .gnstat.good{color:var(--cyan)}
+  @media(max-width:600px){.gamenight{flex-direction:column;align-items:flex-start}}
+
+  /* header avatar: the signed-in profile's own colour */
+  .uav{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;flex:none;
+    font-family:"Silkscreen",monospace;font-size:8px;color:#06100f;font-weight:700}
 
   /* ---- chrome-lite: heavy effects off for weak TVs ----
      Turns on with ⚡ Performance mode or prefers-reduced-motion: the animated
@@ -368,8 +398,10 @@
       <div class="srow">
         <span class="sicon">🔍</span>
         <input id="searchInput" placeholder="Search your whole library…" autocomplete="off" spellcheck="false">
+        <button class="mini" id="oskBtn" title="On-screen keys — type with a TV remote (arrows + OK)">⌨ ABC</button>
         <button class="mini" id="searchClose">✕ Esc</button>
       </div>
+      <div id="osk" hidden></div>
       <div class="gridcards" id="searchRes"></div>
     </div>
   </div>
@@ -664,6 +696,31 @@
     c.onclick = () => startStream(e, g.file);
     return c;
   }
+  // Game night: the pairing feature as a first-class home section — inline QR,
+  // live player readout (via setPairStat) and the 2P/4P toggle (via updateMpBtn)
+  function gameNightCard(){
+    const sec = document.createElement('section');
+    sec.className = 'gamenight'; sec.id = 'gameNight';
+    sec.innerHTML =
+      '<div class="gnqr" id="gnQR"></div>'+
+      '<div class="gnbody">'+
+        '<div class="gnhead">🎉 GAME NIGHT</div>'+
+        '<div class="gntitle">Phones become the controllers</div>'+
+        '<div class="gnsub">Scan the code on each phone — the first is <b>Player 1</b>, the next <b>Player 2</b>, up to four. '+
+          'Every phone gets an analog stick, all the buttons, and a Games drawer to launch anything on this screen.</div>'+
+        '<div class="gnrow">'+
+          '<span class="gnurl" id="gnURL">…</span>'+
+          '<button class="mpbtn" id="gnMp">2-PLAYER MODE</button>'+
+        '</div>'+
+        '<div class="gnstat" id="gnStat">waiting for a controller…</div>'+
+      '</div>';
+    pairingInfo().then(info => {
+      const u = sec.querySelector('#gnURL'); if(u) u.textContent = info.url + ' · room ' + info.code;
+      makeQR(sec.querySelector('#gnQR'), info.url);
+    });
+    sec.querySelector('#gnMp').onclick = () => setFourPlayer(!fourPlayer);
+    return sec;
+  }
   function renderHome(){
     const heroEl = $('#hero'), shelves = $('#homeShelves');
     if(!heroEl || !shelves) return;
@@ -680,6 +737,10 @@
       (LIB.emulators||[]).forEach(e => (e.games||[]).slice(0,8).forEach(g => cards.push(hostCard(e, g))));
       if(cards.length) shelves.appendChild(makeShelf('Plays on the host', 'STREAMED · PHONES ARE PADS',
         cards, openStreamPicker, 'All host emulators'));
+    }
+    if(totalGames() > 0){
+      shelves.appendChild(gameNightCard());
+      updateMpBtn(); renderPlayers();      // re-apply live state onto the fresh card
     }
     SYS.forEach(s => {
       const items = LIB[s.key]||[];
@@ -724,7 +785,11 @@
       slides.push({ accent:'#f2b545', thumb:null,
         badge:'📱 GAME NIGHT', title:'Phones are the controllers',
         sub:'Scan a QR code and up to four phones become gamepads for the game on this screen — <b>SAVE</b>, <b>TURBO</b> and fast-forward included.',
-        cta:'📱 Pair a phone', act:() => { const p=$('#pairPanel'); if(p.hidden){ ensurePairing(); p.hidden=false; } window.scrollTo({top:0, behavior:'smooth'}); } });
+        cta:'📱 Show the code', act:() => {
+          switchTab('home');
+          const gn = $('#gameNight');
+          if(gn) gn.scrollIntoView({ behavior:'smooth', block:'center' });
+        } });
     }
     if(!slides.length){
       slides.push({ accent:'#3fe0cf', thumb:null,
@@ -812,10 +877,48 @@
       res.appendChild(c);
     });
   }
+  /* on-screen keys: search with a TV remote (the keys are buttons, so the
+     arrow-key spatial navigation drives them; OK/Enter presses one) */
+  const OSK_ROWS = ['1234567890','QWERTYUIOP','ASDFGHJKL','ZXCVBNM'];
+  function oskKey(label, ch){
+    const b = document.createElement('button'); b.className = 'oskkey'; b.textContent = label;
+    if(label.length > 1) b.classList.add('wide');
+    b.onclick = () => {
+      const inp = $('#searchInput');
+      if(ch === '\b') inp.value = inp.value.slice(0, -1);
+      else if(ch === '') inp.value = '';
+      else inp.value += ch;
+      renderSearch(inp.value);
+    };
+    return b;
+  }
+  function buildOSK(){
+    const k = $('#osk'); if(!k || k.dataset.built) return; k.dataset.built = '1';
+    OSK_ROWS.forEach(r => {
+      const row = document.createElement('div'); row.className = 'oskrow';
+      r.split('').forEach(ch => row.appendChild(oskKey(ch, ch.toLowerCase())));
+      k.appendChild(row);
+    });
+    const last = document.createElement('div'); last.className = 'oskrow';
+    last.appendChild(oskKey('SPACE', ' '));
+    last.appendChild(oskKey('⌫ BACK', '\b'));
+    last.appendChild(oskKey('CLEAR', ''));
+    k.appendChild(last);
+  }
+  function toggleOSK(force){
+    buildOSK();
+    const k = $('#osk');
+    const show = force !== undefined ? force : k.hidden;
+    k.hidden = !show;
+    $('#oskBtn').classList.toggle('on', show);
+    try{ localStorage.setItem('arcade_osk', show ? '1' : '0'); }catch(e){}
+  }
   function openSearch(){
     $('#search').hidden = false;
     const inp = $('#searchInput'); inp.value = '';
     renderSearch('');
+    let osk = false; try{ osk = localStorage.getItem('arcade_osk') === '1'; }catch(e){}
+    if(osk) toggleOSK(true);
     setTimeout(() => inp.focus(), 40);
   }
   function closeSearch(){ $('#search').hidden = true; }
@@ -826,7 +929,9 @@
   const MULTITAP = { psx: { 'pcsx_rearmed_multitap': 'port 1 only' } };
   let fourPlayer = false; try{ fourPlayer = sessionStorage.getItem('arcade_4p')==='1'; }catch(e){}
   let curGame = null;
-  function updateMpBtn(){ const b=$('#mpBtn'); if(!b) return; b.textContent = fourPlayer ? '4-PLAYER MODE: ON' : '2-PLAYER MODE'; b.classList.toggle('on', fourPlayer); }
+  function updateMpBtn(){
+    [$('#mpBtn'), $('#gnMp')].forEach(b => { if(!b) return; b.textContent = fourPlayer ? '4-PLAYER MODE: ON' : '2-PLAYER MODE'; b.classList.toggle('on', fourPlayer); });
+  }
   function setFourPlayer(on){
     fourPlayer = !!on;
     try{ sessionStorage.setItem('arcade_4p', fourPlayer?'1':'0'); }catch(e){}
@@ -839,7 +944,24 @@
   /* ===== player profiles: username + 4-digit PIN, per-user server saves ===== */
   let USER=null, USERDISP='Guest', TOKEN=null;
   let pinMode='login', pinName='', pinBuf='';
-  function updateChip(){ const c=$('#userChip'); if(c) c.textContent='👤 '+(USERDISP||'Guest'); }
+  // each profile gets its own stable accent colour, hashed from the name —
+  // shown on the login chips and the header avatar so players spot theirs fast
+  function profColor(name){
+    let h = 5381; const s = String(name||'guest').toLowerCase();
+    for(let i=0;i<s.length;i++) h = ((h<<5)+h+s.charCodeAt(i))>>>0;
+    return 'hsl('+(h%360)+' 62% 52%)';
+  }
+  function avatarBg(name){ return 'linear-gradient(180deg, color-mix(in srgb,'+profColor(name)+' 55%,#fff), '+profColor(name)+')'; }
+  function updateChip(){
+    const c=$('#userChip'); if(!c) return;
+    if(USER){
+      c.innerHTML = '<span class="uav"></span><span></span>';
+      const av = c.querySelector('.uav');
+      av.textContent = (USERDISP||USER).trim().slice(0,2).toUpperCase();
+      av.style.background = avatarBg(USER);
+      c.lastChild.textContent = USERDISP || USER;
+    } else c.textContent = '👤 Guest';
+  }
   function loadSession(){
     try{ USER=sessionStorage.getItem('arcade_user')||null; USERDISP=sessionStorage.getItem('arcade_disp')||'Guest'; TOKEN=sessionStorage.getItem('arcade_token')||null; }catch(e){}
     updateChip();
@@ -866,7 +988,9 @@
       us.forEach(u=>{
         const b=document.createElement('button'); b.className='pchip';
         b.innerHTML='<span class="av"></span><span class="nm"></span>';
-        b.querySelector('.av').textContent=(u.display||u.name||'?').trim().slice(0,2).toUpperCase();
+        const av=b.querySelector('.av');
+        av.textContent=(u.display||u.name||'?').trim().slice(0,2).toUpperCase();
+        av.style.background=avatarBg(u.name);              // the profile's own accent
         b.querySelector('.nm').textContent=u.display||u.name;
         b.onclick=()=>openPin('login', u.name, u.display||u.name);
         list.appendChild(b);
@@ -1362,7 +1486,10 @@
 
   /* ---- TV / host side ---- */
   let displayES = null, displayWS = null;
-  function setPairStat(txt, good){ const s=$('#pairStat'); if(!s)return; s.textContent=txt; s.classList.toggle('good', !!good); }
+  // pairing status shows in the top panel AND on the home Game night card
+  function setPairStat(txt, good){
+    [$('#pairStat'), $('#gnStat')].forEach(s => { if(!s) return; s.textContent = txt; s.classList.toggle('good', !!good); });
+  }
   function handleDisplayMsg(m){
     if(!m) return;
     if(m.t==='hello'){ markPlayer(m.p|0, true); return; }
@@ -1421,13 +1548,17 @@
       location.reload();              // room code persists, so the phone stays paired
     } else { doLaunch(m); }
   }
-  async function ensurePairing(){
+  // start (or resume) the pairing room and hand back what a QR needs
+  async function pairingInfo(){
     const code = ensureRoom();
     openDisplay(code);
-    $('#pairCode').textContent = code;
-    const url = await padUrl(code);
-    $('#pairURL').textContent = url;
-    makeQR($('#pairQR'), url);
+    return { code, url: await padUrl(code) };
+  }
+  async function ensurePairing(){
+    const info = await pairingInfo();
+    $('#pairCode').textContent = info.code;
+    $('#pairURL').textContent = info.url;
+    makeQR($('#pairQR'), info.url);
   }
   const phoneBtn = $('#phoneBtn');
   if(phoneBtn) phoneBtn.onclick = () => { const p=$('#pairPanel'); if(p.hidden){ ensurePairing(); p.hidden=false; } else { p.hidden=true; } };
@@ -1541,6 +1672,7 @@
   if($('#searchBtn')) $('#searchBtn').onclick = openSearch;
   if($('#searchClose')) $('#searchClose').onclick = closeSearch;
   if($('#searchInput')) $('#searchInput').oninput = e => renderSearch(e.target.value);
+  if($('#oskBtn')) $('#oskBtn').onclick = () => toggleOSK();
 
   const padParam = new URLSearchParams(location.search).get('pad');
   if(padParam){

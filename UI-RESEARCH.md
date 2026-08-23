@@ -312,19 +312,20 @@ Everything above needs remarkably little backend work:
 
 No new dependencies, no schema changes, saves stay plain files on disk.
 
-## 7. Phased roadmap
+## 7. Phased roadmap — all four phases shipped on this branch
 
-1. **Phase 1 — cards & focus (pure front-end).** Portrait cards, badge
-   metadata, `:focus-visible` rings, arrow-key spatial nav, delete the dead
-   in-page pad code. Biggest visible win, zero server risk.
-2. **Phase 2 — Home.** Hero carousel + shelves (Continue / Top new /
-   per-system), `mtime` + `/api/saves` endpoints, non-blocking profiles.
-   Tabs survive as the Systems browser.
-3. **Phase 3 — one library.** Merge host-streaming games as badged cards,
-   search overlay, chrome-lite mode for TVs.
-4. **Phase 4 — delight.** Multiplayer shelf + GameNight-style party flow
-   (QR on the hero), per-profile accent avatars, on-screen search keyboard
-   for TV.
+1. **Phase 1 — cards & focus (pure front-end). ✅ SHIPPED.** Portrait cards,
+   badge metadata, `:focus-visible` rings, arrow-key spatial nav, deleted the
+   dead in-page pad code. Biggest visible win, zero server risk.
+2. **Phase 2 — Home. ✅ SHIPPED.** Hero carousel + shelves (Continue / Top
+   new / per-system), `mtime` + `/api/saves` endpoints, non-blocking
+   profiles. Tabs survive as the Systems browser.
+3. **Phase 3 — one library. ✅ SHIPPED.** Host-streaming games as badged
+   cards in shelves and search, the `/` search overlay, chrome-lite mode
+   tied to ⚡ Performance / reduced-motion.
+4. **Phase 4 — delight. ✅ SHIPPED.** Game night home section (inline QR,
+   live player readout, 2P/4P toggle) with the hero slide linking to it,
+   per-profile accent avatars, on-screen search keyboard for TV remotes.
 
 ## 8. Constraints to respect
 
