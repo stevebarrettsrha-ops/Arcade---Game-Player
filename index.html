@@ -183,6 +183,29 @@
   .card .rankno{position:absolute;z-index:2;left:6px;bottom:52px;font-family:"Silkscreen",monospace;font-weight:700;
     font-size:56px;line-height:1;color:rgba(233,242,243,.16);text-shadow:0 2px 10px rgba(0,0,0,.35);pointer-events:none}
 
+  /* ---- search overlay (🔍 button or the / key) ---- */
+  #search{position:fixed;inset:0;z-index:75;background:rgba(4,8,10,.82);backdrop-filter:blur(8px);
+    overflow:auto;padding:6vh clamp(14px,4vw,32px) 48px}
+  .searchbox{max-width:1000px;margin:0 auto}
+  .srow{display:flex;align-items:center;gap:10px;background:#0e1820;border:1px solid var(--glass-line);
+    border-radius:14px;padding:6px 8px 6px 16px;margin-bottom:22px}
+  .srow .sicon{font-size:16px}
+  #searchInput{flex:1;min-width:0;background:none;border:0;outline:none;color:var(--ink);
+    font-family:inherit;font-size:17px;padding:10px 0}
+  #searchInput::placeholder{color:var(--faint)}
+  .snote{grid-column:1/-1;color:var(--muted);text-align:center;padding:36px 16px;font-size:14px;line-height:1.6}
+  .snote code{background:rgba(63,224,207,.1);color:var(--cyan);padding:2px 7px;border-radius:5px;font-size:13px}
+
+  /* ---- chrome-lite: heavy effects off for weak TVs ----
+     Turns on with ⚡ Performance mode or prefers-reduced-motion: the animated
+     blur blobs, scanlines and backdrop blurs cost real frames on TV browsers. */
+  body.lite .blob,body.lite .scan{display:none}
+  body.lite .status,body.lite .tab,body.lite .help,body.lite .toast,body.lite .pair,body.lite #search{backdrop-filter:none}
+  body.lite #search{background:rgba(4,8,10,.95)}
+  body.lite .card{animation:none}
+  body.lite .card .art .sheen{display:none}
+  body.lite .hero .hbg img{filter:brightness(.5);transform:none}
+
   .empty{grid-column:1/-1;border:1px dashed var(--glass-line);border-radius:var(--radius);padding:34px 26px;text-align:center;color:var(--muted);background:rgba(255,255,255,.02)}
   .empty .big{font-family:"Silkscreen",monospace;font-size:13px;color:var(--ink);margin-bottom:10px;letter-spacing:1px}
   .pspbanner{grid-column:1/-1;background:linear-gradient(180deg,rgba(195,199,207,.10),rgba(195,199,207,.03));
@@ -298,8 +321,9 @@
     </div>
     <div class="topacts">
       <button class="mini" id="userChip">👤 Guest</button>
+      <button class="mini" id="searchBtn" title="Search every system (press /)">🔍 Search</button>
       <button class="mini" id="phoneBtn">📱 Phone</button>
-      <button class="mini" id="perfBtn" title="For slow TVs: disables shader, unsynced video, shows FPS so you can see the speed. Restart a game after toggling.">⚡ Performance: OFF</button>
+      <button class="mini" id="perfBtn" title="For slow TVs: disables shader, unsynced video, shows FPS — and lightens the page's own effects (blur, scanlines). Restart a game after toggling.">⚡ Performance: OFF</button>
       <button class="mini" id="streamBtn" title="Run a real emulator on the host (e.g. Steam Deck) and stream it here." hidden>🖥️ Host emulators</button>
       <div class="status" id="status"><span class="led" id="led"></span><span id="statusTxt">connecting…</span></div>
     </div>
@@ -335,6 +359,18 @@
         <div class="keypad" id="keypad"></div>
         <button class="lbtn ghost" id="pinBack">‹ Back</button>
       </div>
+    </div>
+  </div>
+
+  <!-- search overlay: one query across every system + the host emulators -->
+  <div id="search" hidden>
+    <div class="searchbox">
+      <div class="srow">
+        <span class="sicon">🔍</span>
+        <input id="searchInput" placeholder="Search your whole library…" autocomplete="off" spellcheck="false">
+        <button class="mini" id="searchClose">✕ Esc</button>
+      </div>
+      <div class="gridcards" id="searchRes"></div>
     </div>
   </div>
 
@@ -735,6 +771,54 @@
       const nb = el.querySelector('.hdots button[data-i="'+heroIdx+'"]'); if(nb) nb.focus();
     });
   }
+
+  /* ===== search: one query across every system + the host emulators ===== */
+  function searchIndex(){
+    const items = [];
+    SYS.forEach(s => (LIB[s.key]||[]).forEach(g => items.push({ kind:'game', sys:s.key, g })));
+    (LIB.emulators||[]).forEach(e => {
+      (e.games||[]).forEach(g => items.push({ kind:'host', e, g }));
+      if(!e.needsRom) items.push({ kind:'host', e, g:{ name:e.name, file:'' } });   // menu-only emulators by name
+    });
+    return items;
+  }
+  function matchScore(name, q){
+    const n = name.toLowerCase(), i = n.indexOf(q);
+    if(i < 0) return -1;
+    if(i === 0) return 0;                       // starts the title
+    if(/[\s\-_.([]/.test(n[i-1])) return 1;     // starts a word
+    return 2;                                   // anywhere
+  }
+  function renderSearch(qRaw){
+    const res = $('#searchRes');
+    const q = (qRaw||'').trim().toLowerCase();
+    res.innerHTML = '';
+    if(!q){
+      const n = totalGames() + (LIB.emulators||[]).reduce((a,e) => a + (e.games||[]).length, 0);
+      res.innerHTML = '<div class="snote">Type to search '+n+' games across every system'+
+        (LIB.stream ? ' and the host emulators' : '')+'.<br>Tip: press <code>/</code> anywhere in the library to open this.</div>';
+      return;
+    }
+    const hits = searchIndex()
+      .map(it => ({ it, sc: matchScore(it.g.name, q) }))
+      .filter(x => x.sc >= 0)
+      .sort((a,b) => a.sc - b.sc || a.it.g.name.localeCompare(b.it.g.name))
+      .slice(0, 40);
+    if(!hits.length){ res.innerHTML = '<div class="snote">No matches for “'+esc(qRaw.trim())+'”.</div>'; return; }
+    hits.forEach(x => {
+      const c = x.it.kind === 'host' ? hostCard(x.it.e, x.it.g) : gameCard(x.it.sys, x.it.g);
+      const launch = c.onclick;
+      c.onclick = () => { closeSearch(); launch(); };   // launching always leaves the overlay
+      res.appendChild(c);
+    });
+  }
+  function openSearch(){
+    $('#search').hidden = false;
+    const inp = $('#searchInput'); inp.value = '';
+    renderSearch('');
+    setTimeout(() => inp.focus(), 40);
+  }
+  function closeSearch(){ $('#search').hidden = true; }
 
   /* ---- 4-player / multitap ---- */
   // cores that need a core option to expose ports 3-4 (others either do 4 natively, e.g. N64,
@@ -1372,7 +1456,13 @@
     psp: { 'ppsspp_internal_resolution':'1', 'ppsspp_frameskip':'1' },
   };
   function updatePerfBtn(){ const b=$('#perfBtn'); if(b){ b.textContent='⚡ Performance: '+(PERF?'ON':'OFF'); b.classList.toggle('on',PERF); } }
-  (function(){ const b=$('#perfBtn'); if(b){ b.onclick=()=>{ PERF=!PERF; try{localStorage.setItem('arcade_perf',PERF?'1':'0');}catch(e){} updatePerfBtn(); toast('Performance mode '+(PERF?'ON':'OFF')+(document.body.classList.contains('playing')?' — restart the game to apply':'')); }; updatePerfBtn(); } })();
+  // chrome-lite: performance mode (or a reduced-motion preference) also strips the
+  // page's expensive effects — blur blobs, scanlines, backdrop filters — for weak TVs
+  function applyLite(){
+    let reduce = false; try{ reduce = matchMedia('(prefers-reduced-motion:reduce)').matches; }catch(e){}
+    document.body.classList.toggle('lite', PERF || reduce);
+  }
+  (function(){ const b=$('#perfBtn'); if(b){ b.onclick=()=>{ PERF=!PERF; try{localStorage.setItem('arcade_perf',PERF?'1':'0');}catch(e){} updatePerfBtn(); applyLite(); toast('Performance mode '+(PERF?'ON':'OFF')+(document.body.classList.contains('playing')?' — restart the game to apply':'')); }; updatePerfBtn(); } applyLite(); })();
   // host-side streaming entry points
   if($('#streamBtn')) $('#streamBtn').onclick = openStreamPicker;
   if($('#streamBack')) $('#streamBack').onclick = ejectAll;
@@ -1390,6 +1480,8 @@
      Inactive while a game is playing (the emulator needs the arrow keys) and
      inside text fields; works the same inside the profile picker. */
   function navScope(){
+    const search = $('#search');
+    if(search && !search.hidden) return search;                   // search overlay open
     const login = $('#login');
     if(login && !login.hidden) return login;                      // profile picker open
     if(document.body.classList.contains('playing')) return null;  // emulator owns the keys
@@ -1416,7 +1508,13 @@
   document.addEventListener('keydown', e => {
     if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) return;
     const t = e.target;
-    if(t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA' || t.tagName==='SELECT' || t.isContentEditable)) return;
+    if(t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA' || t.tagName==='SELECT' || t.isContentEditable)){
+      if(t.id === 'searchInput' && e.key === 'ArrowDown'){        // down from the query drops into the results
+        const first = document.querySelector('#searchRes .card');
+        if(first){ first.focus(); e.preventDefault(); }
+      }
+      return;
+    }
     const scope = navScope(); if(!scope) return;
     const cands = [...scope.querySelectorAll('button, a[href]')].filter(el => {
       if(el.disabled) return false;
@@ -1430,6 +1528,19 @@
       : spatialNext(cur, cands, e.key);
     if(next){ next.focus(); try{ next.scrollIntoView({block:'nearest', inline:'nearest'}); }catch(_){} e.preventDefault(); }
   });
+  // "/" opens search from anywhere in the library; Escape closes it
+  document.addEventListener('keydown', e => {
+    const t = e.target;
+    const typing = t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA' || t.isContentEditable);
+    if(e.key === '/' && $('#search').hidden && !typing && !document.body.classList.contains('playing') && $('#login').hidden){
+      e.preventDefault(); openSearch();
+    } else if(e.key === 'Escape' && !$('#search').hidden){
+      closeSearch();
+    }
+  });
+  if($('#searchBtn')) $('#searchBtn').onclick = openSearch;
+  if($('#searchClose')) $('#searchClose').onclick = closeSearch;
+  if($('#searchInput')) $('#searchInput').oninput = e => renderSearch(e.target.value);
 
   const padParam = new URLSearchParams(location.search).get('pad');
   if(padParam){
