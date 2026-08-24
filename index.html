@@ -223,6 +223,14 @@
   .frow .fs{font-weight:600;min-width:110px;color:var(--ink)}
   .frow .fp{color:var(--muted);flex:1}
   .frow .fn{color:var(--faint);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .strow .mini.dl{flex:none;padding:6px 12px;font-size:12px}
+  .strow .mini.dl:disabled{opacity:.5;cursor:default}
+  .sjob{margin-top:14px;background:#0f1220;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .sjob .sjh{display:flex;gap:10px;align-items:center;font-size:13.5px;font-weight:700}
+  .sjob .sjh .si{width:18px;text-align:center}
+  .sjob .sjh .si.ok{color:#5fe0a0} .sjob .sjh .si.no{color:#e0584f} .sjob .sjh .si.na{color:var(--muted)}
+  .sjob pre{margin:9px 0 0;font-size:11.5px;line-height:1.55;color:var(--muted);white-space:pre-wrap;
+    word-break:break-word;max-height:190px;overflow:auto;font-family:ui-monospace,Menlo,Consolas,monospace}
 
   /* card titles: hover-only by default; "Always" setting pins them on */
   body.titles .card .meta{opacity:1;transform:none}
@@ -975,7 +983,7 @@
     return row;
   }
   const ONOFF = [{label:'On', v:1},{label:'Off', v:0}];
-  function statusRow(ok, name, hint){                    // ok: true | false | null
+  function statusRow(ok, name, hint, job){               // ok: true | false | null; job: downloader id
     const r = document.createElement('div'); r.className = 'strow';
     r.innerHTML = '<span class="si"></span><span class="sn"></span>'+(hint ? '<span class="sd"></span>' : '');
     const si = r.querySelector('.si');
@@ -983,7 +991,59 @@
     si.className = 'si ' + (ok===true ? 'ok' : ok===false ? 'no' : 'na');
     r.querySelector('.sn').textContent = name;
     if(hint) r.querySelector('.sd').innerHTML = hint;
+    if(job){                                             // the host can run the one-time downloader itself
+      const running = SETUP.job && SETUP.job.running;
+      const b = document.createElement('button'); b.className = 'mini dl';
+      b.textContent = (running && SETUP.job.id === job) ? '⏳ Running…' : '⬇ Download';
+      b.disabled = !!running;
+      b.onclick = () => runSetup(job);
+      const sd = r.querySelector('.sd');
+      if(sd) r.insertBefore(b, sd); else r.appendChild(b);
+    }
     return r;
+  }
+
+  /* ---- one-time downloaders: run the get-*.js scripts on the host ---- */
+  let SETUP = { platform:'', job:null }, setupTimer = null;
+  async function fetchSetupStatus(){
+    try{ SETUP = await (await fetch('/api/setup/status', { cache:'no-store' })).json(); }catch(e){}
+  }
+  async function runSetup(job){
+    try{
+      const r = await (await fetch('/api/setup/run?job='+encodeURIComponent(job), { method:'POST' })).json();
+      if(!r || !r.ok){ toast((r && r.error) || 'Could not start the download', true); return; }
+      toast('Download started on the host — this can take a while');
+      await fetchSetupStatus(); renderSettings(); pollSetup();
+    }catch(e){ toast('Could not reach the server', true); }
+  }
+  function pollSetup(){
+    if(setupTimer) return;
+    setupTimer = setInterval(async () => {
+      await fetchSetupStatus();
+      const j = SETUP.job;
+      if(!$('#settings').hidden) renderSetupLog();
+      if(!j || !j.running){
+        clearInterval(setupTimer); setupTimer = null;
+        if(j){
+          toast(j.ok ? j.name+' — done ✓' : j.name+' — failed (see the log in Settings)', !j.ok);
+          await loadLibrary();                           // flags like ejsLocal/boxartLocal just changed
+          if(!$('#settings').hidden) renderSettings();
+        }
+      }
+    }, 1500);
+  }
+  function renderSetupLog(){
+    const el = $('#setupLog'); if(!el) return;
+    const j = SETUP.job;
+    if(!j){ el.hidden = true; return; }
+    el.hidden = false;
+    el.innerHTML = '<div class="sjh"><span class="si '+(j.running?'na':(j.ok?'ok':'no'))+'">'+
+        (j.running ? '⏳' : j.ok ? '✓' : '✗')+'</span><span></span></div>'+
+      '<pre></pre>';
+    el.querySelector('.sjh span:last-child').textContent =
+      j.name + (j.running ? ' — downloading…' : j.ok ? ' — finished' : ' — failed (exit '+j.code+')');
+    el.querySelector('pre').textContent = (j.log && j.log.length) ? j.log.join('\n') : '(waiting for output…)';
+    if(j.running) el.querySelector('pre').scrollTop = 1e6;
   }
   function setSection(title){
     const s = document.createElement('div'); s.className = 'setsec';
@@ -1048,22 +1108,42 @@
 
     const st = setSection('System status');
     st.appendChild(statusRow(!!LIB.ejsLocal, 'Offline emulator engine',
-      LIB.ejsLocal ? null : 'Cores download from the internet on first play. For fully-offline, run <code>download-offline-*</code> once on the host.'));
+      LIB.ejsLocal ? null : 'Cores download from the internet on first play. Download once (a few hundred MB for everything) and ARCADE plays fully offline.',
+      LIB.ejsLocal ? null : 'offline'));
     st.appendChild(statusRow(!!(LIB.bios && LIB.bios.psx), 'PS1 BIOS',
-      (LIB.bios && LIB.bios.psx) ? null : 'Most PS1 games run without it; for best compatibility drop a BIOS file into <code>bios/psx/</code>.'));
+      (LIB.bios && LIB.bios.psx) ? null : 'Most PS1 games run without it; for best compatibility drop a BIOS file you own into <code>bios/psx/</code>.'));
     st.appendChild(statusRow(!!LIB.isolated, 'Threaded cores (faster N64 / PS1 / PSP)',
       LIB.isolated ? null : 'Start the server with <code>ARCADE_THREADS=1</code> (or <code>start-*-psp</code>). Chrome/Edge/Firefox only.'));
     st.appendChild(statusRow(!!LIB.j2meWeb, 'Java handset (local copy)',
-      LIB.j2meWeb ? null : 'Java games open in a separate tab until you run <code>download-j2me-*</code> once.'));
+      LIB.j2meWeb ? null : 'Java games open in a separate tab until the handset (~9 MB) is downloaded.',
+      LIB.j2meWeb ? null : 'j2me'));
     st.appendChild(statusRow(!!LIB.pspWeb, 'PPSSPP (local copy)',
-      LIB.pspWeb ? null : 'PSP uses the online PPSSPP app until you run <code>download-ppsspp-*</code> once.'));
+      LIB.pspWeb ? null : 'PSP uses the online PPSSPP app until the local copy (tens of MB) is downloaded.',
+      LIB.pspWeb ? null : 'ppsspp'));
     st.appendChild(statusRow(!!LIB.boxartLocal, 'Real box-art',
-      LIB.boxartLocal ? null : 'Cards use generated art until you run <code>download-boxart-*</code> once — it matches your games by file name.'));
+      LIB.boxartLocal
+        ? 'Run the downloader again after adding games — it matches covers by file name.'
+        : 'Cards use generated art until real covers are fetched — matched to your games by file name.',
+      'boxart'));
     st.appendChild(statusRow(!!LIB.stream, 'Host streaming (PS2 / XBOX / GameCube …)',
       LIB.stream ? null : 'Start with <code>start-*-stream</code> on the host to run native emulators there and stream them to every screen.'));
+    if(SETUP.platform === 'win32'){
+      st.appendChild(statusRow(null, 'Windows host emulators (portable set)',
+        'Fetches xemu, KEmulator and FreeJ2ME and checks the installer-based ones — for streaming mode.', 'emulators'));
+      st.appendChild(statusRow(null, 'ViGEm virtual Xbox pad DLL',
+        'True analog phone control in every host emulator (needs the ViGEmBus driver installed too).', 'vigem'));
+    }
+    const lg = document.createElement('div'); lg.className = 'sjob'; lg.id = 'setupLog'; lg.hidden = true;
+    st.appendChild(lg);
     body.appendChild(st);
+    renderSetupLog();
   }
-  function openSettings(){ renderSettings(); $('#settings').hidden = false; }
+  async function openSettings(){
+    await fetchSetupStatus();
+    renderSettings();
+    $('#settings').hidden = false;
+    if(SETUP.job && SETUP.job.running) pollSetup();      // a download may already be underway
+  }
   function closeSettings(){ $('#settings').hidden = true; }
 
   /* ---- live library: poll the tiny /api/version and re-fetch on change,

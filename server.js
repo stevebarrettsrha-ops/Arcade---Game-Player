@@ -171,6 +171,66 @@ function hasBoxart() {
   } catch (e) { return false; }
 }
 
+/* ---- one-time downloaders, runnable from the settings page ----
+   A fixed whitelist of the repo's own get-*.js scripts; one job at a time.
+   Output is kept in a rolling log so the page can show progress. ---- */
+const { spawn } = require('child_process');
+const SETUP_JOBS = {
+  offline:   { script: 'get-offline.js',   name: 'Offline emulator engine' },
+  j2me:      { script: 'get-j2me.js',      name: 'Java handset (local copy)' },
+  ppsspp:    { script: 'get-ppsspp.js',    name: 'PPSSPP (local copy)' },
+  boxart:    { script: 'get-boxart.js',    name: 'Real box-art' },
+  emulators: { script: 'get-emulators.js', name: 'Windows host emulators', win: true },
+  vigem:     { script: 'get-vigem.js',     name: 'ViGEm virtual-pad DLL',  win: true },
+};
+let setupJob = null;   // { id, name, running, ok, code, log:[], started, ended }
+function setupLogLine(s) {
+  if (!setupJob) return;
+  for (const line of String(s).split(/\r?\n/)) {
+    const t = line.trim();
+    if (t) setupJob.log.push(t.slice(0, 300));
+  }
+  if (setupJob.log.length > 200) setupJob.log = setupJob.log.slice(-200);
+}
+function startSetupJob(id) {
+  const def = SETUP_JOBS[id];
+  if (!def) return { ok: false, error: 'unknown job' };
+  if (def.win && process.platform !== 'win32') return { ok: false, error: 'Windows-only' };
+  if (setupJob && setupJob.running) return { ok: false, error: (SETUP_JOBS[setupJob.id] || {}).name + ' is still running' };
+  if (!fs.existsSync(path.join(ROOT, def.script))) return { ok: false, error: def.script + ' is missing' };
+  setupJob = { id, name: def.name, running: true, ok: null, code: null, log: [], started: Date.now(), ended: null };
+  let proc;
+  try {
+    proc = spawn(process.execPath, [path.join(ROOT, def.script)], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (e) {
+    setupJob.running = false; setupJob.ok = false; setupJob.ended = Date.now();
+    setupLogLine('could not start: ' + e.message);
+    return { ok: false, error: 'could not start: ' + e.message };
+  }
+  proc.stdout.on('data', setupLogLine);
+  proc.stderr.on('data', setupLogLine);
+  proc.on('close', code => {
+    if (!setupJob) return;
+    setupJob.running = false; setupJob.code = code; setupJob.ok = code === 0; setupJob.ended = Date.now();
+    bumpVersion();                              // new engine/handset/art files: tell every open page
+  });
+  proc.on('error', e => {
+    if (!setupJob) return;
+    setupLogLine('error: ' + e.message);
+    setupJob.running = false; setupJob.ok = false; setupJob.ended = Date.now();
+  });
+  console.log('  Setup: running ' + def.script + ' (started from the settings page)');
+  return { ok: true };
+}
+function setupStatus() {
+  return {
+    platform: process.platform,
+    job: setupJob ? { id: setupJob.id, name: setupJob.name, running: setupJob.running, ok: setupJob.ok,
+                      code: setupJob.code, log: setupJob.log.slice(-40), started: setupJob.started, ended: setupJob.ended }
+                  : null,
+  };
+}
+
 /* ---- optional BIOS: first file dropped in bios/<system>/ ---- */
 function biosFor(sys) {
   const dir = path.join(ROOT, 'bios', sys);
@@ -727,6 +787,15 @@ const requestHandler = async (req, res) => {
   }
   if (url === '/api/version') {          // cheap poll target for the auto-refreshing library
     return jsonRes(res, { v: libVersion });
+  }
+
+  /* ---- one-time downloaders (settings page) ---- */
+  if (url === '/api/setup/run') {
+    if (req.method !== 'POST') { res.writeHead(405); return res.end(); }
+    return jsonRes(res, startSetupJob(String(q.searchParams.get('job') || '')));
+  }
+  if (url === '/api/setup/status') {
+    return jsonRes(res, setupStatus());
   }
 
   /* ---- player profiles (username + 4-digit PIN) ---- */
