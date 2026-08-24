@@ -128,6 +128,49 @@ function freeSlot(room, cid) {
   const m = roomPlayers.get(room); if (m) { m.delete(cid); if (!m.size) roomPlayers.delete(room); }
 }
 
+/* ---- live library: games/, emulators/ and bios/ are watched, and any change
+   bumps a version number. Clients poll /api/version (tiny) and re-fetch the
+   library when it moves — so dropping in a new game or emulator folder shows
+   up on every screen within seconds, no manual rescan. ---- */
+let libVersion = 1, bumpTimer = null;
+const watchedDirs = new Set();
+function bumpVersion() {
+  if (bumpTimer) return;
+  bumpTimer = setTimeout(() => {
+    bumpTimer = null; libVersion++;
+    setupWatchers();                 // a change may have created new sub-folders to watch
+  }, 400);                           // debounce bursts (copies touch a folder many times)
+}
+function watchDir(dir) {
+  if (watchedDirs.has(dir)) return;
+  try {
+    if (!fs.statSync(dir).isDirectory()) return;
+    const w = fs.watch(dir, bumpVersion);
+    w.on('error', () => { try { w.close(); } catch (e) {} watchedDirs.delete(dir); });
+    watchedDirs.add(dir);
+  } catch (e) {}
+}
+function setupWatchers() {
+  watchDir(GAMES);
+  for (const s of SYSTEMS) watchDir(path.join(GAMES, s.key));
+  const emuDir = path.join(ROOT, 'emulators');
+  watchDir(emuDir);
+  try {
+    for (const n of fs.readdirSync(emuDir))
+      if (!n.startsWith('.') && !n.startsWith('_')) watchDir(path.join(emuDir, n));
+  } catch (e) {}
+  for (const s of BIOS_SYSTEMS) watchDir(path.join(ROOT, 'bios', s));
+}
+// any local boxart downloaded yet? (for the settings status panel)
+function hasBoxart() {
+  try {
+    return fs.readdirSync(path.join(ROOT, 'boxart')).some(d => {
+      try { return fs.readdirSync(path.join(ROOT, 'boxart', d)).some(f => IMG_EXT.includes(path.extname(f).toLowerCase())); }
+      catch (e) { return false; }
+    });
+  } catch (e) { return false; }
+}
+
 /* ---- optional BIOS: first file dropped in bios/<system>/ ---- */
 function biosFor(sys) {
   const dir = path.join(ROOT, 'bios', sys);
@@ -682,6 +725,9 @@ const requestHandler = async (req, res) => {
     res.writeHead(200, { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-cache' });
     return res.end(JSON.stringify({ ips: lanAddresses(), port: PORT }));
   }
+  if (url === '/api/version') {          // cheap poll target for the auto-refreshing library
+    return jsonRes(res, { v: libVersion });
+  }
 
   /* ---- player profiles (username + 4-digit PIN) ---- */
   if (url === '/api/users') {                         // list profile names (never PINs)
@@ -775,9 +821,11 @@ const requestHandler = async (req, res) => {
   }
 
   if (url === '/api/library') {
-    const lib = { boxart: BOXART, bios: {}, ejsLocal: fs.existsSync(path.join(ROOT, 'emulatorjs', 'loader.js')), isolated: ISOLATE,
+    const lib = { version: libVersion,
+                  boxart: BOXART, bios: {}, ejsLocal: fs.existsSync(path.join(ROOT, 'emulatorjs', 'loader.js')), isolated: ISOLATE,
                   pspWeb: fs.existsSync(path.join(ROOT, 'psp-ppsspp', 'index.html')),
                   j2meWeb: fs.existsSync(path.join(ROOT, 'j2me-web', 'web', 'index.html')),
+                  boxartLocal: hasBoxart(), httpsOn: process.env.ARCADE_HTTPS === '1',
                   stream: STREAM, emulators: (STREAM && streamMod) ? streamMod.listEmulators() : [] };
     for (const s of SYSTEMS) lib[s.key] = listGames(s.key, s.exts);
     for (const s of BIOS_SYSTEMS) lib.bios[s] = biosFor(s);
@@ -887,6 +935,7 @@ if (process.env.ARCADE_HTTPS === '1') startHttps();
 
 server.listen(PORT, '0.0.0.0', () => {
   try { fs.mkdirSync(USERS, { recursive: true }); } catch (e) {}
+  try { setupWatchers(); } catch (e) {}    // live library: watch games/ + emulators/ for changes
   setTimeout(() => { try { compressExistingSaves(); } catch (e) {} }, 500);  // shrink old saves once, off the startup path
   const ips = lanAddresses();
   const line = '------------------------------------------------------------';

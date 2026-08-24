@@ -194,6 +194,39 @@
   .oskkey.wide{min-width:86px;padding:11px 14px}
   #oskBtn.on{border-color:rgba(255,255,255,.35);background:var(--panel2)}
 
+  /* ---- settings overlay ---- */
+  #settings{position:fixed;inset:0;z-index:76;background:rgba(9,11,22,.86);backdrop-filter:blur(8px);
+    overflow:auto;padding:5vh clamp(14px,4vw,32px) 48px}
+  .setbox{max-width:780px;margin:0 auto;background:#141726;border:1px solid var(--line);border-radius:16px;
+    padding:18px 22px 26px;box-shadow:var(--shadow)}
+  .sethead{display:flex;align-items:center;gap:12px}
+  .sethead h2{margin:0;font-size:20px;flex:1}
+  .setsec{margin-top:24px}
+  .setsec .shd{font-size:11.5px;font-weight:700;letter-spacing:.12em;color:var(--faint);text-transform:uppercase;
+    padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08)}
+  .setrow{display:flex;align-items:center;gap:14px;padding:13px 2px;border-bottom:1px solid rgba(255,255,255,.05)}
+  .setrow .st{flex:1;min-width:0}
+  .setrow .st .t{font-size:14.5px;font-weight:600}
+  .setrow .st .d{font-size:12.5px;color:var(--muted);line-height:1.45;margin-top:3px}
+  .seg{display:flex;gap:3px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:3px;flex:none}
+  .seg button{appearance:none;border:0;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;
+    color:var(--muted);background:transparent;border-radius:7px;padding:7px 13px}
+  .seg button:hover{color:var(--ink)}
+  .seg button[data-on]{background:var(--panel2);color:var(--ink)}
+  .strow{display:flex;gap:10px;padding:10px 2px;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px;align-items:baseline;flex-wrap:wrap}
+  .strow .si{flex:none;font-weight:700;width:18px;text-align:center}
+  .strow .si.ok{color:#5fe0a0} .strow .si.no{color:#e0584f} .strow .si.na{color:var(--faint)}
+  .strow .sn{font-weight:600;flex:1;min-width:140px}
+  .strow .sd{color:var(--muted);font-size:12.5px;line-height:1.5;flex-basis:100%;padding-left:28px}
+  #settings code{background:var(--panel2);color:var(--ink);padding:1px 6px;border-radius:5px;font-size:12px;white-space:nowrap}
+  .frow{display:flex;gap:12px;padding:8px 2px;border-bottom:1px solid rgba(255,255,255,.05);font-size:12.5px;align-items:baseline}
+  .frow .fs{font-weight:600;min-width:110px;color:var(--ink)}
+  .frow .fp{color:var(--muted);flex:1}
+  .frow .fn{color:var(--faint);white-space:nowrap;font-variant-numeric:tabular-nums}
+
+  /* card titles: hover-only by default; "Always" setting pins them on */
+  body.titles .card .meta{opacity:1;transform:none}
+
   /* header avatar: the signed-in profile's own colour */
   .uav{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;flex:none;
     font-size:9px;color:#12142a;font-weight:700}
@@ -324,7 +357,8 @@
       <button class="mini" id="userChip">👤 Guest</button>
       <button class="mini" id="searchBtn" title="Search every system (press /)">🔍 Search</button>
       <button class="mini" id="phoneBtn">📱 Phone</button>
-      <button class="mini" id="perfBtn" title="For slow TVs: disables shader, unsynced video, shows FPS — and lightens the page's own effects (blur, scanlines). Restart a game after toggling.">⚡ Performance: OFF</button>
+      <button class="mini" id="perfBtn" title="For slow TVs: disables shader, unsynced video, shows FPS — and lightens the page's own effects. Restart a game after toggling.">⚡ Performance: OFF</button>
+      <button class="mini" id="setBtn" title="Playback, look, library and system settings">⚙️ Settings</button>
       <button class="mini" id="streamBtn" title="Run a real emulator on the host (e.g. Steam Deck) and stream it here." hidden>🖥️ Host emulators</button>
       <div class="status" id="status"><span class="led" id="led"></span><span id="statusTxt">connecting…</span></div>
     </div>
@@ -374,6 +408,14 @@
       </div>
       <div id="osk" hidden></div>
       <div class="gridcards" id="searchRes"></div>
+    </div>
+  </div>
+
+  <!-- settings overlay: playback, look, library links + system status -->
+  <div id="settings" hidden>
+    <div class="setbox">
+      <div class="sethead"><h2>⚙️ Settings</h2><button class="mini" id="setClose">✕ Esc</button></div>
+      <div id="setBody"></div>
     </div>
   </div>
 
@@ -502,6 +544,7 @@
     try{
       const r = await fetch('/api/library', {cache:'no-store'});
       LIB = await r.json();
+      if(LIB.version) LIBV = LIB.version;   // keep the auto-refresh poller in step
       setStatus(true);
     }catch(e){
       LIB = {};
@@ -762,6 +805,7 @@
     return slides;
   }
   function buildHero(el){
+    if(!SET.hero){ el.hidden = true; if(heroTimer){ clearInterval(heroTimer); heroTimer = null; } return; }
     heroSlides = buildHeroSlides();
     if(heroIdx >= heroSlides.length) heroIdx = 0;
     renderHeroSlide(el);
@@ -897,6 +941,145 @@
     setTimeout(() => inp.focus(), 40);
   }
   function closeSearch(){ $('#search').hidden = true; }
+
+  /* ===== settings: playback, look, library links + system status =====
+     Stored per device in localStorage; playback options feed straight into
+     the emulator launch, look options into the page, and the library section
+     shows exactly which folder each system/emulator is linked to. */
+  const DEFAULT_SET = { autoresume:1, autosave:45, shader:1, fps:0, titles:0, hero:1, fx:'auto', refresh:1 };
+  let SET = Object.assign({}, DEFAULT_SET);
+  try{ Object.assign(SET, JSON.parse(localStorage.getItem('arcade_settings')||'{}')); }catch(e){}
+  function saveSet(){
+    try{ localStorage.setItem('arcade_settings', JSON.stringify(SET)); }catch(e){}
+    applySet();
+  }
+  function applySet(){
+    document.body.classList.toggle('titles', !!SET.titles);
+    applyLite();
+    const h = $('#hero');
+    if(h && LIB && Object.keys(LIB).length) buildHero(h);   // hero on/off applies immediately
+  }
+  function segRow(title, desc, opts, val, onPick){
+    const row = document.createElement('div'); row.className = 'setrow';
+    row.innerHTML = '<div class="st"><div class="t"></div><div class="d"></div></div>';
+    row.querySelector('.t').textContent = title;
+    row.querySelector('.d').textContent = desc;
+    const seg = document.createElement('div'); seg.className = 'seg';
+    opts.forEach(o => {
+      const b = document.createElement('button'); b.textContent = o.label;
+      if(o.v === val) b.setAttribute('data-on','');
+      b.onclick = () => { onPick(o.v); renderSettings(); };
+      seg.appendChild(b);
+    });
+    row.appendChild(seg);
+    return row;
+  }
+  const ONOFF = [{label:'On', v:1},{label:'Off', v:0}];
+  function statusRow(ok, name, hint){                    // ok: true | false | null
+    const r = document.createElement('div'); r.className = 'strow';
+    r.innerHTML = '<span class="si"></span><span class="sn"></span>'+(hint ? '<span class="sd"></span>' : '');
+    const si = r.querySelector('.si');
+    si.textContent = ok===true ? '✓' : ok===false ? '✗' : '—';
+    si.className = 'si ' + (ok===true ? 'ok' : ok===false ? 'no' : 'na');
+    r.querySelector('.sn').textContent = name;
+    if(hint) r.querySelector('.sd').innerHTML = hint;
+    return r;
+  }
+  function setSection(title){
+    const s = document.createElement('div'); s.className = 'setsec';
+    s.innerHTML = '<div class="shd"></div>';
+    s.querySelector('.shd').textContent = title;
+    return s;
+  }
+  function renderSettings(){
+    const body = $('#setBody'); if(!body) return;
+    body.innerHTML = '';
+
+    const pb = setSection('Playback');
+    pb.appendChild(segRow('Auto-resume saves','Signed-in profiles pick up exactly where they left off when a game starts.',
+      ONOFF, SET.autoresume?1:0, v => { SET.autoresume=v; saveSet(); }));
+    pb.appendChild(segRow('Auto-save while playing','How often progress is saved to your profile on the host.',
+      [{label:'Off',v:0},{label:'30s',v:30},{label:'45s',v:45},{label:'90s',v:90}], SET.autosave,
+      v => { SET.autosave=v; saveSet(); if(document.body.classList.contains('playing')) startAutoSave(); }));
+    pb.appendChild(segRow('Shader','The emulator’s CRT-style video filter. Restart the game to apply.',
+      ONOFF, SET.shader?1:0, v => { SET.shader=v; saveSet(); }));
+    pb.appendChild(segRow('FPS counter','Show the frames-per-second readout in the emulator. Restart the game to apply.',
+      ONOFF, SET.fps?1:0, v => { SET.fps=v; saveSet(); }));
+    body.appendChild(pb);
+
+    const lk = setSection('Look');
+    lk.appendChild(segRow('Game titles on cards','“Always” pins every name under the art; “Hover” keeps the wall art-only.',
+      [{label:'Hover',v:0},{label:'Always',v:1}], SET.titles?1:0, v => { SET.titles=v; saveSet(); }));
+    lk.appendChild(segRow('Hero spotlight','The big rotating banner at the top of the library.',
+      ONOFF, SET.hero?1:0, v => { SET.hero=v; saveSet(); }));
+    lk.appendChild(segRow('Visual effects','“Lite” drops blurs and animations — helps weak TV browsers. “Auto” follows ⚡ Performance mode.',
+      [{label:'Auto',v:'auto'},{label:'Full',v:'full'},{label:'Lite',v:'lite'}], SET.fx, v => { SET.fx=v; saveSet(); }));
+    body.appendChild(lk);
+
+    const li = setSection('Library — linked folders');
+    li.appendChild(segRow('Auto-refresh','Watch the games/ and emulators/ folders on the host and update this page the moment files are added.',
+      ONOFF, SET.refresh?1:0, v => { SET.refresh=v; saveSet(); }));
+    const rs = document.createElement('div'); rs.className = 'setrow';
+    rs.innerHTML = '<div class="st"><div class="t">Rescan now</div><div class="d">Re-list every folder immediately.</div></div>';
+    const rb = document.createElement('button'); rb.className = 'mini'; rb.textContent = '↻ Rescan';
+    rb.onclick = async () => { await loadLibrary(); renderSettings(); toast('Library rescanned'); };
+    rs.appendChild(rb); li.appendChild(rs);
+    SYS.forEach(s => {
+      const n = (LIB[s.key]||[]).length;
+      const f = document.createElement('div'); f.className = 'frow';
+      f.innerHTML = '<span class="fs"></span><span class="fp"></span><span class="fn"></span>';
+      f.querySelector('.fs').textContent = s.label;
+      f.querySelector('.fp').innerHTML = '<code>games/'+s.key+'</code> · '+s.exts;
+      f.querySelector('.fn').textContent = n + (n===1?' game':' games');
+      li.appendChild(f);
+    });
+    (LIB.emulators||[]).forEach(e => {
+      const f = document.createElement('div'); f.className = 'frow';
+      f.innerHTML = '<span class="fs"></span><span class="fp"></span><span class="fn"></span>';
+      f.querySelector('.fs').textContent = '🖥️ '+(e.system||'HOST');
+      f.querySelector('.fp').innerHTML = esc(e.name)+(e.bin ? ' · <code>'+esc(e.bin)+'</code>' : '')+
+        (e.found===false
+          ? ' · <b style="color:#e0584f">program not found</b> — install it, or fix the path in <code>emulators/'+esc(e.id)+'/emulator.json</code> (the <code>fix-emulator-paths</code> script can do it for you)'
+          : e.found===true ? ' · installed ✓' : '');
+      f.querySelector('.fn').textContent = (e.games||[]).length + ' games';
+      li.appendChild(f);
+    });
+    body.appendChild(li);
+
+    const st = setSection('System status');
+    st.appendChild(statusRow(!!LIB.ejsLocal, 'Offline emulator engine',
+      LIB.ejsLocal ? null : 'Cores download from the internet on first play. For fully-offline, run <code>download-offline-*</code> once on the host.'));
+    st.appendChild(statusRow(!!(LIB.bios && LIB.bios.psx), 'PS1 BIOS',
+      (LIB.bios && LIB.bios.psx) ? null : 'Most PS1 games run without it; for best compatibility drop a BIOS file into <code>bios/psx/</code>.'));
+    st.appendChild(statusRow(!!LIB.isolated, 'Threaded cores (faster N64 / PS1 / PSP)',
+      LIB.isolated ? null : 'Start the server with <code>ARCADE_THREADS=1</code> (or <code>start-*-psp</code>). Chrome/Edge/Firefox only.'));
+    st.appendChild(statusRow(!!LIB.j2meWeb, 'Java handset (local copy)',
+      LIB.j2meWeb ? null : 'Java games open in a separate tab until you run <code>download-j2me-*</code> once.'));
+    st.appendChild(statusRow(!!LIB.pspWeb, 'PPSSPP (local copy)',
+      LIB.pspWeb ? null : 'PSP uses the online PPSSPP app until you run <code>download-ppsspp-*</code> once.'));
+    st.appendChild(statusRow(!!LIB.boxartLocal, 'Real box-art',
+      LIB.boxartLocal ? null : 'Cards use generated art until you run <code>download-boxart-*</code> once — it matches your games by file name.'));
+    st.appendChild(statusRow(!!LIB.stream, 'Host streaming (PS2 / XBOX / GameCube …)',
+      LIB.stream ? null : 'Start with <code>start-*-stream</code> on the host to run native emulators there and stream them to every screen.'));
+    body.appendChild(st);
+  }
+  function openSettings(){ renderSettings(); $('#settings').hidden = false; }
+  function closeSettings(){ $('#settings').hidden = true; }
+
+  /* ---- live library: poll the tiny /api/version and re-fetch on change,
+     so new games/emulators dropped into the folders appear by themselves ---- */
+  let LIBV = 0;
+  setInterval(async () => {
+    if(!SET.refresh || document.hidden || document.body.classList.contains('playing')) return;
+    try{
+      const j = await (await fetch('/api/version', { cache:'no-store' })).json();
+      if(j && j.v && LIBV && j.v !== LIBV){
+        await loadLibrary();                               // sets LIBV from the fresh library
+        toast('Library updated — '+(totalGames()+hostGamesCount())+' games');
+        if(!$('#settings').hidden) renderSettings();
+      } else if(j && j.v) LIBV = j.v;
+    }catch(e){}
+  }, 4000);
 
   /* ---- 4-player / multitap ---- */
   // cores that need a core option to expose ports 3-4 (others either do 4 natively, e.g. N64,
@@ -1036,7 +1219,7 @@
     }catch(e){ toast('Load failed'); }
   }
   let autoSaveTimer=null;
-  function startAutoSave(){ stopAutoSave(); if(!TOKEN) return; autoSaveTimer=setInterval(()=>{ if(document.body.classList.contains('playing')&&curGame) saveToUser(true); }, 45000); }
+  function startAutoSave(){ stopAutoSave(); if(!TOKEN || !SET.autosave) return; autoSaveTimer=setInterval(()=>{ if(document.body.classList.contains('playing')&&curGame) saveToUser(true); }, SET.autosave*1000); }
   function stopAutoSave(){ if(autoSaveTimer){ clearInterval(autoSaveTimer); autoSaveTimer=null; } }
 
   /* ---- launch an EmulatorJS system on this screen ---- */
@@ -1080,8 +1263,10 @@
     window.EJS_color = '#3fe0cf';
     window.EJS_backgroundColor = '#000000';
     let _opts = {};
+    if(!SET.shader) _opts.shader = 'disabled';   // player settings first…
+    if(SET.fps) _opts.fps = 'show';
     if(fourPlayer && MULTITAP[system]) Object.assign(_opts, MULTITAP[system]);
-    if(PERF){                                    // performance mode (slow TVs)
+    if(PERF){                                    // …performance mode (slow TVs) wins
       Object.assign(_opts, PERF_OPTS);
       if(PERF_CORE_OPTS[system]) Object.assign(_opts, PERF_CORE_OPTS[system]);
     }
@@ -1095,7 +1280,7 @@
       document.body.appendChild(s);
       startAutoSave();
     };
-    if(TOKEN){     // resume this player's saved state automatically, if they have one
+    if(TOKEN && SET.autoresume){     // resume this player's saved state automatically, if they have one
       fetch(hasUrl(),{cache:'no-store'}).then(r=>r.json()).then(j=>{
         if(j && j.state) window.EJS_loadStateURL = loadUrl('state');
         appendLoader();
@@ -1565,7 +1750,8 @@
   // page's expensive effects — blur blobs, scanlines, backdrop filters — for weak TVs
   function applyLite(){
     let reduce = false; try{ reduce = matchMedia('(prefers-reduced-motion:reduce)').matches; }catch(e){}
-    document.body.classList.toggle('lite', PERF || reduce);
+    const fx = (typeof SET !== 'undefined' && SET.fx) || 'auto';   // settings can force Full/Lite; Auto follows ⚡/reduced-motion
+    document.body.classList.toggle('lite', fx === 'lite' || (fx !== 'full' && (PERF || reduce)));
   }
   (function(){ const b=$('#perfBtn'); if(b){ b.onclick=()=>{ PERF=!PERF; try{localStorage.setItem('arcade_perf',PERF?'1':'0');}catch(e){} updatePerfBtn(); applyLite(); toast('Performance mode '+(PERF?'ON':'OFF')+(document.body.classList.contains('playing')?' — restart the game to apply':'')); }; updatePerfBtn(); } applyLite(); })();
   // host-side streaming entry points
@@ -1587,6 +1773,8 @@
   function navScope(){
     const search = $('#search');
     if(search && !search.hidden) return search;                   // search overlay open
+    const settings = $('#settings');
+    if(settings && !settings.hidden) return settings;             // settings overlay open
     const login = $('#login');
     if(login && !login.hidden) return login;                      // profile picker open
     if(document.body.classList.contains('playing')) return null;  // emulator owns the keys
@@ -1633,20 +1821,26 @@
       : spatialNext(cur, cands, e.key);
     if(next){ next.focus(); try{ next.scrollIntoView({block:'nearest', inline:'nearest'}); }catch(_){} e.preventDefault(); }
   });
-  // "/" opens search from anywhere in the library; Escape closes it
+  // "/" opens search from anywhere in the library; Escape closes overlays
   document.addEventListener('keydown', e => {
     const t = e.target;
     const typing = t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA' || t.isContentEditable);
-    if(e.key === '/' && $('#search').hidden && !typing && !document.body.classList.contains('playing') && $('#login').hidden){
+    if(e.key === '/' && $('#search').hidden && $('#settings').hidden && !typing && !document.body.classList.contains('playing') && $('#login').hidden){
       e.preventDefault(); openSearch();
     } else if(e.key === 'Escape' && !$('#search').hidden){
       closeSearch();
+    } else if(e.key === 'Escape' && !$('#settings').hidden){
+      closeSettings();
     }
   });
   if($('#searchBtn')) $('#searchBtn').onclick = openSearch;
   if($('#searchClose')) $('#searchClose').onclick = closeSearch;
   if($('#searchInput')) $('#searchInput').oninput = e => renderSearch(e.target.value);
   if($('#oskBtn')) $('#oskBtn').onclick = () => toggleOSK();
+  // settings
+  if($('#setBtn')) $('#setBtn').onclick = openSettings;
+  if($('#setClose')) $('#setClose').onclick = closeSettings;
+  applySet();                                          // stored look/effects take hold at boot
   // emulator picker + rescan
   if($('#sysPick')) $('#sysPick').onclick = togglePicker;
   if($('#refresh')) $('#refresh').onclick = loadLibrary;
