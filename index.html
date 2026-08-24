@@ -12,59 +12,48 @@
 </style>
 <style>
   :root{
-    --bg:#080b0f;--ink:#e9f2f3;--muted:#8499a0;--faint:#5b6c72;
-    --glass:rgba(20,30,37,.55);--glass-line:rgba(120,200,205,.18);
+    --bg:#0e1120;--ink:#eef0f6;--muted:#9aa1b5;--faint:#6b7186;
+    --panel:rgba(255,255,255,.05);--panel2:rgba(255,255,255,.08);--line:rgba(255,255,255,.10);
+    --glass:rgba(255,255,255,.05);--glass-line:rgba(255,255,255,.10);
     --cyan:#3fe0cf;--amber:#f2b545;--violet:#9b8bff;
-    --radius:18px;--shadow:0 30px 60px -20px rgba(0,0,0,.7);
+    --radius:12px;--shadow:0 18px 40px -18px rgba(0,0,0,.55);
   }
   *{box-sizing:border-box}
+  [hidden]{display:none!important}   /* the hidden attribute must always win over class display rules */
   html,body{margin:0;height:100%}
   body{background:var(--bg);color:var(--ink);font-family:"Chakra Petch",system-ui,sans-serif;
     -webkit-font-smoothing:antialiased;min-height:100%;overflow-x:hidden;position:relative}
-  .bg-mesh{position:fixed;inset:0;z-index:-3;overflow:hidden;background:
-      radial-gradient(120% 90% at 12% -5%,#102229 0,transparent 55%),
-      radial-gradient(110% 80% at 92% 110%,#1a1530 0,transparent 55%),
-      linear-gradient(180deg,#080b0f,#0a0f14 60%,#070a0d)}
-  .blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.42;mix-blend-mode:screen;animation:drift 26s ease-in-out infinite}
-  .blob.a{width:46vmax;height:46vmax;left:-10vmax;top:-14vmax;background:radial-gradient(circle,#0f6e66,transparent 70%)}
-  .blob.b{width:40vmax;height:40vmax;right:-12vmax;bottom:-16vmax;background:radial-gradient(circle,#5a3fae,transparent 70%);animation-delay:-9s}
-  @keyframes drift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(4vmax,3vmax) scale(1.08)}66%{transform:translate(-3vmax,2vmax) scale(.95)}}
-  .grid{position:fixed;inset:0;z-index:-2;background-image:
-      linear-gradient(rgba(120,200,205,.045) 1px,transparent 1px),
-      linear-gradient(90deg,rgba(120,200,205,.045) 1px,transparent 1px);
-    background-size:46px 46px;mask-image:radial-gradient(120% 100% at 50% 0%,#000 30%,transparent 90%)}
-  .scan{position:fixed;inset:0;z-index:60;pointer-events:none;
-    background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px);opacity:.32;mix-blend-mode:multiply}
-  .vig{position:fixed;inset:0;z-index:-1;pointer-events:none;box-shadow:inset 0 0 28vmax rgba(0,0,0,.6)}
+  /* quiet, static backdrop — deep navy fading into purple, no effects */
+  .bg-mesh{position:fixed;inset:0;z-index:-3;background:
+      radial-gradient(90% 70% at 85% 100%,#241a44 0,transparent 60%),
+      radial-gradient(70% 55% at 10% 108%,#301b3f 0,transparent 55%),
+      linear-gradient(180deg,#0d1020,#101226 55%,#131132)}
 
-  .wrap{max-width:1100px;margin:0 auto;padding:clamp(20px,4vw,48px) clamp(16px,4vw,32px) 80px}
-  header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;
-    opacity:0;transform:translateY(14px);animation:rise .7s .05s cubic-bezier(.2,.8,.2,1) forwards}
-  .brand{display:flex;flex-direction:column;gap:6px}
-  .mark{font-family:"Silkscreen",monospace;font-weight:700;letter-spacing:1px;font-size:clamp(26px,5.4vw,44px);line-height:.95;
-    color:transparent;background:linear-gradient(92deg,var(--cyan),#bdfff5 55%,var(--cyan));-webkit-background-clip:text;background-clip:text;
-    text-shadow:0 0 22px rgba(63,224,207,.25)}
-  .mark .dot{color:var(--amber);-webkit-text-fill-color:var(--amber)}
-  .tag{color:var(--muted);font-size:13px;letter-spacing:.14em;text-transform:uppercase}
+  .wrap{max-width:1180px;margin:0 auto;padding:clamp(16px,3vw,32px) clamp(16px,4vw,32px) 80px}
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    opacity:0;transform:translateY(10px);animation:rise .6s .05s cubic-bezier(.2,.8,.2,1) forwards}
+  .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .mark{font-weight:700;letter-spacing:.02em;font-size:clamp(20px,3.4vw,26px);line-height:1;color:var(--ink)}
+  .mark .dot{color:var(--violet)}
+  .tag{color:var(--faint);font-size:12.5px}
   .topacts{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  .status{display:flex;align-items:center;gap:9px;padding:8px 14px;border-radius:999px;background:var(--glass);
-    border:1px solid var(--glass-line);backdrop-filter:blur(10px);font-size:12.5px;color:var(--muted)}
-  .led{width:9px;height:9px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:pulse 2.4s infinite}
-  .led.off{background:#c8593f;box-shadow:0 0 10px #c8593f;animation:none}
-  @keyframes pulse{50%{opacity:.4}}
+  .status{display:flex;align-items:center;gap:9px;padding:8px 14px;border-radius:999px;background:var(--panel);
+    border:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+  .led{width:8px;height:8px;border-radius:50%;background:#5fe0a0}
+  .led.off{background:#e0584f}
 
-  .tabs{display:flex;gap:8px;margin:26px 0 18px;flex-wrap:wrap;
-    opacity:0;transform:translateY(14px);animation:rise .7s .16s cubic-bezier(.2,.8,.2,1) forwards}
-  .tab{appearance:none;border:1px solid var(--glass-line);background:var(--glass);color:var(--muted);
-    font-family:inherit;font-size:13.5px;font-weight:600;letter-spacing:.04em;padding:10px 18px;border-radius:11px;cursor:pointer;
-    display:flex;align-items:center;gap:9px;backdrop-filter:blur(10px);transition:.2s}
-  .tab .n{font-family:"Silkscreen",monospace;font-size:10px;opacity:.8}
-  .tab[data-active]{color:#06100f;border-color:transparent;background:var(--ta,linear-gradient(180deg,#7df3e7,var(--cyan)))}
+  .tabs{display:flex;gap:6px;margin:22px 0 18px;flex-wrap:wrap;align-items:center;
+    opacity:0;transform:translateY(10px);animation:rise .6s .14s cubic-bezier(.2,.8,.2,1) forwards}
+  .tab{appearance:none;border:1px solid transparent;background:transparent;color:var(--muted);
+    font-family:inherit;font-size:14px;font-weight:600;padding:9px 16px;border-radius:999px;cursor:pointer;
+    display:flex;align-items:center;gap:8px;transition:.15s}
+  .tab:hover{color:var(--ink);background:var(--panel)}
+  .tab .n{font-size:11px;opacity:.7}
+  .tab[data-active]{color:var(--ink);background:var(--panel2);border-color:var(--line)}
   .spacer{flex:1}
-  .mini{appearance:none;border:1px solid var(--glass-line);background:transparent;color:var(--muted);
-    font-family:inherit;font-size:13px;padding:10px 14px;border-radius:11px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:.2s}
-  .mini:hover{color:var(--ink);border-color:rgba(255,255,255,.25)}
-  #userChip{color:var(--cyan);border-color:color-mix(in srgb,var(--cyan) 35%,transparent)}
+  .mini{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);
+    font-family:inherit;font-size:13px;font-weight:600;padding:9px 14px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:.15s}
+  .mini:hover{background:var(--panel2);border-color:rgba(255,255,255,.22)}
   #perfBtn.on{color:var(--amber);border-color:color-mix(in srgb,var(--amber) 45%,transparent);background:color-mix(in srgb,var(--amber) 10%,transparent)}
 
   /* ---- player login ---- */
@@ -73,7 +62,7 @@
   #login[hidden]{display:none}
   .loginbox{width:100%;max-width:440px;background:linear-gradient(180deg,#101a22,#0a1117);
     border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:26px 24px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.55)}
-  .lhead{font-family:"Silkscreen",monospace;font-size:18px;letter-spacing:2px;color:var(--cyan)}
+  .lhead{font-size:19px;font-weight:700;letter-spacing:.05em;color:var(--ink)}
   .lsub{color:var(--muted);font-size:13px;margin:8px 0 18px}
   .plist{display:flex;flex-direction:column;gap:8px;max-height:34vh;overflow:auto;margin-bottom:12px}
   .pchip{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
@@ -102,42 +91,167 @@
   .keypad button:active{filter:brightness(1.5);transform:translateY(2px)}
   .keypad button.wide{grid-column:span 1}
 
-  .panel{display:none}
-  .panel.live{display:block;animation:rise .45s ease forwards}
 
-  .shelf-head{display:flex;align-items:baseline;gap:12px;margin:6px 0 16px}
-  .shelf-head h2{margin:0;font-size:20px;font-weight:600}
-  .shelf-head .count{font-family:"Silkscreen",monospace;font-size:11px;color:var(--faint)}
+  /* keyboard / TV-remote focus: always visible */
+  button:focus-visible,a:focus-visible{outline:2px solid rgba(238,240,246,.9);outline-offset:2px}
 
-  .gridcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:16px}
-  .card{position:relative;border-radius:var(--radius);overflow:hidden;cursor:pointer;text-align:left;
-    background:linear-gradient(160deg,rgba(28,40,48,.7),rgba(12,18,24,.55));border:1px solid var(--glass-line);
-    backdrop-filter:blur(12px);box-shadow:var(--shadow);transition:transform .25s,border-color .25s;animation:pop .5s both}
-  .card:hover{transform:translateY(-5px);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
-  .card .art{height:104px;position:relative;overflow:hidden;
-    background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 24%,#0b1116),#0a0e12)}
-  .card .art .glyph{position:absolute;inset:0;z-index:0;display:grid;place-items:center;font-family:"Silkscreen",monospace;
-    font-size:30px;letter-spacing:1px;color:color-mix(in srgb,var(--accent) 78%,#fff);opacity:.92;text-shadow:0 0 18px color-mix(in srgb,var(--accent) 60%,transparent)}
-  .card .art .cover{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:cover;background:#0a0e12;opacity:0;transition:opacity .35s}
+  /* ---- game cards: art only — name + Play appear on hover / focus ---- */
+  .gridcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px}
+  .card{--accent:var(--cyan);position:relative;aspect-ratio:16/9;border-radius:var(--radius);overflow:hidden;cursor:pointer;text-align:left;padding:0;
+    font-family:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);
+    box-shadow:var(--shadow);transition:transform .2s,border-color .2s;animation:pop .4s both}
+  .card:hover,.card:focus-visible{transform:translateY(-3px);border-color:rgba(255,255,255,.30)}
+  .card:focus-visible{outline:3px solid rgba(238,240,246,.95);outline-offset:3px}
+  .card .art{position:absolute;inset:0;overflow:hidden;
+    background:linear-gradient(150deg,color-mix(in srgb,var(--accent) 16%,#151829),#12141f)}
+  .card .art .glyph{position:absolute;inset:0;z-index:0;display:grid;place-items:center;
+    font-size:30px;font-weight:700;letter-spacing:2px;color:color-mix(in srgb,var(--accent) 65%,#fff);opacity:.55}
+  .card .art .cover{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .3s}
   .card .art .cover.show{opacity:1}
-  .card .art .cover.pix{object-fit:contain;image-rendering:pixelated;padding:16px;background:
-      radial-gradient(120% 120% at 50% 25%,color-mix(in srgb,var(--accent) 16%,#0a0e12),#0a0e12)}
-  .card .art .sheen{position:absolute;inset:0;z-index:2;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.16) 45%,transparent 60%);transform:translateX(-60%);transition:transform .6s}
-  .card:hover .art .sheen{transform:translateX(60%)}
-  .card .art .play{position:absolute;z-index:3;right:10px;bottom:10px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
-    background:color-mix(in srgb,var(--accent) 90%,#fff);color:#06100f;font-size:14px;box-shadow:0 6px 16px rgba(0,0,0,.4);transform:scale(.6);opacity:0;transition:.25s}
-  .card:hover .art .play{transform:scale(1);opacity:1}
-  .card .meta{padding:12px 13px 14px}
-  .card .meta .nm{font-size:14px;font-weight:600;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.5em}
-  .card .meta .sz{margin-top:5px;font-size:11px;color:var(--faint);font-family:"Silkscreen",monospace;letter-spacing:.5px}
-  .card{--accent:var(--cyan)}
-  @keyframes pop{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  .card .art .cover.tall{object-fit:contain}     /* portrait boxart inside the wide frame */
+  .card .art .cover.pix{object-fit:contain;image-rendering:pixelated;padding:12%}
+  .card .chip{position:absolute;z-index:3;top:8px;left:8px;font-size:10.5px;font-weight:700;letter-spacing:.06em;
+    color:#dfe3ef;background:rgba(10,12,22,.62);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+  .card .badge{position:absolute;z-index:3;top:8px;right:8px;font-size:10.5px;font-weight:700;letter-spacing:.04em;
+    color:#151725;background:#ffd884;border-radius:6px;padding:4px 8px}
+  .card .meta{position:absolute;left:0;right:0;bottom:0;z-index:3;padding:30px 12px 10px;
+    display:flex;align-items:flex-end;justify-content:space-between;gap:10px;
+    background:linear-gradient(transparent,rgba(8,10,18,.94) 62%);
+    opacity:0;transform:translateY(4px);transition:.18s}
+  .card:hover .meta,.card:focus-visible .meta{opacity:1;transform:none}
+  .card .meta .nm{font-size:14px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .card .meta .go{flex:none;font-size:12.5px;font-weight:700;color:var(--ink);
+    background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 12px;white-space:nowrap}
+  @keyframes pop{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 
-  .empty{border:1px dashed var(--glass-line);border-radius:var(--radius);padding:34px 26px;text-align:center;color:var(--muted);background:rgba(255,255,255,.02)}
-  .empty .big{font-family:"Silkscreen",monospace;font-size:13px;color:var(--ink);margin-bottom:10px;letter-spacing:1px}
+  /* ---- hero: full-bleed art, copy on the right, thumbnail slide selectors ---- */
+  .hero{position:relative;border-radius:16px;overflow:hidden;margin:2px 0 22px;min-height:min(430px,54vh);
+    border:1px solid var(--line);box-shadow:var(--shadow);background:#12141f;animation:rise .5s ease both}
+  .hero .hbg{position:absolute;inset:0;overflow:hidden}
+  .hero .hbg img{width:100%;height:100%;object-fit:cover}
+  .hero .hbg img.tall{filter:blur(22px) brightness(.8);transform:scale(1.3)}   /* portrait art: cinematic fill */
+  .hero .hshade{position:absolute;inset:0;background:
+      linear-gradient(90deg,transparent 26%,rgba(10,11,22,.9) 74%),
+      linear-gradient(0deg,rgba(10,11,22,.78),transparent 44%)}
+  .hero .hin{position:absolute;right:clamp(18px,5vw,64px);top:0;bottom:92px;z-index:1;max-width:min(46%,430px);
+    display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:12px}
+  @media(max-width:640px){.hero .hin{left:18px;right:18px;max-width:none}}
+  .hbadge{font-size:11.5px;font-weight:700;letter-spacing:.08em;color:#cdd3e6;background:rgba(10,12,22,.55);
+    border:1px solid color-mix(in srgb,var(--haccent,#fff) 30%,transparent);border-radius:999px;padding:6px 12px}
+  .htitle{font-size:clamp(22px,3.6vw,34px);font-weight:700;line-height:1.15;color:var(--ink);
+    text-wrap:balance;text-shadow:0 2px 16px rgba(0,0,0,.55)}
+  .hsub{font-size:14.5px;color:#c6cbdd;line-height:1.55;text-shadow:0 1px 8px rgba(0,0,0,.5)}
+  .hsub b{color:#fff}
+  .hacts{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:4px}
+  .hpause{appearance:none;cursor:pointer;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);
+    background:rgba(10,12,22,.5);color:var(--ink);font-size:13px;display:grid;place-items:center}
+  .hpause:hover{background:rgba(255,255,255,.12)}
+  .hthumbs{position:absolute;left:0;right:0;bottom:16px;z-index:2;display:flex;gap:10px;justify-content:center}
+  .hthumbs button{appearance:none;cursor:pointer;padding:0;width:92px;aspect-ratio:16/9;border-radius:8px;overflow:hidden;
+    border:2px solid transparent;background:#1a1d30;opacity:.6;transition:.2s;display:grid;place-items:center;color:var(--ink)}
+  .hthumbs button img{width:100%;height:100%;object-fit:cover;display:block}
+  .hthumbs button .em{font-size:20px}
+  .hthumbs button[data-on]{border-color:#fff;opacity:1}
+  .hthumbs button:hover{opacity:1}
+  @media(max-width:560px){.hthumbs button{width:58px}}
+
+  /* ---- emulator picker: a collapsible dropdown chooses what the grid shows ---- */
+  .pickrow{display:flex;gap:12px;align-items:center;margin:2px 0 14px;flex-wrap:wrap}
+  .pick{appearance:none;cursor:pointer;display:flex;align-items:center;gap:10px;font-family:inherit;font-weight:700;font-size:15px;
+    color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 16px}
+  .pick:hover{background:var(--panel2)}
+  .pick .caret{font-size:11px;color:var(--muted);transition:transform .2s}
+  .pick[data-open] .caret{transform:rotate(180deg)}
+  .pickrow .count{font-size:12.5px;color:var(--faint)}
+  .picklist{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;margin:0 0 16px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;animation:rise .2s ease both}
+  .pk{appearance:none;cursor:pointer;display:flex;align-items:center;gap:10px;text-align:left;font-family:inherit;font-size:13.5px;font-weight:600;
+    color:var(--muted);background:transparent;border:1px solid transparent;border-radius:9px;padding:10px 12px}
+  .pk:hover{color:var(--ink);background:var(--panel2)}
+  .pk[data-on]{color:var(--ink);background:var(--panel2);border-color:var(--line)}
+  .pk .pl{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pk .n{font-size:11px;color:var(--faint)}
+  .pk .sw{width:9px;height:9px;border-radius:3px;flex:none}
+
+  /* ---- search overlay (🔍 button or the / key) ---- */
+  #search{position:fixed;inset:0;z-index:75;background:rgba(9,11,22,.86);backdrop-filter:blur(8px);
+    overflow:auto;padding:6vh clamp(14px,4vw,32px) 48px}
+  .searchbox{max-width:1100px;margin:0 auto}
+  .srow{display:flex;align-items:center;gap:10px;background:#151827;border:1px solid var(--line);
+    border-radius:12px;padding:6px 8px 6px 16px;margin-bottom:22px}
+  .srow .sicon{font-size:16px}
+  #searchInput{flex:1;min-width:0;background:none;border:0;outline:none;color:var(--ink);
+    font-family:inherit;font-size:17px;padding:10px 0}
+  #searchInput::placeholder{color:var(--faint)}
+  .snote{grid-column:1/-1;color:var(--muted);text-align:center;padding:36px 16px;font-size:14px;line-height:1.6}
+  .snote code{background:var(--panel2);color:var(--ink);padding:2px 7px;border-radius:5px;font-size:13px}
+  /* on-screen keys: type a search with a TV remote (arrows + OK) */
+  #osk{margin:-8px 0 22px;display:flex;flex-direction:column;gap:8px}
+  .oskrow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .oskkey{appearance:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;color:var(--ink);
+    background:#151827;border:1px solid var(--line);border-radius:9px;min-width:44px;padding:11px 0;text-align:center}
+  .oskkey:hover{border-color:rgba(255,255,255,.3)}
+  .oskkey.wide{min-width:86px;padding:11px 14px}
+  #oskBtn.on{border-color:rgba(255,255,255,.35);background:var(--panel2)}
+
+  /* ---- settings overlay ---- */
+  #settings{position:fixed;inset:0;z-index:76;background:rgba(9,11,22,.86);backdrop-filter:blur(8px);
+    overflow:auto;padding:5vh clamp(14px,4vw,32px) 48px}
+  .setbox{max-width:780px;margin:0 auto;background:#141726;border:1px solid var(--line);border-radius:16px;
+    padding:18px 22px 26px;box-shadow:var(--shadow)}
+  .sethead{display:flex;align-items:center;gap:12px}
+  .sethead h2{margin:0;font-size:20px;flex:1}
+  .setsec{margin-top:24px}
+  .setsec .shd{font-size:11.5px;font-weight:700;letter-spacing:.12em;color:var(--faint);text-transform:uppercase;
+    padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08)}
+  .setrow{display:flex;align-items:center;gap:14px;padding:13px 2px;border-bottom:1px solid rgba(255,255,255,.05)}
+  .setrow .st{flex:1;min-width:0}
+  .setrow .st .t{font-size:14.5px;font-weight:600}
+  .setrow .st .d{font-size:12.5px;color:var(--muted);line-height:1.45;margin-top:3px}
+  .seg{display:flex;gap:3px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:3px;flex:none}
+  .seg button{appearance:none;border:0;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;
+    color:var(--muted);background:transparent;border-radius:7px;padding:7px 13px}
+  .seg button:hover{color:var(--ink)}
+  .seg button[data-on]{background:var(--panel2);color:var(--ink)}
+  .strow{display:flex;gap:10px;padding:10px 2px;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px;align-items:baseline;flex-wrap:wrap}
+  .strow .si{flex:none;font-weight:700;width:18px;text-align:center}
+  .strow .si.ok{color:#5fe0a0} .strow .si.no{color:#e0584f} .strow .si.na{color:var(--faint)}
+  .strow .sn{font-weight:600;flex:1;min-width:140px}
+  .strow .sd{color:var(--muted);font-size:12.5px;line-height:1.5;flex-basis:100%;padding-left:28px}
+  #settings code{background:var(--panel2);color:var(--ink);padding:1px 6px;border-radius:5px;font-size:12px;white-space:nowrap}
+  .frow{display:flex;gap:12px;padding:8px 2px;border-bottom:1px solid rgba(255,255,255,.05);font-size:12.5px;align-items:baseline}
+  .frow .fs{font-weight:600;min-width:110px;color:var(--ink)}
+  .frow .fp{color:var(--muted);flex:1}
+  .frow .fn{color:var(--faint);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .strow .mini.dl{flex:none;padding:6px 12px;font-size:12px}
+  .strow .mini.dl:disabled{opacity:.5;cursor:default}
+  .sjob{margin-top:14px;background:#0f1220;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .sjob .sjh{display:flex;gap:10px;align-items:center;font-size:13.5px;font-weight:700}
+  .sjob .sjh .si{width:18px;text-align:center}
+  .sjob .sjh .si.ok{color:#5fe0a0} .sjob .sjh .si.no{color:#e0584f} .sjob .sjh .si.na{color:var(--muted)}
+  .sjob pre{margin:9px 0 0;font-size:11.5px;line-height:1.55;color:var(--muted);white-space:pre-wrap;
+    word-break:break-word;max-height:190px;overflow:auto;font-family:ui-monospace,Menlo,Consolas,monospace}
+
+  /* card titles: hover-only by default; "Always" setting pins them on */
+  body.titles .card .meta{opacity:1;transform:none}
+
+  /* header avatar: the signed-in profile's own colour */
+  .uav{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;flex:none;
+    font-size:9px;color:#12142a;font-weight:700}
+
+  /* ---- chrome-lite: heavy effects off for weak TVs ----
+     Turns on with ⚡ Performance mode or prefers-reduced-motion: backdrop blurs
+     and the hero's blur fill cost real frames on TV browsers. */
+  body.lite .status,body.lite .help,body.lite .toast,body.lite .pair,body.lite #search{backdrop-filter:none}
+  body.lite #search{background:rgba(9,11,22,.96)}
+  body.lite .card{animation:none}
+  body.lite .hero .hbg img.tall{filter:brightness(.45);transform:none}
+
+  .empty{grid-column:1/-1;border:1px dashed var(--line);border-radius:var(--radius);padding:34px 26px;text-align:center;color:var(--muted);background:var(--panel)}
+  .empty .big{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px;letter-spacing:.04em}
   .pspbanner{grid-column:1/-1;background:linear-gradient(180deg,rgba(195,199,207,.10),rgba(195,199,207,.03));
     border:1px solid rgba(195,199,207,.25);border-radius:14px;padding:16px 18px;margin-bottom:14px}
-  .pspbanner .pb-h{font-family:"Silkscreen",monospace;font-size:12px;letter-spacing:1px;color:#dfe3ea;margin-bottom:10px}
+  .pspbanner .pb-h{font-size:14px;font-weight:700;letter-spacing:.04em;color:#dfe3ea;margin-bottom:10px}
   .pspbanner .pb-row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
   .pspbanner .pb-btn.primary{font-family:"Chakra Petch",sans-serif;font-weight:700;font-size:14px;color:#06100f;cursor:pointer;
     background:linear-gradient(180deg,#dfe3ea,#aeb4c0);border:none;border-radius:10px;padding:11px 16px;white-space:nowrap}
@@ -149,18 +263,20 @@
   .empty.amber code{background:rgba(242,181,69,.12);color:var(--amber)}
   .empty .load{margin-top:16px}
 
-  .btn{appearance:none;border:0;cursor:pointer;font-family:inherit;font-weight:600;font-size:14px;letter-spacing:.03em;
-    padding:11px 16px;border-radius:11px;color:#06100f;background:linear-gradient(180deg,color-mix(in srgb,var(--accent,#3fe0cf) 92%,#fff),var(--accent,#3fe0cf));
-    box-shadow:0 1px 0 rgba(255,255,255,.4) inset,0 -3px 0 rgba(0,0,0,.18) inset;transition:transform .12s,filter .2s}
-  .btn:hover{filter:brightness(1.06)} .btn:active{transform:translateY(2px)}
-  .btn.ghost{background:transparent;color:var(--accent,#3fe0cf);border:1px solid color-mix(in srgb,var(--accent,#3fe0cf) 40%,transparent);box-shadow:none}
-  .btn.ghost:hover{background:color-mix(in srgb,var(--accent,#3fe0cf) 10%,transparent)}
+  .btn{appearance:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:14px;
+    padding:11px 18px;border-radius:9px;color:var(--ink);background:var(--panel2);border:1px solid var(--line);
+    transition:background .15s,transform .12s}
+  .btn:hover{background:rgba(255,255,255,.16)} .btn:active{transform:translateY(1px)}
+  .btn.primary{background:#e9ecf6;color:#12142a;border-color:transparent}
+  .btn.primary:hover{background:#fff}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  .btn.ghost:hover{background:var(--panel)}
 
   /* stages */
   .stage{display:none} .stage.live{display:block;animation:rise .5s ease forwards}
   body.playing .libview{display:none}
   .stagebar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 18px;flex-wrap:wrap}
-  .stagebar .title{font-family:"Silkscreen",monospace;font-size:13px;letter-spacing:1px}
+  .stagebar .title{font-size:15px;font-weight:700;letter-spacing:.04em}
   .stagebar .acts{display:flex;gap:10px;flex-wrap:wrap}
   .bezel{border-radius:22px;padding:18px;background:linear-gradient(160deg,#161d23,#0a0e12);border:1px solid rgba(255,255,255,.07);
     box-shadow:var(--shadow),inset 0 0 0 1px rgba(0,0,0,.4)}
@@ -198,7 +314,7 @@
   .help{margin-top:20px;background:var(--glass);border:1px solid var(--glass-line);border-radius:14px;padding:16px 18px;backdrop-filter:blur(10px)}
   .help h3{margin:0 0 10px;font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
   .keys{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 16px;font-size:13px;color:var(--muted)}
-  .keys b{color:var(--ink);font-weight:600;font-family:"Silkscreen",monospace;font-size:11px;margin-right:8px}
+  .keys b{color:var(--ink);font-weight:700;font-size:12.5px;margin-right:8px}
 
   footer{margin-top:38px;color:var(--faint);font-size:12px;text-align:center;line-height:1.7}
   /* toast (launch/save feedback) */
@@ -214,83 +330,18 @@
   .pair[hidden]{display:none}
   .pair .qr{width:150px;height:150px;flex:none;border-radius:12px;background:#dffaf5;display:grid;place-items:center;overflow:hidden}
   .pair .qr img,.pair .qr canvas{width:100%!important;height:100%!important;display:block}
-  .pair .qr:empty::after{content:"no QR (offline)";font-size:10px;color:#0a4;font-family:"Silkscreen",monospace;text-align:center;padding:8px}
+  .pair .qr:empty::after{content:"no QR (offline)";font-size:11px;font-weight:700;color:#0a4;text-align:center;padding:8px}
   .pair .pairtext{min-width:0}
   .pair .pl{font-size:12.5px;color:var(--muted);margin:2px 0}
-  .pair .purl{font-family:"Silkscreen",monospace;font-size:15px;color:var(--cyan);word-break:break-all;margin:4px 0 8px}
-  .pair .pairtext b{color:var(--amber);font-family:"Silkscreen",monospace}
-  .mpbtn{margin-top:8px;font-family:"Silkscreen",monospace;font-size:10px;letter-spacing:1px;color:#bfeee7;
-    background:#152029;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:8px 12px;cursor:pointer}
-  .mpbtn:hover{filter:brightness(1.2)}
-  .mpbtn.on{color:#06100f;background:linear-gradient(180deg,#9be0a5,#3fc06a);border-color:transparent;font-weight:700}
+  .pair .purl{font-size:14px;font-weight:600;color:var(--ink);word-break:break-all;margin:4px 0 8px}
+  .pair .pairtext b{color:var(--amber);font-weight:700}
+  .mpbtn{margin-top:8px;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--ink);
+    background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}
+  .mpbtn:hover{background:rgba(255,255,255,.16)}
+  .mpbtn.on{color:#12142a;background:#9be0a5;border-color:transparent}
   .pair .pstat{margin-top:8px;font-size:12px;color:var(--faint)}
   .pair .pstat.good{color:var(--cyan)}
 
-  /* phone controller */
-  .padmode,.padmode body{height:100%;overflow:hidden;overscroll-behavior:none}
-  .padroot{position:fixed;inset:0;z-index:200;background:radial-gradient(130% 100% at 50% -10%,#0e1620,#06090d);
-    display:flex;flex-direction:column;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-  .padroot[hidden]{display:none}
-  .padbar{display:flex;align-items:center;gap:9px;padding:9px 16px;font-family:"Silkscreen",monospace;font-size:11px;color:var(--muted);letter-spacing:1px}
-  .padbar b{color:var(--cyan);margin-left:4px}
-  .padtoggle{margin-left:auto;display:flex;gap:6px}
-  .ptg{appearance:none;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--muted);
-    font-family:"Chakra Petch",sans-serif;font-size:12px;font-weight:600;padding:7px 11px;border-radius:9px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-  .ptg[data-on="1"]{background:linear-gradient(180deg,#5fecdb,var(--cyan));color:#06100f;border-color:transparent}
-  .conn{width:11px;height:11px;border-radius:50%;background:#c8593f;box-shadow:0 0 8px #c8593f;transition:.2s}
-  .conn.ok{background:var(--cyan);box-shadow:0 0 9px var(--cyan)}
-  #padPlay{flex:1;display:flex;flex-direction:column}
-  #padPlay[hidden]{display:none}
-  .padextra{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:4px 14px 0}
-  .ebtn{appearance:none;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:var(--muted);
-    font-family:"Silkscreen",monospace;font-size:10px;letter-spacing:.5px;padding:9px 12px;border-radius:9px;cursor:pointer;
-    -webkit-tap-highlight-color:transparent;touch-action:none}
-  .ebtn:active{filter:brightness(1.3)}
-  .ebtn[data-on="1"]{color:#06100f;border-color:transparent;background:linear-gradient(180deg,#ffe08a,var(--amber))}
-  #bFF[data-on="1"]{background:linear-gradient(180deg,#7df3e7,var(--cyan))}
-  .padshoulders{display:flex;justify-content:space-between;padding:6px 16px 0}
-  .shgrp{display:flex;gap:8px}
-  .pbtn{touch-action:none;display:grid;place-items:center;color:#d6fbf4;font-family:"Chakra Petch",sans-serif;font-weight:700;cursor:pointer;
-    background:linear-gradient(180deg,#26323b,#121a22);border:1px solid rgba(255,255,255,.08);
-    box-shadow:0 5px 0 rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.08);transition:transform .04s,filter .04s,box-shadow .04s}
-  .pbtn.on{transform:translateY(4px);filter:brightness(1.45);box-shadow:0 1px 0 rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.08)}
-  .pbtn.sh{width:17vw;max-width:118px;height:7.5vh;min-height:42px;border-radius:12px;font-size:15px;letter-spacing:2px}
-  .padmain{flex:1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 4.5vw}
-  /* analog thumbstick (8-way, diagonals) */
-  .dpad{position:relative;width:44vmin;height:44vmin;max-width:300px;max-height:300px;border-radius:50%;
-    background:radial-gradient(circle at 50% 38%,#1b2832,#0c131a);border:1px solid rgba(255,255,255,.08);
-    box-shadow:inset 0 8px 22px rgba(0,0,0,.65),inset 0 -2px 0 rgba(255,255,255,.04);display:grid;place-items:center;touch-action:none}
-  .dpad .dcross{position:absolute;inset:20%;opacity:.45;pointer-events:none;border-radius:8px;
-    background:linear-gradient(#33474f,#33474f) center/24% 100% no-repeat,linear-gradient(#33474f,#33474f) center/100% 24% no-repeat}
-  .knob{width:44%;height:44%;border-radius:50%;pointer-events:none;
-    background:linear-gradient(180deg,#43586580,#1d2a34);border:1px solid rgba(255,255,255,.16);
-    box-shadow:0 6px 14px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.18);transition:transform .04s}
-  .dpad.live{border-color:color-mix(in srgb,var(--cyan) 45%,transparent)}
-  .midbtns{display:flex;flex-direction:column;gap:16px;align-items:center}
-  .pbtn.pill{padding:11px 16px;border-radius:999px;font-size:10px;letter-spacing:1.5px;font-family:"Silkscreen",monospace;transform:rotate(-20deg)}
-  .pbtn.pill.on{transform:rotate(-20deg) translateY(4px)}
-  .actions{position:relative;width:44vmin;height:44vmin;max-width:300px;max-height:300px}
-  .pbtn.ab{position:absolute;width:42%;height:42%;border-radius:50%;font-size:24px;border-color:rgba(255,255,255,.28)}
-  .pbtn.ab.x{left:29%;top:0;background:linear-gradient(180deg,#bdb2ff,#7b6fe0);color:#06100f}
-  .pbtn.ab.y{left:0;top:29%;background:linear-gradient(180deg,#8bd07a,#4f9b3e);color:#06100f}
-  .pbtn.ab.a{right:0;top:29%;background:linear-gradient(180deg,#5fecdb,#16a899);color:#06100f}
-  .pbtn.ab.b{left:29%;bottom:0;background:linear-gradient(180deg,#ffd884,#dca02a);color:#06100f}
-  /* phone library list */
-  .padlib{flex:1;display:flex;flex-direction:column;min-height:0;padding:0 14px 14px}
-  .padlib[hidden]{display:none}
-  .padlibhead{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12.5px;padding:6px 2px 12px}
-  .padlibhead .ptg{margin-left:auto;padding:6px 10px}
-  .pliblist{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:9px;touch-action:pan-y}
-  .plrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;
-    background:linear-gradient(160deg,rgba(28,40,48,.7),rgba(12,18,24,.6));border:1px solid var(--glass-line);
-    border-radius:12px;padding:13px 14px;color:var(--ink);font-family:inherit;-webkit-tap-highlight-color:transparent}
-  .plrow:active{filter:brightness(1.25)}
-  .plrow .plk{font-family:"Silkscreen",monospace;font-size:9px;padding:5px 7px;border-radius:6px;flex:none}
-  .plrow.gba  .plk{color:var(--cyan);background:color-mix(in srgb,var(--cyan) 14%,transparent)}
-  .plrow.j2me .plk{color:var(--amber);background:color-mix(in srgb,var(--amber) 14%,transparent)}
-  .plrow .pln{flex:1;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .plrow .plgo{color:var(--cyan);font-size:15px;flex:none}
-  .plempty{color:var(--faint);text-align:center;padding:30px 10px;font-size:13px}
   @keyframes rise{to{opacity:1;transform:translateY(0)}}
   @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important}}
   /* solo play directly on a phone: keep the video pinned to the top so EmulatorJS's
@@ -302,19 +353,20 @@
 </style>
 </head>
 <body>
-<div class="bg-mesh"><span class="blob a"></span><span class="blob b"></span></div>
-<div class="grid"></div><div class="vig"></div><div class="scan"></div>
+<div class="bg-mesh"></div>
 
 <div class="wrap">
   <header class="top">
     <div class="brand">
-      <div class="mark">ARCADE<span class="dot">·</span>DECK</div>
-      <div class="tag">home game server · your folder, your games</div>
+      <div class="mark">▲ arcade<span class="dot">·</span>deck</div>
+      <div class="tag">your folder, your games — on every screen</div>
     </div>
     <div class="topacts">
       <button class="mini" id="userChip">👤 Guest</button>
+      <button class="mini" id="searchBtn" title="Search every system (press /)">🔍 Search</button>
       <button class="mini" id="phoneBtn">📱 Phone</button>
-      <button class="mini" id="perfBtn" title="For slow TVs: disables shader, unsynced video, shows FPS so you can see the speed. Restart a game after toggling.">⚡ Performance: OFF</button>
+      <button class="mini" id="perfBtn" title="For slow TVs: disables shader, unsynced video, shows FPS — and lightens the page's own effects. Restart a game after toggling.">⚡ Performance: OFF</button>
+      <button class="mini" id="setBtn" title="Playback, look, library and system settings">⚙️ Settings</button>
       <button class="mini" id="streamBtn" title="Run a real emulator on the host (e.g. Steam Deck) and stream it here." hidden>🖥️ Host emulators</button>
       <div class="status" id="status"><span class="led" id="led"></span><span id="statusTxt">connecting…</span></div>
     </div>
@@ -353,10 +405,39 @@
     </div>
   </div>
 
-  <!-- LIBRARY -->
+  <!-- search overlay: one query across every system + the host emulators -->
+  <div id="search" hidden>
+    <div class="searchbox">
+      <div class="srow">
+        <span class="sicon">🔍</span>
+        <input id="searchInput" placeholder="Search your whole library…" autocomplete="off" spellcheck="false">
+        <button class="mini" id="oskBtn" title="On-screen keys — type with a TV remote (arrows + OK)">⌨ ABC</button>
+        <button class="mini" id="searchClose">✕ Esc</button>
+      </div>
+      <div id="osk" hidden></div>
+      <div class="gridcards" id="searchRes"></div>
+    </div>
+  </div>
+
+  <!-- settings overlay: playback, look, library links + system status -->
+  <div id="settings" hidden>
+    <div class="setbox">
+      <div class="sethead"><h2>⚙️ Settings</h2><button class="mini" id="setClose">✕ Esc</button></div>
+      <div id="setBody"></div>
+    </div>
+  </div>
+
+  <!-- LIBRARY: hero + one collapsible emulator picker + an art-only game grid -->
   <div class="libview">
-    <nav class="tabs" id="tabs"></nav>
-    <div id="panels"></div>
+    <div id="hero" hidden></div>
+    <div class="pickrow">
+      <button class="pick" id="sysPick">🎮 <span id="sysPickLbl">All systems</span> <span class="caret">▾</span></button>
+      <span class="count" id="pickCount"></span>
+      <span class="spacer"></span>
+      <button class="mini" id="refresh">↻ Rescan</button>
+    </div>
+    <div class="picklist" id="sysList" hidden></div>
+    <div class="gridcards" id="gameGrid"></div>
   </div>
 
   <!-- GBA STAGE -->
@@ -440,54 +521,6 @@
   <footer>ARCADE home server · GBA runs in-page (EmulatorJS / mGBA) · Java Phone via FreeJ2ME-web · supply your own legally-owned game files.</footer>
 </div>
 
-<!-- PHONE CONTROLLER (shown only when opened with ?pad=CODE) -->
-<div id="padRoot" class="padroot" hidden>
-  <div class="padbar">
-    <span class="conn" id="conn"></span>ROOM <b id="padCodeLbl">----</b>
-    <span class="padtoggle">
-      <button class="ptg" id="tgLib">📚 Games</button>
-      <button class="ptg" id="tgPad" data-on="1">🎮 Pad</button>
-    </span>
-  </div>
-
-  <!-- gamepad view -->
-  <div id="padPlay">
-    <div class="padextra">
-      <button class="ebtn" id="bTurbo">⚡ TURBO</button>
-      <button class="ebtn" data-hk="save">⤓ SAVE</button>
-      <button class="ebtn" data-hk="load">⤒ LOAD</button>
-      <button class="ebtn" id="bFF">≫ FF</button>
-    </div>
-    <div class="padshoulders">
-      <div class="shgrp"><div class="pbtn sh" data-btn="l2">L2</div><div class="pbtn sh" data-btn="l">L</div></div>
-      <div class="shgrp"><div class="pbtn sh" data-btn="r">R</div><div class="pbtn sh" data-btn="r2">R2</div></div>
-    </div>
-    <div class="padmain">
-      <div class="dpad" id="stick">
-        <div class="dcross"></div>
-        <div class="knob" id="knob"></div>
-      </div>
-      <div class="midbtns">
-        <div class="pbtn pill" data-btn="select">SELECT</div>
-        <div class="pbtn pill" data-btn="start">START</div>
-      </div>
-      <div class="actions">
-        <div class="pbtn ab x" data-btn="x">X</div>
-        <div class="pbtn ab y" data-btn="y">Y</div>
-        <div class="pbtn ab a" data-btn="a">A</div>
-        <div class="pbtn ab b" data-btn="b">B</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- library view (pick a game to launch on the TV) -->
-  <div id="padLib" class="padlib" hidden>
-    <div class="padlibhead">Pick a game — it launches on the TV
-      <button class="ptg" id="padLibRefresh">↻</button></div>
-    <div class="pliblist" id="plibList">loading…</div>
-  </div>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <script>
@@ -519,12 +552,14 @@
     try{
       const r = await fetch('/api/library', {cache:'no-store'});
       LIB = await r.json();
+      if(LIB.version) LIBV = LIB.version;   // keep the auto-refresh poller in step
       setStatus(true);
     }catch(e){
       LIB = {};
       setStatus(false);
     }
     render();
+    refreshSaves();   // fills "Continue playing" once the profile's saves arrive
   }
   function totalGames(){ return SYS.reduce((a,s)=>a+((LIB[s.key]||[]).length),0); }
   function setStatus(ok){
@@ -540,83 +575,591 @@
     if(s.length < 2 && words[0]) s = words[0].slice(0,2);
     return (s || '??').toUpperCase();
   }
-  let activeTab = 'gba';
-  function buildTabs(){
-    const tabs = $('#tabs');
-    tabs.innerHTML = SYS.map(s =>
-      '<button class="tab" data-tab="'+s.key+'">'+s.label+' <span class="n" id="n-'+s.key+'">0</span></button>'
-    ).join('') + '<span class="spacer"></span><button class="mini" id="refresh">↻ Rescan</button>';
-    tabs.querySelectorAll('.tab').forEach(t => {
-      t.style.setProperty('--ta', 'linear-gradient(180deg,color-mix(in srgb,'+SYSMAP[t.dataset.tab].accent+' 75%,#fff),'+SYSMAP[t.dataset.tab].accent+')');
-      t.onclick = () => switchTab(t.dataset.tab);
-    });
-    $('#refresh').onclick = loadLibrary;
-    $('#panels').innerHTML = SYS.map(s =>
-      '<section class="panel" id="panel-'+s.key+'"><div class="shelf-head"><h2>'+s.full+'</h2>'+
-      '<span class="count" id="count-'+s.key+'"></span></div><div class="gridcards" id="grid-'+s.key+'"></div></section>'
-    ).join('');
-    switchTab(activeTab);
+  /* ---- what the grid shows: everything, one system, or one host emulator.
+     The collapsible picker (🎮 dropdown) sets this; the choice sticks per tab. */
+  let SEL = { type:'all' };
+  try{ const s = JSON.parse(sessionStorage.getItem('arcade_sel')||'null'); if(s && s.type) SEL = s; }catch(e){}
+  function saveSel(){ try{ sessionStorage.setItem('arcade_sel', JSON.stringify(SEL)); }catch(e){} }
+  function selEmu(){ return (LIB.emulators||[]).find(e => e.id === SEL.id) || null; }
+  function hostGamesCount(){ return (LIB.emulators||[]).reduce((a,e) => a + (e.games||[]).length, 0); }
+  function selLabel(){
+    if(SEL.type==='sys' && SYSMAP[SEL.key]) return SYSMAP[SEL.key].full;
+    if(SEL.type==='host'){ const e = selEmu(); if(e) return e.name + ' — on host'; }
+    return 'All systems';
   }
-  function switchTab(key){
-    activeTab = key;
-    document.querySelectorAll('#tabs .tab').forEach(t => t.toggleAttribute('data-active', t.dataset.tab===key));
-    SYS.forEach(s => { const p=$('#panel-'+s.key); if(p) p.classList.toggle('live', s.key===key); });
+  function selItems(){                    // -> [{kind:'game'|'host', sys?, e?, g}]
+    const items = [];
+    if(SEL.type==='sys'){
+      (LIB[SEL.key]||[]).forEach(g => items.push({ kind:'game', sys:SEL.key, g }));
+      return items;
+    }
+    if(SEL.type==='host'){
+      const e = selEmu();
+      if(e){
+        (e.games||[]).forEach(g => items.push({ kind:'host', e, g }));
+        if(!e.needsRom) items.push({ kind:'host', e, g:{ name:e.name + ' (emulator menu)', file:'' } });
+      }
+      return items;
+    }
+    SYS.forEach(s => (LIB[s.key]||[]).forEach(g => items.push({ kind:'game', sys:s.key, g })));
+    (LIB.emulators||[]).forEach(e => (e.games||[]).forEach(g => items.push({ kind:'host', e, g })));
+    items.sort((a,b) => a.g.name.localeCompare(b.g.name, undefined, { numeric:true }));
+    return items;
+  }
+  function setSel(sel){ SEL = sel; saveSel(); closePicker(); renderPicker(); renderGrid(); }
+  function openPicker(){ buildPickList(); $('#sysList').hidden = false; $('#sysPick').setAttribute('data-open','1'); }
+  function closePicker(){ $('#sysList').hidden = true; $('#sysPick').removeAttribute('data-open'); }
+  function togglePicker(){ $('#sysList').hidden ? openPicker() : closePicker(); }
+  function buildPickList(){
+    const list = $('#sysList'); list.innerHTML = '';
+    const mk = (label, n, accent, sel, on) => {
+      const b = document.createElement('button'); b.className = 'pk';
+      if(on) b.setAttribute('data-on','');
+      b.innerHTML = '<span class="sw"></span><span class="pl"></span><span class="n"></span>';
+      b.querySelector('.sw').style.background = accent || 'rgba(255,255,255,.35)';
+      b.querySelector('.pl').textContent = label;
+      b.querySelector('.n').textContent = n;
+      b.onclick = () => setSel(sel);
+      list.appendChild(b);
+    };
+    mk('All systems', totalGames() + hostGamesCount(), null, { type:'all' }, SEL.type==='all');
+    SYS.forEach(s => {
+      const n = (LIB[s.key]||[]).length;
+      if(!n && s.key!=='psp') return;                       // PSP stays listed: its PPSSPP entry matters even empty
+      mk(s.full, n, s.accent, { type:'sys', key:s.key }, SEL.type==='sys' && SEL.key===s.key);
+    });
+    (LIB.emulators||[]).forEach(e =>
+      mk('🖥️ '+e.name, (e.games||[]).length || 'menu', '#c3c7cf', { type:'host', id:e.id }, SEL.type==='host' && SEL.id===e.id));
+  }
+  function renderPicker(){
+    $('#sysPickLbl').textContent = selLabel();
+    const items = selItems();
+    $('#pickCount').textContent = items.length ? items.length + (items.length===1 ? ' game' : ' games') : '';
   }
   function render(){
     const sb = $('#streamBtn'); if(sb) sb.hidden = !LIB.stream;   // show host-emulators entry only in streaming mode
-    if(!$('#tabs').dataset.built){ buildTabs(); $('#tabs').dataset.built='1'; }
-    SYS.forEach(s => {
-      const items = LIB[s.key] || [];
-      const n=$('#n-'+s.key); if(n) n.textContent = items.length;
-      renderShelf(s, items);
-    });
+    // a rescan may have removed what was selected — fall back to everything
+    if(SEL.type==='sys' && !SYSMAP[SEL.key]) SEL = { type:'all' };
+    if(SEL.type==='host' && !selEmu()) SEL = { type:'all' };
+    renderPicker();
+    renderHome();
   }
-  function renderShelf(s, items){
-    const grid = $('#grid-'+s.key), count = $('#count-'+s.key);
-    if(!grid) return;
-    count.textContent = items.length ? items.length + (items.length===1?' game':' games') : '';
-    grid.innerHTML = '';
-    if(s.key==='psp'){
-      const banner = document.createElement('div');
-      banner.className = 'pspbanner';
-      banner.innerHTML =
-        '<div class="pb-h">Two PSP engines</div>'+
-        '<div class="pb-row">'+
-          '<button class="pb-btn primary" id="ppssppBtn">▸ Open PPSSPP'+(LIB.pspWeb?' (offline copy)':'')+'</button>'+
-          '<span class="pb-note">Real PPSSPP — best compatibility, its own controls. '+
-            (LIB.pspWeb ? 'Running your local offline copy.' : 'Opens the PPSSPP web app; use its <b>Install</b> option once online to keep it offline.')+'</span>'+
-        '</div>'+
-        '<div class="pb-sub">Below: the built-in (beta) PSP core — works with the phone pad, but crashes often. Needs PSP mode'+(LIB.isolated?' (ON).':' — currently OFF.')+'</div>';
-      grid.appendChild(banner);
-      const pb = banner.querySelector('#ppssppBtn'); if(pb) pb.onclick = openPPSSPP;
+  function cardLaunch(sysKey, g){
+    sysKey==='j2me' ? launchJ2ME(g) : sysKey==='psp' ? launchPSP(g) : launchEmu(sysKey, g.url, g.name);
+  }
+  // one game card: art only — the name and a Play chip fade in on hover/focus.
+  // Wide art fills the frame; portrait boxart is letterboxed ('tall'); tiny
+  // embedded icons render pixel-sharp ('pix'). opts: { delay:'0.1s' }
+  function gameCard(sysKey, g, opts){
+    opts = opts || {};
+    const s = SYSMAP[sysKey];
+    const c = document.createElement('button');
+    c.className = 'card';
+    c.style.setProperty('--accent', s.accent);
+    if(opts.delay) c.style.animationDelay = opts.delay;
+    c.title = g.name + ' · ' + s.label + (g.size ? ' · ' + fmt(g.size) : '');
+    const saved = hasSave(sysKey, g.name);
+    c.innerHTML =
+      '<div class="art"><div class="glyph">'+esc(initials(g.name))+'</div>'+
+        (g.thumb ? '<img class="cover" loading="lazy" alt="">' : '')+'</div>'+
+      '<span class="chip">'+s.label+'</span>'+
+      (saved ? '<span class="badge">💾 SAVE</span>' : '')+
+      '<div class="meta"><div class="nm">'+esc(g.name)+'</div>'+
+      '<span class="go">'+(saved ? '▶ Continue' : '▶ Play')+'</span></div>';
+    const img = c.querySelector('.cover');
+    if(img){
+      img.onload  = function(){
+        if(this.naturalWidth && this.naturalWidth < 96) this.classList.add('pix');
+        else if(this.naturalHeight > this.naturalWidth) this.classList.add('tall');
+        this.classList.add('show');
+      };
+      img.onerror = function(){ this.remove(); };
+      img.src = g.thumb;
     }
+    c.onclick = () => cardLaunch(sysKey, g);
+    return c;
+  }
+  function pspBanner(){
+    const banner = document.createElement('div');
+    banner.className = 'pspbanner';
+    banner.innerHTML =
+      '<div class="pb-h">Two PSP engines</div>'+
+      '<div class="pb-row">'+
+        '<button class="pb-btn primary" id="ppssppBtn">▸ Open PPSSPP'+(LIB.pspWeb?' (offline copy)':'')+'</button>'+
+        '<span class="pb-note">Real PPSSPP — best compatibility, its own controls. '+
+          (LIB.pspWeb ? 'Running your local offline copy.' : 'Opens the PPSSPP web app; use its <b>Install</b> option once online to keep it offline.')+'</span>'+
+      '</div>'+
+      '<div class="pb-sub">Below: the built-in (beta) PSP core — works with the phone pad, but crashes often. Needs PSP mode'+(LIB.isolated?' (ON).':' — currently OFF.')+'</div>';
+    const pb = banner.querySelector('#ppssppBtn'); if(pb) pb.onclick = openPPSSPP;
+    return banner;
+  }
+  function renderGrid(){
+    const grid = $('#gameGrid'); if(!grid) return;
+    grid.innerHTML = '';
+    if(SEL.type==='sys' && SEL.key==='psp') grid.appendChild(pspBanner());
+    const items = selItems();
     if(!items.length){
       const e = document.createElement('div'); e.className = 'empty';
-      e.innerHTML = '<div class="big">NO GAMES YET</div>Drop '+s.exts+' files into <code>games/'+s.key+'</code>, then press <b>Rescan</b>.';
-      grid.appendChild(e); return;
-    }
-    items.forEach((g,i) => {
-      const c = document.createElement('button');
-      c.className = 'card';
-      c.style.setProperty('--accent', s.accent);
-      c.style.animationDelay = (i*0.03)+'s';
-      c.innerHTML =
-        '<div class="art"><div class="glyph">'+esc(initials(g.name))+'</div>'+
-          (g.thumb ? '<img class="cover" loading="lazy" alt="">' : '')+
-          '<div class="sheen"></div><div class="play">▶</div></div>'+
-        '<div class="meta"><div class="nm">'+esc(g.name)+'</div>'+
-          '<div class="sz">'+(g.ext?g.ext.toUpperCase()+' · ':'')+fmt(g.size)+'</div></div>';
-      const img = c.querySelector('.cover');
-      if(img){
-        img.onload  = function(){ if(this.naturalWidth && this.naturalWidth < 96) this.classList.add('pix'); this.classList.add('show'); };
-        img.onerror = function(){ this.remove(); };
-        img.src = g.thumb;
+      if(SEL.type==='sys'){
+        const s = SYSMAP[SEL.key];
+        e.innerHTML = '<div class="big">NO GAMES YET</div>Drop '+s.exts+' files into <code>games/'+SEL.key+'</code> on the host, then press <b>↻ Rescan</b>.';
+      } else if(SEL.type==='host'){
+        e.innerHTML = '<div class="big">NO GAMES LISTED</div>Point this emulator’s <code>roms</code> folder at your games in its <code>emulator.json</code> on the host.';
+      } else {
+        e.innerHTML = '<div class="big">NO GAMES YET</div>Drop game files into the <code>games/*</code> folders next to the server, then press <b>↻ Rescan</b>.';
       }
-      c.onclick = () => (s.key==='j2me' ? launchJ2ME(g) : s.key==='psp' ? launchPSP(g) : launchEmu(s.key, g.url, g.name));
-      grid.appendChild(c);
-    });
+      grid.appendChild(e);
+      return;
+    }
+    items.forEach((it,i) => grid.appendChild(
+      it.kind==='host' ? hostCard(it.e, it.g) : gameCard(it.sys, it.g, { delay:(Math.min(i,20)*0.02)+'s' })));
   }
   const esc = s => s.replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+
+  /* ===== HOME: hero carousel + behavioural shelves =====
+     "Continue playing" comes from the profile's server saves (/api/saves),
+     "Top new" from file mtimes — the server already knew both; the home
+     screen finally asks. */
+  let SAVES = [];   // this profile's saves, newest first: {system, game, state, srm, mtime}
+  async function refreshSaves(){
+    SAVES = [];
+    if(TOKEN){
+      try{
+        const j = await (await fetch('/api/saves?token='+encodeURIComponent(TOKEN),{cache:'no-store'})).json();
+        if(j && j.ok) SAVES = j.saves || [];
+      }catch(e){}
+    }
+    renderHome();
+  }
+  // the server stores saves under a sanitised name — apply the same transform to match
+  const safeGameJS = s => String(s||'').replace(/[^A-Za-z0-9 ._()\[\]+-]/g,'_').slice(0,120) || 'game';
+  function hasSave(sys, name){ const k = safeGameJS(name); return SAVES.some(sv => sv.system===sys && sv.game===k); }
+  function continueList(){
+    const out = [];
+    for(const sv of SAVES){
+      if(!SYSMAP[sv.system]) continue;
+      const g = (LIB[sv.system]||[]).find(g => safeGameJS(g.name) === sv.game);
+      if(g) out.push({ sys: sv.system, g });
+      if(out.length >= 12) break;
+    }
+    return out;
+  }
+  function newestList(){
+    const out = [];
+    SYS.forEach(s => (LIB[s.key]||[]).forEach(g => out.push({ sys:s.key, g })));
+    out.sort((a,b) => (b.g.mtime||0) - (a.g.mtime||0));
+    return out.slice(0, 8);
+  }
+  function hostCard(e, g){
+    const c = document.createElement('button'); c.className = 'card'; c.style.setProperty('--accent', '#c3c7cf');
+    c.title = g.name + ' · runs on the host';
+    c.innerHTML = '<div class="art"><div class="glyph">🎮</div>'+
+      (e.icon ? '<img class="cover show" src="'+esc(e.icon)+'" alt="">' : '')+'</div>'+
+      '<span class="chip">'+esc(e.system||'HOST')+'</span><span class="badge">HOST</span>'+
+      '<div class="meta"><div class="nm">'+esc(g.name)+'</div><span class="go">▶ Play on host</span></div>';
+    c.onclick = () => startStream(e, g.file);
+    return c;
+  }
+  function renderHome(){
+    const heroEl = $('#hero');
+    if(heroEl) buildHero(heroEl);
+    renderPicker();
+    renderGrid();                          // SAVE badges come from the freshest SAVES
+  }
+
+  /* ---- hero carousel: one game (or platform feature) merchandised at a time.
+     Full-bleed art, copy on the right, thumbnail slide selectors + pause. ---- */
+  let heroSlides = [], heroIdx = 0, heroTimer = null, heroPaused = false;
+  function buildHeroSlides(){
+    const slides = [];
+    const cont = continueList();
+    if(cont.length){
+      const it = cont[0], s = SYSMAP[it.sys];
+      slides.push({ accent:s.accent, thumb:it.g.thumb,
+        badge:'💾 CONTINUE PLAYING'+(USERDISP && USERDISP!=='Guest' ? ' · '+esc(USERDISP.toUpperCase()) : ''),
+        title:it.g.name, sub:s.label+' — you have a save; it loads automatically when the game starts.',
+        cta:'▶ Continue', act:() => cardLaunch(it.sys, it.g) });
+    }
+    const fresh = newestList();
+    if(fresh.length){
+      const it = fresh[0], s = SYSMAP[it.sys];
+      slides.push({ accent:s.accent, thumb:it.g.thumb,
+        badge:'★ NEW IN YOUR LIBRARY', title:it.g.name,
+        sub:s.full+' — no download, no install: pick it and play, on any screen in the house.',
+        cta:'▶ Play', act:() => cardLaunch(it.sys, it.g) });
+    }
+    if(LIB.stream && (LIB.emulators||[]).some(e => (e.games||[]).length || !e.needsRom)){
+      slides.push({ accent:'#c3c7cf', thumb:null, icon:'🖥️',
+        badge:'🖥️ STREAMING MODE ON', title:'Big consoles, every screen',
+        sub:'PS2, XBOX and more run on the host computer and stream here — phones are the controllers.',
+        cta:'Browse host games', act:openStreamPicker });
+    }
+    if(totalGames() > 0){
+      slides.push({ accent:'#f2b545', thumb:null, icon:'📱',
+        badge:'📱 GAME NIGHT', title:'Phones are the controllers',
+        sub:'Scan a QR code and up to four phones become gamepads for the game on this screen — <b>SAVE</b>, <b>TURBO</b> and fast-forward included.',
+        cta:'📱 Show the code', act:() => {
+          const p = $('#pairPanel');
+          if(p.hidden){ ensurePairing(); p.hidden = false; }
+          window.scrollTo({ top:0, behavior:'smooth' });
+        } });
+    }
+    if(!slides.length){
+      slides.push({ accent:'#9b8bff', thumb:null, icon:'▲',
+        badge:'GET STARTED', title:'Add your first game',
+        sub:'Drop legally-owned game files into the <b>games/*</b> folders next to the server, then rescan.',
+        cta:'↻ Rescan', act:loadLibrary });
+    }
+    return slides;
+  }
+  function buildHero(el){
+    if(!SET.hero){ el.hidden = true; if(heroTimer){ clearInterval(heroTimer); heroTimer = null; } return; }
+    heroSlides = buildHeroSlides();
+    if(heroIdx >= heroSlides.length) heroIdx = 0;
+    renderHeroSlide(el);
+    if(heroTimer) clearInterval(heroTimer);
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches;
+    if(heroSlides.length > 1 && !reduce){
+      heroTimer = setInterval(() => {
+        if(heroPaused || document.body.classList.contains('playing')) return;
+        const h = $('#hero'); if(!h) return;
+        try{ if(h.matches(':hover') || h.contains(document.activeElement)) return; }catch(e){}   // never advance under the user
+        heroIdx = (heroIdx + 1) % heroSlides.length;
+        renderHeroSlide(h);
+      }, 8000);
+    }
+  }
+  function renderHeroSlide(el){
+    const sl = heroSlides[heroIdx];
+    if(!sl){ el.hidden = true; return; }
+    el.hidden = false;
+    el.className = 'hero';
+    el.style.setProperty('--haccent', sl.accent);
+    el.innerHTML =
+      '<div class="hbg">'+(sl.thumb ? '<img alt="" id="heroBg">' : '')+'</div><div class="hshade"></div>'+
+      '<div class="hin"><span class="hbadge">'+sl.badge+'</span>'+
+      '<div class="htitle">'+esc(sl.title)+'</div>'+
+      '<div class="hsub">'+sl.sub+'</div>'+
+      '<div class="hacts"><button class="btn primary" id="heroCta">'+sl.cta+'</button>'+
+        (heroSlides.length > 1 ? '<button class="hpause" id="heroPause" title="Pause or resume the carousel">'+(heroPaused?'▶':'⏸')+'</button>' : '')+
+      '</div></div>'+
+      (heroSlides.length > 1
+        ? '<div class="hthumbs">'+heroSlides.map((s,i) =>
+            '<button data-i="'+i+'"'+(i===heroIdx?' data-on':'')+' aria-label="slide '+(i+1)+'">'+
+            (s.thumb ? '<img alt="" src="'+s.thumb+'">' : '<span class="em">'+(s.icon||'▶')+'</span>')+
+            '</button>').join('')+'</div>'
+        : '');
+    const bg = el.querySelector('#heroBg');
+    if(bg){
+      // wide art (incl. the generated SVG tiles) shows sharp; portrait boxart gets a cinematic blur-fill
+      bg.onload = function(){ if(this.naturalHeight > this.naturalWidth) this.classList.add('tall'); };
+      bg.src = sl.thumb;
+    }
+    $('#heroCta').onclick = sl.act;
+    const hp = $('#heroPause');
+    if(hp) hp.onclick = () => { heroPaused = !heroPaused; hp.textContent = heroPaused ? '▶' : '⏸'; };
+    el.querySelectorAll('.hthumbs button').forEach(b => b.onclick = () => {
+      heroIdx = +b.dataset.i; renderHeroSlide(el);
+      const nb = el.querySelector('.hthumbs button[data-i="'+heroIdx+'"]'); if(nb) nb.focus();
+    });
+  }
+
+  /* ===== search: one query across every system + the host emulators ===== */
+  function searchIndex(){
+    const items = [];
+    SYS.forEach(s => (LIB[s.key]||[]).forEach(g => items.push({ kind:'game', sys:s.key, g })));
+    (LIB.emulators||[]).forEach(e => {
+      (e.games||[]).forEach(g => items.push({ kind:'host', e, g }));
+      if(!e.needsRom) items.push({ kind:'host', e, g:{ name:e.name, file:'' } });   // menu-only emulators by name
+    });
+    return items;
+  }
+  function matchScore(name, q){
+    const n = name.toLowerCase(), i = n.indexOf(q);
+    if(i < 0) return -1;
+    if(i === 0) return 0;                       // starts the title
+    if(/[\s\-_.([]/.test(n[i-1])) return 1;     // starts a word
+    return 2;                                   // anywhere
+  }
+  function renderSearch(qRaw){
+    const res = $('#searchRes');
+    const q = (qRaw||'').trim().toLowerCase();
+    res.innerHTML = '';
+    if(!q){
+      const n = totalGames() + (LIB.emulators||[]).reduce((a,e) => a + (e.games||[]).length, 0);
+      res.innerHTML = '<div class="snote">Type to search '+n+' games across every system'+
+        (LIB.stream ? ' and the host emulators' : '')+'.<br>Tip: press <code>/</code> anywhere in the library to open this.</div>';
+      return;
+    }
+    const hits = searchIndex()
+      .map(it => ({ it, sc: matchScore(it.g.name, q) }))
+      .filter(x => x.sc >= 0)
+      .sort((a,b) => a.sc - b.sc || a.it.g.name.localeCompare(b.it.g.name))
+      .slice(0, 40);
+    if(!hits.length){ res.innerHTML = '<div class="snote">No matches for “'+esc(qRaw.trim())+'”.</div>'; return; }
+    hits.forEach(x => {
+      const c = x.it.kind === 'host' ? hostCard(x.it.e, x.it.g) : gameCard(x.it.sys, x.it.g);
+      const launch = c.onclick;
+      c.onclick = () => { closeSearch(); launch(); };   // launching always leaves the overlay
+      res.appendChild(c);
+    });
+  }
+  /* on-screen keys: search with a TV remote (the keys are buttons, so the
+     arrow-key spatial navigation drives them; OK/Enter presses one) */
+  const OSK_ROWS = ['1234567890','QWERTYUIOP','ASDFGHJKL','ZXCVBNM'];
+  function oskKey(label, ch){
+    const b = document.createElement('button'); b.className = 'oskkey'; b.textContent = label;
+    if(label.length > 1) b.classList.add('wide');
+    b.onclick = () => {
+      const inp = $('#searchInput');
+      if(ch === '\b') inp.value = inp.value.slice(0, -1);
+      else if(ch === '') inp.value = '';
+      else inp.value += ch;
+      renderSearch(inp.value);
+    };
+    return b;
+  }
+  function buildOSK(){
+    const k = $('#osk'); if(!k || k.dataset.built) return; k.dataset.built = '1';
+    OSK_ROWS.forEach(r => {
+      const row = document.createElement('div'); row.className = 'oskrow';
+      r.split('').forEach(ch => row.appendChild(oskKey(ch, ch.toLowerCase())));
+      k.appendChild(row);
+    });
+    const last = document.createElement('div'); last.className = 'oskrow';
+    last.appendChild(oskKey('SPACE', ' '));
+    last.appendChild(oskKey('⌫ BACK', '\b'));
+    last.appendChild(oskKey('CLEAR', ''));
+    k.appendChild(last);
+  }
+  function toggleOSK(force){
+    buildOSK();
+    const k = $('#osk');
+    const show = force !== undefined ? force : k.hidden;
+    k.hidden = !show;
+    $('#oskBtn').classList.toggle('on', show);
+    try{ localStorage.setItem('arcade_osk', show ? '1' : '0'); }catch(e){}
+  }
+  function openSearch(){
+    $('#search').hidden = false;
+    const inp = $('#searchInput'); inp.value = '';
+    renderSearch('');
+    let osk = false; try{ osk = localStorage.getItem('arcade_osk') === '1'; }catch(e){}
+    if(osk) toggleOSK(true);
+    setTimeout(() => inp.focus(), 40);
+  }
+  function closeSearch(){ $('#search').hidden = true; }
+
+  /* ===== settings: playback, look, library links + system status =====
+     Stored per device in localStorage; playback options feed straight into
+     the emulator launch, look options into the page, and the library section
+     shows exactly which folder each system/emulator is linked to. */
+  const DEFAULT_SET = { autoresume:1, autosave:45, shader:1, fps:0, titles:0, hero:1, fx:'auto', refresh:1 };
+  let SET = Object.assign({}, DEFAULT_SET);
+  try{ Object.assign(SET, JSON.parse(localStorage.getItem('arcade_settings')||'{}')); }catch(e){}
+  function saveSet(){
+    try{ localStorage.setItem('arcade_settings', JSON.stringify(SET)); }catch(e){}
+    applySet();
+  }
+  function applySet(){
+    document.body.classList.toggle('titles', !!SET.titles);
+    applyLite();
+    const h = $('#hero');
+    if(h && LIB && Object.keys(LIB).length) buildHero(h);   // hero on/off applies immediately
+  }
+  function segRow(title, desc, opts, val, onPick){
+    const row = document.createElement('div'); row.className = 'setrow';
+    row.innerHTML = '<div class="st"><div class="t"></div><div class="d"></div></div>';
+    row.querySelector('.t').textContent = title;
+    row.querySelector('.d').textContent = desc;
+    const seg = document.createElement('div'); seg.className = 'seg';
+    opts.forEach(o => {
+      const b = document.createElement('button'); b.textContent = o.label;
+      if(o.v === val) b.setAttribute('data-on','');
+      b.onclick = () => { onPick(o.v); renderSettings(); };
+      seg.appendChild(b);
+    });
+    row.appendChild(seg);
+    return row;
+  }
+  const ONOFF = [{label:'On', v:1},{label:'Off', v:0}];
+  function statusRow(ok, name, hint, job){               // ok: true | false | null; job: downloader id
+    const r = document.createElement('div'); r.className = 'strow';
+    r.innerHTML = '<span class="si"></span><span class="sn"></span>'+(hint ? '<span class="sd"></span>' : '');
+    const si = r.querySelector('.si');
+    si.textContent = ok===true ? '✓' : ok===false ? '✗' : '—';
+    si.className = 'si ' + (ok===true ? 'ok' : ok===false ? 'no' : 'na');
+    r.querySelector('.sn').textContent = name;
+    if(hint) r.querySelector('.sd').innerHTML = hint;
+    if(job){                                             // the host can run the one-time downloader itself
+      const running = SETUP.job && SETUP.job.running;
+      const b = document.createElement('button'); b.className = 'mini dl';
+      b.textContent = (running && SETUP.job.id === job) ? '⏳ Running…' : '⬇ Download';
+      b.disabled = !!running;
+      b.onclick = () => runSetup(job);
+      const sd = r.querySelector('.sd');
+      if(sd) r.insertBefore(b, sd); else r.appendChild(b);
+    }
+    return r;
+  }
+
+  /* ---- one-time downloaders: run the get-*.js scripts on the host ---- */
+  let SETUP = { platform:'', job:null }, setupTimer = null;
+  async function fetchSetupStatus(){
+    try{ SETUP = await (await fetch('/api/setup/status', { cache:'no-store' })).json(); }catch(e){}
+  }
+  async function runSetup(job){
+    try{
+      const r = await (await fetch('/api/setup/run?job='+encodeURIComponent(job), { method:'POST' })).json();
+      if(!r || !r.ok){ toast((r && r.error) || 'Could not start the download', true); return; }
+      toast('Download started on the host — this can take a while');
+      await fetchSetupStatus(); renderSettings(); pollSetup();
+    }catch(e){ toast('Could not reach the server', true); }
+  }
+  function pollSetup(){
+    if(setupTimer) return;
+    setupTimer = setInterval(async () => {
+      await fetchSetupStatus();
+      const j = SETUP.job;
+      if(!$('#settings').hidden) renderSetupLog();
+      if(!j || !j.running){
+        clearInterval(setupTimer); setupTimer = null;
+        if(j){
+          toast(j.ok ? j.name+' — done ✓' : j.name+' — failed (see the log in Settings)', !j.ok);
+          await loadLibrary();                           // flags like ejsLocal/boxartLocal just changed
+          if(!$('#settings').hidden) renderSettings();
+        }
+      }
+    }, 1500);
+  }
+  function renderSetupLog(){
+    const el = $('#setupLog'); if(!el) return;
+    const j = SETUP.job;
+    if(!j){ el.hidden = true; return; }
+    el.hidden = false;
+    el.innerHTML = '<div class="sjh"><span class="si '+(j.running?'na':(j.ok?'ok':'no'))+'">'+
+        (j.running ? '⏳' : j.ok ? '✓' : '✗')+'</span><span></span></div>'+
+      '<pre></pre>';
+    el.querySelector('.sjh span:last-child').textContent =
+      j.name + (j.running ? ' — downloading…' : j.ok ? ' — finished' : ' — failed (exit '+j.code+')');
+    el.querySelector('pre').textContent = (j.log && j.log.length) ? j.log.join('\n') : '(waiting for output…)';
+    if(j.running) el.querySelector('pre').scrollTop = 1e6;
+  }
+  function setSection(title){
+    const s = document.createElement('div'); s.className = 'setsec';
+    s.innerHTML = '<div class="shd"></div>';
+    s.querySelector('.shd').textContent = title;
+    return s;
+  }
+  function renderSettings(){
+    const body = $('#setBody'); if(!body) return;
+    body.innerHTML = '';
+
+    const pb = setSection('Playback');
+    pb.appendChild(segRow('Auto-resume saves','Signed-in profiles pick up exactly where they left off when a game starts.',
+      ONOFF, SET.autoresume?1:0, v => { SET.autoresume=v; saveSet(); }));
+    pb.appendChild(segRow('Auto-save while playing','How often progress is saved to your profile on the host.',
+      [{label:'Off',v:0},{label:'30s',v:30},{label:'45s',v:45},{label:'90s',v:90}], SET.autosave,
+      v => { SET.autosave=v; saveSet(); if(document.body.classList.contains('playing')) startAutoSave(); }));
+    pb.appendChild(segRow('Shader','The emulator’s CRT-style video filter. Restart the game to apply.',
+      ONOFF, SET.shader?1:0, v => { SET.shader=v; saveSet(); }));
+    pb.appendChild(segRow('FPS counter','Show the frames-per-second readout in the emulator. Restart the game to apply.',
+      ONOFF, SET.fps?1:0, v => { SET.fps=v; saveSet(); }));
+    body.appendChild(pb);
+
+    const lk = setSection('Look');
+    lk.appendChild(segRow('Game titles on cards','“Always” pins every name under the art; “Hover” keeps the wall art-only.',
+      [{label:'Hover',v:0},{label:'Always',v:1}], SET.titles?1:0, v => { SET.titles=v; saveSet(); }));
+    lk.appendChild(segRow('Hero spotlight','The big rotating banner at the top of the library.',
+      ONOFF, SET.hero?1:0, v => { SET.hero=v; saveSet(); }));
+    lk.appendChild(segRow('Visual effects','“Lite” drops blurs and animations — helps weak TV browsers. “Auto” follows ⚡ Performance mode.',
+      [{label:'Auto',v:'auto'},{label:'Full',v:'full'},{label:'Lite',v:'lite'}], SET.fx, v => { SET.fx=v; saveSet(); }));
+    body.appendChild(lk);
+
+    const li = setSection('Library — linked folders');
+    li.appendChild(segRow('Auto-refresh','Watch the games/ and emulators/ folders on the host and update this page the moment files are added.',
+      ONOFF, SET.refresh?1:0, v => { SET.refresh=v; saveSet(); }));
+    const rs = document.createElement('div'); rs.className = 'setrow';
+    rs.innerHTML = '<div class="st"><div class="t">Rescan now</div><div class="d">Re-list every folder immediately.</div></div>';
+    const rb = document.createElement('button'); rb.className = 'mini'; rb.textContent = '↻ Rescan';
+    rb.onclick = async () => { await loadLibrary(); renderSettings(); toast('Library rescanned'); };
+    rs.appendChild(rb); li.appendChild(rs);
+    SYS.forEach(s => {
+      const n = (LIB[s.key]||[]).length;
+      const f = document.createElement('div'); f.className = 'frow';
+      f.innerHTML = '<span class="fs"></span><span class="fp"></span><span class="fn"></span>';
+      f.querySelector('.fs').textContent = s.label;
+      f.querySelector('.fp').innerHTML = '<code>games/'+s.key+'</code> · '+s.exts;
+      f.querySelector('.fn').textContent = n + (n===1?' game':' games');
+      li.appendChild(f);
+    });
+    (LIB.emulators||[]).forEach(e => {
+      const f = document.createElement('div'); f.className = 'frow';
+      f.innerHTML = '<span class="fs"></span><span class="fp"></span><span class="fn"></span>';
+      f.querySelector('.fs').textContent = '🖥️ '+(e.system||'HOST');
+      f.querySelector('.fp').innerHTML = esc(e.name)+(e.bin ? ' · <code>'+esc(e.bin)+'</code>' : '')+
+        (e.found===false
+          ? ' · <b style="color:#e0584f">program not found</b> — install it, or fix the path in <code>emulators/'+esc(e.id)+'/emulator.json</code> (the <code>fix-emulator-paths</code> script can do it for you)'
+          : e.found===true ? ' · installed ✓' : '');
+      f.querySelector('.fn').textContent = (e.games||[]).length + ' games';
+      li.appendChild(f);
+    });
+    body.appendChild(li);
+
+    const st = setSection('System status');
+    st.appendChild(statusRow(!!LIB.ejsLocal, 'Offline emulator engine',
+      LIB.ejsLocal ? null : 'Cores download from the internet on first play. Download once (a few hundred MB for everything) and ARCADE plays fully offline.',
+      LIB.ejsLocal ? null : 'offline'));
+    st.appendChild(statusRow(!!(LIB.bios && LIB.bios.psx), 'PS1 BIOS',
+      (LIB.bios && LIB.bios.psx) ? null : 'Most PS1 games run without it; for best compatibility drop a BIOS file you own into <code>bios/psx/</code>.'));
+    st.appendChild(statusRow(!!LIB.isolated, 'Threaded cores (faster N64 / PS1 / PSP)',
+      LIB.isolated ? null : 'Start the server with <code>ARCADE_THREADS=1</code> (or <code>start-*-psp</code>). Chrome/Edge/Firefox only.'));
+    st.appendChild(statusRow(!!LIB.j2meWeb, 'Java handset (local copy)',
+      LIB.j2meWeb ? null : 'Java games open in a separate tab until the handset (~9 MB) is downloaded.',
+      LIB.j2meWeb ? null : 'j2me'));
+    st.appendChild(statusRow(!!LIB.pspWeb, 'PPSSPP (local copy)',
+      LIB.pspWeb ? null : 'PSP uses the online PPSSPP app until the local copy (tens of MB) is downloaded.',
+      LIB.pspWeb ? null : 'ppsspp'));
+    st.appendChild(statusRow(!!LIB.boxartLocal, 'Real box-art',
+      LIB.boxartLocal
+        ? 'Run the downloader again after adding games — it matches covers by file name.'
+        : 'Cards use generated art until real covers are fetched — matched to your games by file name.',
+      'boxart'));
+    st.appendChild(statusRow(!!LIB.stream, 'Host streaming (PS2 / XBOX / GameCube …)',
+      LIB.stream ? null : 'Start with <code>start-*-stream</code> on the host to run native emulators there and stream them to every screen.'));
+    if(SETUP.platform === 'win32'){
+      st.appendChild(statusRow(null, 'Windows host emulators (portable set)',
+        'Fetches xemu, KEmulator and FreeJ2ME and checks the installer-based ones — for streaming mode.', 'emulators'));
+      st.appendChild(statusRow(null, 'ViGEm virtual Xbox pad DLL',
+        'True analog phone control in every host emulator (needs the ViGEmBus driver installed too).', 'vigem'));
+    }
+    const lg = document.createElement('div'); lg.className = 'sjob'; lg.id = 'setupLog'; lg.hidden = true;
+    st.appendChild(lg);
+    body.appendChild(st);
+    renderSetupLog();
+  }
+  async function openSettings(){
+    await fetchSetupStatus();
+    renderSettings();
+    $('#settings').hidden = false;
+    if(SETUP.job && SETUP.job.running) pollSetup();      // a download may already be underway
+  }
+  function closeSettings(){ $('#settings').hidden = true; }
+
+  /* ---- live library: poll the tiny /api/version and re-fetch on change,
+     so new games/emulators dropped into the folders appear by themselves ---- */
+  let LIBV = 0;
+  setInterval(async () => {
+    if(!SET.refresh || document.hidden || document.body.classList.contains('playing')) return;
+    try{
+      const j = await (await fetch('/api/version', { cache:'no-store' })).json();
+      if(j && j.v && LIBV && j.v !== LIBV){
+        await loadLibrary();                               // sets LIBV from the fresh library
+        toast('Library updated — '+(totalGames()+hostGamesCount())+' games');
+        if(!$('#settings').hidden) renderSettings();
+      } else if(j && j.v) LIBV = j.v;
+    }catch(e){}
+  }, 4000);
 
   /* ---- 4-player / multitap ---- */
   // cores that need a core option to expose ports 3-4 (others either do 4 natively, e.g. N64,
@@ -624,7 +1167,9 @@
   const MULTITAP = { psx: { 'pcsx_rearmed_multitap': 'port 1 only' } };
   let fourPlayer = false; try{ fourPlayer = sessionStorage.getItem('arcade_4p')==='1'; }catch(e){}
   let curGame = null;
-  function updateMpBtn(){ const b=$('#mpBtn'); if(!b) return; b.textContent = fourPlayer ? '4-PLAYER MODE: ON' : '2-PLAYER MODE'; b.classList.toggle('on', fourPlayer); }
+  function updateMpBtn(){
+    [$('#mpBtn'), $('#gnMp')].forEach(b => { if(!b) return; b.textContent = fourPlayer ? '4-PLAYER MODE: ON' : '2-PLAYER MODE'; b.classList.toggle('on', fourPlayer); });
+  }
   function setFourPlayer(on){
     fourPlayer = !!on;
     try{ sessionStorage.setItem('arcade_4p', fourPlayer?'1':'0'); }catch(e){}
@@ -637,7 +1182,24 @@
   /* ===== player profiles: username + 4-digit PIN, per-user server saves ===== */
   let USER=null, USERDISP='Guest', TOKEN=null;
   let pinMode='login', pinName='', pinBuf='';
-  function updateChip(){ const c=$('#userChip'); if(c) c.textContent='👤 '+(USERDISP||'Guest'); }
+  // each profile gets its own stable accent colour, hashed from the name —
+  // shown on the login chips and the header avatar so players spot theirs fast
+  function profColor(name){
+    let h = 5381; const s = String(name||'guest').toLowerCase();
+    for(let i=0;i<s.length;i++) h = ((h<<5)+h+s.charCodeAt(i))>>>0;
+    return 'hsl('+(h%360)+' 62% 52%)';
+  }
+  function avatarBg(name){ return 'linear-gradient(180deg, color-mix(in srgb,'+profColor(name)+' 55%,#fff), '+profColor(name)+')'; }
+  function updateChip(){
+    const c=$('#userChip'); if(!c) return;
+    if(USER){
+      c.innerHTML = '<span class="uav"></span><span></span>';
+      const av = c.querySelector('.uav');
+      av.textContent = (USERDISP||USER).trim().slice(0,2).toUpperCase();
+      av.style.background = avatarBg(USER);
+      c.lastChild.textContent = USERDISP || USER;
+    } else c.textContent = '👤 Guest';
+  }
   function loadSession(){
     try{ USER=sessionStorage.getItem('arcade_user')||null; USERDISP=sessionStorage.getItem('arcade_disp')||'Guest'; TOKEN=sessionStorage.getItem('arcade_token')||null; }catch(e){}
     updateChip();
@@ -664,7 +1226,9 @@
       us.forEach(u=>{
         const b=document.createElement('button'); b.className='pchip';
         b.innerHTML='<span class="av"></span><span class="nm"></span>';
-        b.querySelector('.av').textContent=(u.display||u.name||'?').trim().slice(0,2).toUpperCase();
+        const av=b.querySelector('.av');
+        av.textContent=(u.display||u.name||'?').trim().slice(0,2).toUpperCase();
+        av.style.background=avatarBg(u.name);              // the profile's own accent
         b.querySelector('.nm').textContent=u.display||u.name;
         b.onclick=()=>openPin('login', u.name, u.display||u.name);
         list.appendChild(b);
@@ -696,11 +1260,11 @@
       const name=$('#newName').value.trim();
       if(name.length<2){ $('#pinErr').textContent='Pick a name first (2+ letters).'; pinBuf=''; renderDots(); return; }
       const r=await postJson('/api/user/create',{username:name,pin});
-      if(r&&r.ok){ setSession(r.name, name, r.token); hideLogin(); toast('Profile created — saves go to '+name); }
+      if(r&&r.ok){ setSession(r.name, name, r.token); hideLogin(); toast('Profile created — saves go to '+name); refreshSaves(); }
       else { $('#pinErr').textContent=(r&&r.error)||'Could not create.'; pinBuf=''; renderDots(); }
     } else {
       const r=await postJson('/api/user/login',{username:pinName,pin});
-      if(r&&r.ok){ setSession(r.name, pinName, r.token); hideLogin(); toast('Welcome back, '+pinName); }
+      if(r&&r.ok){ setSession(r.name, pinName, r.token); hideLogin(); toast('Welcome back, '+pinName); refreshSaves(); }
       else { $('#pinErr').textContent=(r&&r.error)||'Wrong PIN.'; pinBuf=''; renderDots(); }
     }
   }
@@ -735,12 +1299,22 @@
     }catch(e){ toast('Load failed'); }
   }
   let autoSaveTimer=null;
-  function startAutoSave(){ stopAutoSave(); if(!TOKEN) return; autoSaveTimer=setInterval(()=>{ if(document.body.classList.contains('playing')&&curGame) saveToUser(true); }, 45000); }
+  function startAutoSave(){ stopAutoSave(); if(!TOKEN || !SET.autosave) return; autoSaveTimer=setInterval(()=>{ if(document.body.classList.contains('playing')&&curGame) saveToUser(true); }, SET.autosave*1000); }
   function stopAutoSave(){ if(autoSaveTimer){ clearInterval(autoSaveTimer); autoSaveTimer=null; } }
 
   /* ---- launch an EmulatorJS system on this screen ---- */
   function launchEmu(system, url, name){
     curGame = { system, url, name };
+    // profiles no longer block the library — nudge once per session instead,
+    // so guests know server-side saves exist without being forced to sign in
+    if(!TOKEN){
+      try{
+        if(!sessionStorage.getItem('arcade_nudged')){
+          sessionStorage.setItem('arcade_nudged','1');
+          toast('Playing as Guest — tap 👤 to keep saves in a profile');
+        }
+      }catch(e){}
+    }
     document.body.classList.add('playing');
     showStage('gbaStage');
     // make sure the in-page emulator surface is visible (not the PSP chooser)
@@ -769,8 +1343,10 @@
     window.EJS_color = '#3fe0cf';
     window.EJS_backgroundColor = '#000000';
     let _opts = {};
+    if(!SET.shader) _opts.shader = 'disabled';   // player settings first…
+    if(SET.fps) _opts.fps = 'show';
     if(fourPlayer && MULTITAP[system]) Object.assign(_opts, MULTITAP[system]);
-    if(PERF){                                    // performance mode (slow TVs)
+    if(PERF){                                    // …performance mode (slow TVs) wins
       Object.assign(_opts, PERF_OPTS);
       if(PERF_CORE_OPTS[system]) Object.assign(_opts, PERF_CORE_OPTS[system]);
     }
@@ -784,7 +1360,7 @@
       document.body.appendChild(s);
       startAutoSave();
     };
-    if(TOKEN){     // resume this player's saved state automatically, if they have one
+    if(TOKEN && SET.autoresume){     // resume this player's saved state automatically, if they have one
       fetch(hasUrl(),{cache:'no-store'}).then(r=>r.json()).then(j=>{
         if(j && j.state) window.EJS_loadStateURL = loadUrl('state');
         appendLoader();
@@ -840,9 +1416,10 @@
       const n = (e.games||[]).length;
       const c = document.createElement('button'); c.className = 'card'; c.style.setProperty('--accent', '#c3c7cf');
       c.innerHTML = '<div class="art"><div class="glyph">🖥️</div>'+
-        (e.icon ? '<img class="cover show" src="'+esc(e.icon)+'" alt="">' : '')+
-        '<div class="play">▶</div></div><div class="meta"><div class="nm">'+esc(e.name)+'</div>'+
-        '<div class="sz">'+(e.system?esc(e.system)+' · ':'')+(n? n+(n===1?' GAME':' GAMES')+' · ':'')+'RUNS ON HOST</div></div>';
+        (e.icon ? '<img class="cover show" src="'+esc(e.icon)+'" alt="">' : '')+'</div>'+
+        '<span class="chip">'+(e.system?esc(e.system):'HOST')+'</span><span class="badge">HOST</span>'+
+        '<div class="meta"><div class="nm">'+esc(e.name)+'</div>'+
+        '<span class="go">'+(n? n+(n===1?' game ▸':' games ▸'):'▶ Open')+'</span></div>';
       c.onclick = () => (n ? openStreamGames(e) : startStream(e));
       list.appendChild(c);
     });
@@ -855,12 +1432,14 @@
     list.innerHTML = '';
     const mk = (head, sub, onclick) => {
       const c = document.createElement('button'); c.className = 'card'; c.style.setProperty('--accent', '#c3c7cf');
-      c.innerHTML = '<div class="art"><div class="glyph">'+head+'</div><div class="play">▶</div></div>'+
-        '<div class="meta"><div class="nm"></div><div class="sz">'+sub+'</div></div>';
+      c.innerHTML = '<div class="art"><div class="glyph">'+head+'</div></div>'+
+        '<span class="badge">HOST</span>'+
+        '<div class="meta"><div class="nm"></div><span class="go">'+sub+'</span></div>';
       c.querySelector('.nm').textContent = '';
       c.onclick = onclick; list.appendChild(c); return c;
     };
     const back = mk('‹', 'BACK', openStreamPicker); back.querySelector('.nm').textContent = 'All emulators';
+    const bb = back.querySelector('.badge'); if(bb) bb.remove();
     if(!e.needsRom){ const m = mk('🖥️', 'NO GAME — HOST MENU', () => startStream(e)); m.querySelector('.nm').textContent = 'Open '+e.name; }
     (e.games||[]).forEach(g => {
       const c = mk('🎮', (e.system?esc(e.system)+' · ':'')+'ON HOST', () => startStream(e, g.file));
@@ -1146,7 +1725,10 @@
 
   /* ---- TV / host side ---- */
   let displayES = null, displayWS = null;
-  function setPairStat(txt, good){ const s=$('#pairStat'); if(!s)return; s.textContent=txt; s.classList.toggle('good', !!good); }
+  // pairing status shows in the top panel AND on the home Game night card
+  function setPairStat(txt, good){
+    [$('#pairStat'), $('#gnStat')].forEach(s => { if(!s) return; s.textContent = txt; s.classList.toggle('good', !!good); });
+  }
   function handleDisplayMsg(m){
     if(!m) return;
     if(m.t==='hello'){ markPlayer(m.p|0, true); return; }
@@ -1205,13 +1787,17 @@
       location.reload();              // room code persists, so the phone stays paired
     } else { doLaunch(m); }
   }
-  async function ensurePairing(){
+  // start (or resume) the pairing room and hand back what a QR needs
+  async function pairingInfo(){
     const code = ensureRoom();
     openDisplay(code);
-    $('#pairCode').textContent = code;
-    const url = await padUrl(code);
-    $('#pairURL').textContent = url;
-    makeQR($('#pairQR'), url);
+    return { code, url: await padUrl(code) };
+  }
+  async function ensurePairing(){
+    const info = await pairingInfo();
+    $('#pairCode').textContent = info.code;
+    $('#pairURL').textContent = info.url;
+    makeQR($('#pairQR'), info.url);
   }
   const phoneBtn = $('#phoneBtn');
   if(phoneBtn) phoneBtn.onclick = () => { const p=$('#pairPanel'); if(p.hidden){ ensurePairing(); p.hidden=false; } else { p.hidden=true; } };
@@ -1222,131 +1808,6 @@
     if(r) openDisplay(r);             // reconnect the room after a reload
     let pend=null; try{ pend = sessionStorage.getItem('arcade_launch'); }catch(e){}
     if(pend){ try{ sessionStorage.removeItem('arcade_launch'); }catch(e){} setTimeout(()=>{ try{ doLaunch(JSON.parse(pend)); }catch(e){} }, 60); }
-  }
-
-  /* ---- phone side ---- */
-  function setConn(ok){ $('#conn').classList.toggle('ok', !!ok); }
-  function sendMsg(obj){
-    fetch('/input?room='+encodeURIComponent(ROOM), {method:'POST', keepalive:true, headers:{'Content-Type':'application/json'}, body:JSON.stringify(obj)})
-      .then(r=>setConn(r.ok)).catch(()=>setConn(false));
-  }
-  function send(t, b){ sendMsg(b ? {t,b} : {t}); }
-  function vibe(){ try{ navigator.vibrate && navigator.vibrate(8); }catch(e){} }
-
-  let TURBO = false;   // when on, holding A/B auto-fires
-  function bindButtons(){
-    document.querySelectorAll('.pbtn[data-btn]').forEach(el => {
-      const btn = el.dataset.btn;
-      const fire = (btn==='a' || btn==='b');
-      el.addEventListener('pointerdown', e => {
-        e.preventDefault(); try{el.setPointerCapture(e.pointerId);}catch(_){}
-        if(el._on) return; el._on=true; el.classList.add('on'); vibe();
-        if(TURBO && fire){ let on=false; el._turbo=setInterval(()=>{ on=!on; send(on?'down':'up', btn); }, 60); }
-        else send('down', btn);
-      });
-      const off = () => {
-        if(!el._on) return; el._on=false; el.classList.remove('on');
-        if(el._turbo){ clearInterval(el._turbo); el._turbo=null; }
-        send('up', btn);
-      };
-      el.addEventListener('pointerup', off);
-      el.addEventListener('pointercancel', off);
-      el.addEventListener('contextmenu', e => e.preventDefault());
-    });
-  }
-  function bindExtras(){
-    const tb = $('#bTurbo');
-    tb.onclick = () => { TURBO=!TURBO; tb.toggleAttribute('data-on', TURBO); vibe(); toast('Turbo '+(TURBO?'ON — hold A or B to auto-fire':'off')); };
-    document.querySelectorAll('.ebtn[data-hk]').forEach(b => {
-      b.onclick = () => { sendMsg({t:'hk', a:b.dataset.hk}); vibe(); toast(b.dataset.hk==='save'?'Saved state on the TV':'Loaded state on the TV'); };
-    });
-    const ff = $('#bFF');
-    ff.addEventListener('pointerdown', e => { e.preventDefault(); try{ff.setPointerCapture(e.pointerId);}catch(_){} ff.setAttribute('data-on','1'); sendMsg({t:'hk', a:'ff_on'}); vibe(); });
-    const ffoff = () => { if(!ff.hasAttribute('data-on'))return; ff.removeAttribute('data-on'); sendMsg({t:'hk', a:'ff_off'}); };
-    ff.addEventListener('pointerup', ffoff);
-    ff.addEventListener('pointercancel', ffoff);
-    ff.addEventListener('contextmenu', e=>e.preventDefault());
-  }
-  // analog thumbstick -> digital 8-way (dpad) AND analog axis (for N64/PS1)
-  function bindStick(){
-    const stick = $('#stick'), knob = $('#knob');
-    if(!stick) return;
-    let pid = null, lastAxisT = 0;
-    const active = {up:false,down:false,left:false,right:false};
-    const setDir = (d,on) => { if(active[d]===on) return; active[d]=on; send(on?'down':'up', d); };
-    const clearAll = () => ['up','down','left','right'].forEach(d=>setDir(d,false));
-    const sendAxis = (x,y) => {
-      const now = performance.now();
-      const zero = (x===0 && y===0);
-      if(!zero && now-lastAxisT < 45) return;     // throttle continuous moves
-      lastAxisT = now;
-      sendMsg({t:'axis', x:+x.toFixed(3), y:+y.toFixed(3)});
-    };
-    function move(e){
-      if(e.pointerId!==pid) return;
-      const r = stick.getBoundingClientRect();
-      const cx = r.left+r.width/2, cy = r.top+r.height/2;
-      const dx = e.clientX-cx, dy = e.clientY-cy;
-      const max = r.width*0.5, dead = max*0.30;
-      const dist = Math.hypot(dx,dy);
-      let kx=dx, ky=dy; if(dist>max){ kx=dx/dist*max; ky=dy/dist*max; }
-      knob.style.transform = `translate(${kx}px,${ky}px)`;
-      let ax=0, ay=0;
-      const want = {up:false,down:false,left:false,right:false};
-      if(dist>dead){
-        ax = Math.max(-1,Math.min(1, dx/max)); ay = Math.max(-1,Math.min(1, dy/max));
-        const deg = (Math.atan2(dy,dx)*180/Math.PI+360)%360;        // 0=right 90=down 180=left 270=up
-        const oct = Math.round(deg/45)%8;                            // 8 sectors of 45°
-        [['right'],['right','down'],['down'],['down','left'],['left'],['left','up'],['up'],['up','right']][oct].forEach(d=>want[d]=true);
-      }
-      sendAxis(ax, ay);
-      ['up','down','left','right'].forEach(d=>setDir(d,want[d]));
-    }
-    stick.addEventListener('pointerdown', e=>{ e.preventDefault(); pid=e.pointerId; try{stick.setPointerCapture(pid);}catch(_){} stick.classList.add('live'); vibe(); move(e); });
-    stick.addEventListener('pointermove', move);
-    const end = e=>{ if(e.pointerId!==pid)return; pid=null; knob.style.transform='translate(0,0)'; stick.classList.remove('live'); clearAll(); sendAxis(0,0); };
-    stick.addEventListener('pointerup', end);
-    stick.addEventListener('pointercancel', end);
-    stick.addEventListener('contextmenu', e=>e.preventDefault());
-  }
-
-  // phone view switching + library
-  function showPad(){ $('#padPlay').hidden=false; $('#padLib').hidden=true; $('#tgPad').setAttribute('data-on','1'); $('#tgLib').removeAttribute('data-on'); }
-  function showLib(){ $('#padPlay').hidden=true; $('#padLib').hidden=false; $('#tgLib').setAttribute('data-on','1'); $('#tgPad').removeAttribute('data-on'); loadPadLib(); }
-  async function loadPadLib(){
-    const list = $('#plibList');
-    try{
-      const lib = await (await fetch('/api/library',{cache:'no-store'})).json();
-      const items = [];
-      SYS.forEach(s => (lib[s.key]||[]).forEach(g => items.push({...g, sys:s.key})));
-      if(!items.length){ list.innerHTML='<div class="plempty">No games yet.<br>Drop files into the games/* folders.</div>'; return; }
-      list.innerHTML='';
-      items.forEach(g=>{
-        const s = SYSMAP[g.sys] || {};
-        const row=document.createElement('button');
-        row.className='plrow';
-        row.style.setProperty('--accent', s.accent || '#3fe0cf');
-        row.innerHTML='<span class="plk">'+(s.label||g.sys.toUpperCase())+'</span><span class="pln">'+esc(g.name)+'</span><span class="plgo">▶</span>';
-        row.onclick=()=>{ sendMsg({t:'launch', system:g.sys, url:g.url, name:g.name}); vibe(); showPad(); };
-        list.appendChild(row);
-      });
-    }catch(e){ list.innerHTML='<div class="plempty">Can\'t reach the server.</div>'; }
-  }
-
-  function initController(code){
-    ROOM = code;
-    document.documentElement.classList.add('padmode');
-    document.querySelector('.wrap').style.display = 'none';
-    $('#padRoot').hidden = false;
-    $('#padCodeLbl').textContent = code;
-    bindButtons(); bindStick(); bindExtras();
-    $('#tgPad').onclick = showPad;
-    $('#tgLib').onclick = showLib;
-    $('#padLibRefresh').onclick = loadPadLib;
-    send('hello');
-    setInterval(()=>{ if(!document.querySelector('.pbtn.on') && !$('#stick').classList.contains('live')) send('ping'); }, 8000);
-    window.addEventListener('pagehide', ()=>{ try{ navigator.sendBeacon('/input?room='+encodeURIComponent(code), JSON.stringify({t:'bye'})); }catch(e){} });
-    showLib();   // start on the games list so you can launch something on the TV
   }
 
   /* ---- bootstrap ---- */
@@ -1365,17 +1826,111 @@
     psp: { 'ppsspp_internal_resolution':'1', 'ppsspp_frameskip':'1' },
   };
   function updatePerfBtn(){ const b=$('#perfBtn'); if(b){ b.textContent='⚡ Performance: '+(PERF?'ON':'OFF'); b.classList.toggle('on',PERF); } }
-  (function(){ const b=$('#perfBtn'); if(b){ b.onclick=()=>{ PERF=!PERF; try{localStorage.setItem('arcade_perf',PERF?'1':'0');}catch(e){} updatePerfBtn(); toast('Performance mode '+(PERF?'ON':'OFF')+(document.body.classList.contains('playing')?' — restart the game to apply':'')); }; updatePerfBtn(); } })();
+  // chrome-lite: performance mode (or a reduced-motion preference) also strips the
+  // page's expensive effects — blur blobs, scanlines, backdrop filters — for weak TVs
+  function applyLite(){
+    let reduce = false; try{ reduce = matchMedia('(prefers-reduced-motion:reduce)').matches; }catch(e){}
+    const fx = (typeof SET !== 'undefined' && SET.fx) || 'auto';   // settings can force Full/Lite; Auto follows ⚡/reduced-motion
+    document.body.classList.toggle('lite', fx === 'lite' || (fx !== 'full' && (PERF || reduce)));
+  }
+  (function(){ const b=$('#perfBtn'); if(b){ b.onclick=()=>{ PERF=!PERF; try{localStorage.setItem('arcade_perf',PERF?'1':'0');}catch(e){} updatePerfBtn(); applyLite(); toast('Performance mode '+(PERF?'ON':'OFF')+(document.body.classList.contains('playing')?' — restart the game to apply':'')); }; updatePerfBtn(); } applyLite(); })();
   // host-side streaming entry points
   if($('#streamBtn')) $('#streamBtn').onclick = openStreamPicker;
   if($('#streamBack')) $('#streamBack').onclick = ejectAll;
   // player profiles
   $('#userChip').onclick = showLogin;
-  $('#guestBtn').onclick = () => { setGuest(); hideLogin(); };
+  $('#guestBtn').onclick = () => { setGuest(); hideLogin(); refreshSaves(); };
   $('#newProfileBtn').onclick = () => openPin('create');
   $('#pinBack').onclick = backToList;
   buildKeypad();
   loadSession();
+
+  /* ---- 10-foot navigation: TV remotes (and keyboards) send arrow keys ----
+     Arrows move focus spatially between the visible buttons — tabs, cards, top
+     actions — and Enter presses the focused one (native button behaviour).
+     Inactive while a game is playing (the emulator needs the arrow keys) and
+     inside text fields; works the same inside the profile picker. */
+  function navScope(){
+    const search = $('#search');
+    if(search && !search.hidden) return search;                   // search overlay open
+    const settings = $('#settings');
+    if(settings && !settings.hidden) return settings;             // settings overlay open
+    const login = $('#login');
+    if(login && !login.hidden) return login;                      // profile picker open
+    if(document.body.classList.contains('playing')) return null;  // emulator owns the keys
+    return document.querySelector('.wrap');
+  }
+  function spatialNext(cur, cands, key){
+    const c = cur.getBoundingClientRect();
+    const cx = c.left + c.width/2, cy = c.top + c.height/2;
+    let best = null, bestScore = Infinity;
+    for(const el of cands){
+      if(el === cur) continue;
+      const r = el.getBoundingClientRect();
+      const dx = (r.left + r.width/2) - cx, dy = (r.top + r.height/2) - cy;
+      let p, o;                                  // p: distance ahead, o: sideways drift
+      if(key==='ArrowLeft')      { if(dx >= -4) continue; p = -dx; o = Math.abs(dy); }
+      else if(key==='ArrowRight'){ if(dx <=  4) continue; p =  dx; o = Math.abs(dy); }
+      else if(key==='ArrowUp')   { if(dy >= -4) continue; p = -dy; o = Math.abs(dx); }
+      else                       { if(dy <=  4) continue; p =  dy; o = Math.abs(dx); }
+      const score = p + o*2.5;                   // prefer the straight-ahead neighbour
+      if(score < bestScore){ bestScore = score; best = el; }
+    }
+    return best;
+  }
+  document.addEventListener('keydown', e => {
+    if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) return;
+    const t = e.target;
+    if(t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA' || t.tagName==='SELECT' || t.isContentEditable)){
+      if(t.id === 'searchInput' && e.key === 'ArrowDown'){        // down from the query drops into the results
+        const first = document.querySelector('#searchRes .card');
+        if(first){ first.focus(); e.preventDefault(); }
+      }
+      return;
+    }
+    const scope = navScope(); if(!scope) return;
+    const cands = [...scope.querySelectorAll('button, a[href]')].filter(el => {
+      if(el.disabled) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 4 && r.height > 4;        // skip hidden panels / collapsed items
+    });
+    if(!cands.length) return;
+    const cur = document.activeElement;
+    const next = (!cur || cands.indexOf(cur) === -1)
+      ? (scope.querySelector('#heroCta, #gameGrid .card') || cands[0])   // first press: hero CTA, else the grid
+      : spatialNext(cur, cands, e.key);
+    if(next){ next.focus(); try{ next.scrollIntoView({block:'nearest', inline:'nearest'}); }catch(_){} e.preventDefault(); }
+  });
+  // "/" opens search from anywhere in the library; Escape closes overlays
+  document.addEventListener('keydown', e => {
+    const t = e.target;
+    const typing = t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA' || t.isContentEditable);
+    if(e.key === '/' && $('#search').hidden && $('#settings').hidden && !typing && !document.body.classList.contains('playing') && $('#login').hidden){
+      e.preventDefault(); openSearch();
+    } else if(e.key === 'Escape' && !$('#search').hidden){
+      closeSearch();
+    } else if(e.key === 'Escape' && !$('#settings').hidden){
+      closeSettings();
+    }
+  });
+  if($('#searchBtn')) $('#searchBtn').onclick = openSearch;
+  if($('#searchClose')) $('#searchClose').onclick = closeSearch;
+  if($('#searchInput')) $('#searchInput').oninput = e => renderSearch(e.target.value);
+  if($('#oskBtn')) $('#oskBtn').onclick = () => toggleOSK();
+  // settings
+  if($('#setBtn')) $('#setBtn').onclick = openSettings;
+  if($('#setClose')) $('#setClose').onclick = closeSettings;
+  applySet();                                          // stored look/effects take hold at boot
+  // emulator picker + rescan
+  if($('#sysPick')) $('#sysPick').onclick = togglePicker;
+  if($('#refresh')) $('#refresh').onclick = loadLibrary;
+  document.addEventListener('click', e => {           // clicking elsewhere collapses the picker
+    const list = $('#sysList');
+    if(list && !list.hidden && !e.target.closest('#sysList') && !e.target.closest('#sysPick')) closePicker();
+  });
+  document.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && $('#sysList') && !$('#sysList').hidden) closePicker();
+  });
 
   const padParam = new URLSearchParams(location.search).get('pad');
   if(padParam){
@@ -1383,9 +1938,9 @@
     location.replace('pad.html?room=' + encodeURIComponent(padParam.toUpperCase().slice(0,8)));
   }
   else {
+    // land straight on Home as Guest — profiles live behind the 👤 chip and are
+    // only needed for server-side saves (a one-time toast says so on launch)
     loadLibrary(); initDisplay();
-    let chosen=false; try{ chosen = !!(sessionStorage.getItem('arcade_token')||sessionStorage.getItem('arcade_guest')); }catch(e){}
-    if(!chosen) showLogin();   // first visit this session: pick a profile (or Guest)
   }
 </script>
 </body>

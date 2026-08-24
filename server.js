@@ -128,6 +128,109 @@ function freeSlot(room, cid) {
   const m = roomPlayers.get(room); if (m) { m.delete(cid); if (!m.size) roomPlayers.delete(room); }
 }
 
+/* ---- live library: games/, emulators/ and bios/ are watched, and any change
+   bumps a version number. Clients poll /api/version (tiny) and re-fetch the
+   library when it moves — so dropping in a new game or emulator folder shows
+   up on every screen within seconds, no manual rescan. ---- */
+let libVersion = 1, bumpTimer = null;
+const watchedDirs = new Set();
+function bumpVersion() {
+  if (bumpTimer) return;
+  bumpTimer = setTimeout(() => {
+    bumpTimer = null; libVersion++;
+    setupWatchers();                 // a change may have created new sub-folders to watch
+  }, 400);                           // debounce bursts (copies touch a folder many times)
+}
+function watchDir(dir) {
+  if (watchedDirs.has(dir)) return;
+  try {
+    if (!fs.statSync(dir).isDirectory()) return;
+    const w = fs.watch(dir, bumpVersion);
+    w.on('error', () => { try { w.close(); } catch (e) {} watchedDirs.delete(dir); });
+    watchedDirs.add(dir);
+  } catch (e) {}
+}
+function setupWatchers() {
+  watchDir(GAMES);
+  for (const s of SYSTEMS) watchDir(path.join(GAMES, s.key));
+  const emuDir = path.join(ROOT, 'emulators');
+  watchDir(emuDir);
+  try {
+    for (const n of fs.readdirSync(emuDir))
+      if (!n.startsWith('.') && !n.startsWith('_')) watchDir(path.join(emuDir, n));
+  } catch (e) {}
+  for (const s of BIOS_SYSTEMS) watchDir(path.join(ROOT, 'bios', s));
+}
+// any local boxart downloaded yet? (for the settings status panel)
+function hasBoxart() {
+  try {
+    return fs.readdirSync(path.join(ROOT, 'boxart')).some(d => {
+      try { return fs.readdirSync(path.join(ROOT, 'boxart', d)).some(f => IMG_EXT.includes(path.extname(f).toLowerCase())); }
+      catch (e) { return false; }
+    });
+  } catch (e) { return false; }
+}
+
+/* ---- one-time downloaders, runnable from the settings page ----
+   A fixed whitelist of the repo's own get-*.js scripts; one job at a time.
+   Output is kept in a rolling log so the page can show progress. ---- */
+const { spawn } = require('child_process');
+const SETUP_JOBS = {
+  offline:   { script: 'get-offline.js',   name: 'Offline emulator engine' },
+  j2me:      { script: 'get-j2me.js',      name: 'Java handset (local copy)' },
+  ppsspp:    { script: 'get-ppsspp.js',    name: 'PPSSPP (local copy)' },
+  boxart:    { script: 'get-boxart.js',    name: 'Real box-art' },
+  emulators: { script: 'get-emulators.js', name: 'Windows host emulators', win: true },
+  vigem:     { script: 'get-vigem.js',     name: 'ViGEm virtual-pad DLL',  win: true },
+};
+let setupJob = null;   // { id, name, running, ok, code, log:[], started, ended }
+function setupLogLine(s) {
+  if (!setupJob) return;
+  for (const line of String(s).split(/\r?\n/)) {
+    const t = line.trim();
+    if (t) setupJob.log.push(t.slice(0, 300));
+  }
+  if (setupJob.log.length > 200) setupJob.log = setupJob.log.slice(-200);
+}
+function startSetupJob(id) {
+  const def = SETUP_JOBS[id];
+  if (!def) return { ok: false, error: 'unknown job' };
+  if (def.win && process.platform !== 'win32') return { ok: false, error: 'Windows-only' };
+  if (setupJob && setupJob.running) return { ok: false, error: (SETUP_JOBS[setupJob.id] || {}).name + ' is still running' };
+  if (!fs.existsSync(path.join(ROOT, def.script))) return { ok: false, error: def.script + ' is missing' };
+  setupJob = { id, name: def.name, running: true, ok: null, code: null, log: [], started: Date.now(), ended: null };
+  let proc;
+  try {
+    proc = spawn(process.execPath, [path.join(ROOT, def.script)], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (e) {
+    setupJob.running = false; setupJob.ok = false; setupJob.ended = Date.now();
+    setupLogLine('could not start: ' + e.message);
+    return { ok: false, error: 'could not start: ' + e.message };
+  }
+  proc.stdout.on('data', setupLogLine);
+  proc.stderr.on('data', setupLogLine);
+  proc.on('close', code => {
+    if (!setupJob) return;
+    setupJob.running = false; setupJob.code = code; setupJob.ok = code === 0; setupJob.ended = Date.now();
+    bumpVersion();                              // new engine/handset/art files: tell every open page
+  });
+  proc.on('error', e => {
+    if (!setupJob) return;
+    setupLogLine('error: ' + e.message);
+    setupJob.running = false; setupJob.ok = false; setupJob.ended = Date.now();
+  });
+  console.log('  Setup: running ' + def.script + ' (started from the settings page)');
+  return { ok: true };
+}
+function setupStatus() {
+  return {
+    platform: process.platform,
+    job: setupJob ? { id: setupJob.id, name: setupJob.name, running: setupJob.running, ok: setupJob.ok,
+                      code: setupJob.code, log: setupJob.log.slice(-40), started: setupJob.started, ended: setupJob.ended }
+                  : null,
+  };
+}
+
 /* ---- optional BIOS: first file dropped in bios/<system>/ ---- */
 function biosFor(sys) {
   const dir = path.join(ROOT, 'bios', sys);
@@ -165,11 +268,11 @@ function listGames(sub, exts) {
   let list = names
     .filter(f => exts.includes(path.extname(f).toLowerCase()))
     .map(f => {
-      let size = 0;
-      try { size = fs.statSync(path.join(dir, f)).size; } catch (e) {}
+      let size = 0, mtime = 0;
+      try { const st = fs.statSync(path.join(dir, f)); size = st.size; mtime = +st.mtime; } catch (e) {}
       return {
         name: f.replace(/\.[^.]+$/, ''), file: f,
-        ext: path.extname(f).toLowerCase().slice(1), size,
+        ext: path.extname(f).toLowerCase().slice(1), size, mtime,
         url:   '/games/' + sub + '/' + encodeURIComponent(f),
         thumb: '/thumb/' + sub + '/' + encodeURIComponent(f),
       };
@@ -310,30 +413,35 @@ function monogram(name){
   if(w.length===1) return w[0].slice(0,2).toUpperCase();
   return (w[0][0]+w[1][0]).toUpperCase();
 }
-function genCover(kind, name){
+// shape: '' (landscape 320x140, the historic tile) or 'portrait' (300x450,
+// boxart-shaped — used by the library's portrait cards via /thumb/...?shape=portrait)
+function genCover(kind, name, shape){
+  const W = shape === 'portrait' ? 300 : 320, H = shape === 'portrait' ? 450 : 140;
   const accent = ACCENTS[kind] || '#7a8290';
   const h = hashStr(kind + '|' + name);
   const c = shiftHue(accent, (h % 46) - 23);     // stay in the system's colour family
   const top = mixBlack(c, 0.80), bot = mixBlack(c, 0.55);
-  const mono = monogram(name), label = LABELS[kind] || kind.toUpperCase();
+  const mono = monogram(name);
   const style = h % 3;
   let pat = '';
   if (style === 0) {                              // dot grid
     let d=''; const o=h%6;
-    for(let y=18;y<140;y+=22) for(let x=14+(((y/22)|0)%2?11:0);x<320;x+=22) d+=`<circle cx='${x+o}' cy='${y}' r='2.2'/>`;
+    for(let y=18;y<H;y+=22) for(let x=14+(((y/22)|0)%2?11:0);x<W;x+=22) d+=`<circle cx='${x+o}' cy='${y}' r='2.2'/>`;
     pat = `<g fill='${c}' fill-opacity='0.10'>${d}</g>`;
   } else if (style === 1) {                       // diagonal stripes
-    let d=''; for(let x=-140;x<340;x+=26) d+=`<line x1='${x}' y1='0' x2='${x+140}' y2='140'/>`;
+    let d=''; for(let x=-H;x<W+20;x+=26) d+=`<line x1='${x}' y1='0' x2='${x+H}' y2='${H}'/>`;
     pat = `<g stroke='${c}' stroke-opacity='0.09' stroke-width='9'>${d}</g>`;
   } else {                                        // nested frames
-    let d=''; for(let i=0;i<6;i++){ const m=8+i*13; d+=`<rect x='${m}' y='${m}' width='${320-2*m}' height='${140-2*m}' rx='9'/>`; }
+    let d=''; for(let i=0;i<9;i++){ const m=8+i*13; if(W-2*m<=0 || H-2*m<=0) break; d+=`<rect x='${m}' y='${m}' width='${W-2*m}' height='${H-2*m}' rx='9'/>`; }
     pat = `<g fill='none' stroke='${c}' stroke-opacity='0.08' stroke-width='3'>${d}</g>`;
   }
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='320' height='140' viewBox='0 0 320 140'>`+
+  const monoSize = shape === 'portrait' ? 92 : 62;
+  const monoY = shape === 'portrait' ? Math.round(H * 0.52) : 82;
+  // no baked-in corner label: every card in the UI draws its own system chip
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${W}' height='${H}' viewBox='0 0 ${W} ${H}'>`+
     `<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='${top}'/><stop offset='1' stop-color='${bot}'/></linearGradient></defs>`+
-    `<rect width='320' height='140' fill='url(#g)'/>${pat}`+
-    `<text x='160' y='82' font-family='Arial,Helvetica,sans-serif' font-weight='800' font-size='62' fill='${c}' fill-opacity='0.24' text-anchor='middle' dominant-baseline='middle'>${svgEsc(mono)}</text>`+
-    `<text x='16' y='26' font-family='Arial,Helvetica,sans-serif' font-weight='700' font-size='12' letter-spacing='2' fill='${c}'>${svgEsc(label)}</text>`+
+    `<rect width='${W}' height='${H}' fill='url(#g)'/>${pat}`+
+    `<text x='${W/2}' y='${monoY}' font-family='Arial,Helvetica,sans-serif' font-weight='800' font-size='${monoSize}' fill='${c}' fill-opacity='0.24' text-anchor='middle' dominant-baseline='middle'>${svgEsc(mono)}</text>`+
     `</svg>`;
   return { data: Buffer.from(svg, 'utf8'), ct: 'image/svg+xml' };
 }
@@ -493,14 +601,14 @@ function readRawBody(req, max, cb){
 const jsonRes = (res, obj, code) => { res.writeHead(code || 200, { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-cache' }); res.end(JSON.stringify(obj)); };
 
 /* ---- resolve a thumbnail for one game ---- */
-async function resolveThumb(kind, file) {
+async function resolveThumb(kind, file, shape) {
   if (!SYS_KEYS.includes(kind)) return null;
   const dir = path.join(GAMES, kind);
   const full = path.join(dir, file);
   if (path.dirname(full) !== dir || !fs.existsSync(full)) return null;
 
   let st; try { st = fs.statSync(full); } catch (e) { return null; }
-  const key = kind + '|' + file + '|' + st.size + '|' + (+st.mtime);
+  const key = kind + '|' + file + '|' + st.size + '|' + (+st.mtime) + '|' + (shape || '');
   if (thumbCache.has(key)) return thumbCache.get(key);
 
   const base = file.replace(/\.[^.]+$/, '');
@@ -516,7 +624,7 @@ async function resolveThumb(kind, file) {
   if (!result && ext === '.pbp') result = pbpIcon(full);      // 4. ICON0.PNG inside a PSP/PS1 EBOOT
   if (!result && kind === 'psp' && ext === '.iso') result = isoIcon(full); // 5. ICON0.PNG inside a PSP ISO
   if (!result && kind === 'gba' && BOXART) result = await gbaBoxart(base);  // 6. live GBA box-art (legacy)
-  if (!result) result = genCover(kind, base);                 // 7. always: generated offline cover tile
+  if (!result) result = genCover(kind, base, shape);          // 7. always: generated offline cover tile
 
   thumbCache.set(key, result);
   return result;
@@ -677,6 +785,18 @@ const requestHandler = async (req, res) => {
     res.writeHead(200, { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-cache' });
     return res.end(JSON.stringify({ ips: lanAddresses(), port: PORT }));
   }
+  if (url === '/api/version') {          // cheap poll target for the auto-refreshing library
+    return jsonRes(res, { v: libVersion });
+  }
+
+  /* ---- one-time downloaders (settings page) ---- */
+  if (url === '/api/setup/run') {
+    if (req.method !== 'POST') { res.writeHead(405); return res.end(); }
+    return jsonRes(res, startSetupJob(String(q.searchParams.get('job') || '')));
+  }
+  if (url === '/api/setup/status') {
+    return jsonRes(res, setupStatus());
+  }
 
   /* ---- player profiles (username + 4-digit PIN) ---- */
   if (url === '/api/users') {                         // list profile names (never PINs)
@@ -744,11 +864,37 @@ const requestHandler = async (req, res) => {
     const st = savePaths(user, system, game, 'state'), sr = savePaths(user, system, game, 'srm');
     return jsonRes(res, { state: fs.existsSync(st.file), srm: fs.existsSync(sr.file) });
   }
+  // every save this profile has, newest first — powers "Continue playing" on the
+  // home screen. game is the sanitised name on disk (safeGame of the game's title).
+  if (url === '/api/saves') {
+    const user = userForToken(q.searchParams.get('token'));
+    if (!user) return jsonRes(res, { ok: false, saves: [] }, 401);
+    const out = [];
+    const base = path.join(userDir(user), 'saves');
+    let systems = []; try { systems = fs.readdirSync(base); } catch (e) {}
+    for (const sys of systems) {
+      const dir = path.join(base, sys);
+      let names = []; try { names = fs.readdirSync(dir); } catch (e) { continue; }
+      const byGame = new Map();
+      for (const n of names) {
+        const m = /^(.*)\.(state|srm)$/.exec(n); if (!m) continue;
+        let st; try { st = fs.statSync(path.join(dir, n)); } catch (e) { continue; }
+        const g = byGame.get(m[1]) || { system: sys, game: m[1], state: false, srm: false, mtime: 0 };
+        g[m[2]] = true; g.mtime = Math.max(g.mtime, +st.mtime);
+        byGame.set(m[1], g);
+      }
+      for (const g of byGame.values()) out.push(g);
+    }
+    out.sort((a, b) => b.mtime - a.mtime);
+    return jsonRes(res, { ok: true, saves: out });
+  }
 
   if (url === '/api/library') {
-    const lib = { boxart: BOXART, bios: {}, ejsLocal: fs.existsSync(path.join(ROOT, 'emulatorjs', 'loader.js')), isolated: ISOLATE,
+    const lib = { version: libVersion,
+                  boxart: BOXART, bios: {}, ejsLocal: fs.existsSync(path.join(ROOT, 'emulatorjs', 'loader.js')), isolated: ISOLATE,
                   pspWeb: fs.existsSync(path.join(ROOT, 'psp-ppsspp', 'index.html')),
                   j2meWeb: fs.existsSync(path.join(ROOT, 'j2me-web', 'web', 'index.html')),
+                  boxartLocal: hasBoxart(), httpsOn: process.env.ARCADE_HTTPS === '1',
                   stream: STREAM, emulators: (STREAM && streamMod) ? streamMod.listEmulators() : [] };
     for (const s of SYSTEMS) lib[s.key] = listGames(s.key, s.exts);
     for (const s of BIOS_SYSTEMS) lib.bios[s] = biosFor(s);
@@ -760,7 +906,8 @@ const requestHandler = async (req, res) => {
   if (tm) {
     let file; try { file = decodeURIComponent(tm[2]); } catch (e) { res.writeHead(400); return res.end(); }
     try {
-      const t = await resolveThumb(tm[1], file);
+      const shape = q.searchParams.get('shape') === 'portrait' ? 'portrait' : '';
+      const t = await resolveThumb(tm[1], file, shape);
       if (!t) { res.writeHead(404); return res.end(); }
       // Covers rarely change, so let the browser keep them and revalidate with an
       // ETag instead of re-downloading every card's image every couple of minutes.
@@ -857,6 +1004,7 @@ if (process.env.ARCADE_HTTPS === '1') startHttps();
 
 server.listen(PORT, '0.0.0.0', () => {
   try { fs.mkdirSync(USERS, { recursive: true }); } catch (e) {}
+  try { setupWatchers(); } catch (e) {}    // live library: watch games/ + emulators/ for changes
   setTimeout(() => { try { compressExistingSaves(); } catch (e) {} }, 500);  // shrink old saves once, off the startup path
   const ips = lanAddresses();
   const line = '------------------------------------------------------------';

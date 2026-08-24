@@ -772,12 +772,21 @@ class StreamSession {
 /* ---- module singleton + HTTP routes ---- */
 let CFG = null, session = null;
 function ensure() { if (!CFG) CFG = config(); if (!session) session = new StreamSession(CFG); return session; }
-// public emulator list for /api/library (no host filesystem paths leak to clients)
+// public emulator list for /api/library (no host filesystem paths leak to clients).
+// bin/found let the settings page show whether each emulator's program is
+// actually installed: found is true/false for absolute paths, null when the
+// command relies on PATH (can't verify cheaply).
 function listEmulators() {
-  return scanEmulators().map(e => ({
-    id: e.id, name: e.name, icon: e.icon, needsRom: e.needsRom,
-    system: e.system, games: e.games,
-  }));
+  return scanEmulators().map(e => {
+    const args = launchArgs(e, '');
+    const exe = (args && args[0]) ? args[0] : '';
+    return {
+      id: e.id, name: e.name, icon: e.icon, needsRom: e.needsRom,
+      system: e.system, games: e.games,
+      bin: exe ? path.basename(exe) : '',
+      found: exe && path.isAbsolute(exe) ? fileExists(exe) : null,
+    };
+  });
 }
 function active() { return !!(session && session.active); }
 
