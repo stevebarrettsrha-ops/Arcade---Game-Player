@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ARCADE — home game server</title>
+<meta name="theme-color" content="#0e1120">
+<meta name="color-scheme" content="dark">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="assets/icon.svg">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ARCADE">
 <style>
   /* bundled fonts — no internet needed */
   @font-face{font-family:'Chakra Petch';font-weight:400 500;font-style:normal;src:url('assets/fonts/ChakraPetch-Medium.ttf') format('truetype');font-display:swap}
@@ -296,6 +305,62 @@
   .shelf .card{flex:0 0 clamp(190px,24vw,262px);scroll-snap-align:start}
   .pickrow .status{padding:7px 12px}
 
+  .shelfsec h2 .more{margin-left:auto;font-size:13px;padding:6px 12px}
+  .sortbtn b{font-weight:700;color:var(--ink)} .sortbtn{color:var(--muted)}
+
+  /* ---- loading skeletons (shown until the library answers) ---- */
+  .skel{pointer-events:none}
+  .skel i{display:block;border-radius:var(--radius);background:linear-gradient(100deg,rgba(255,255,255,.05) 30%,rgba(255,255,255,.11) 50%,rgba(255,255,255,.05) 70%);
+    background-size:300% 100%;animation:shim 1.4s linear infinite}
+  .skel .sk-hero{height:210px;border-radius:16px;margin:2px 0 22px}
+  .skel .sk-h{width:170px;height:20px;border-radius:6px;margin:0 0 14px}
+  .skel .sk-row{display:flex;gap:14px;overflow:hidden;margin-bottom:26px}
+  .skel .sk-row i{flex:0 0 clamp(190px,24vw,262px);aspect-ratio:16/9}
+  @keyframes shim{from{background-position:100% 0}to{background-position:-100% 0}}
+  body.lite .skel i{animation:none}
+
+  /* ---- first run / no server: a guided start instead of an empty box ---- */
+  .firstrun{grid-column:1/-1;border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:clamp(20px,4vw,36px)}
+  .firstrun h2{margin:0 0 6px;font-size:clamp(20px,3vw,26px)}
+  .firstrun>p{margin:0 0 18px;color:var(--muted);font-size:15px;line-height:1.55;max-width:680px}
+  .firstrun ol{margin:0 0 20px;padding:0;list-style:none;counter-reset:st;display:grid;gap:14px}
+  .firstrun li{counter-increment:st;position:relative;padding-left:44px;font-size:14.5px;line-height:1.55;color:var(--muted)}
+  .firstrun li::before{content:counter(st);position:absolute;left:0;top:0;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
+    font-weight:700;color:var(--ui-ink);background:var(--ui)}
+  .firstrun li b{color:var(--ink);display:block;font-size:15.5px}
+  .firstrun code{background:var(--panel2);color:var(--ink);padding:2px 7px;border-radius:5px;font-size:13px}
+  .fr-sys{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .fr-sys span{font-size:13px;background:rgba(10,12,22,.5);border:1px solid var(--line);border-radius:8px;padding:5px 9px;color:var(--muted)}
+  .fr-sys span em{font-style:normal;font-weight:700;color:var(--ink);margin-right:6px}
+  .fr-acts{display:flex;gap:10px;flex-wrap:wrap}
+
+  /* ---- game detail sheet ---- */
+  #detail{position:fixed;inset:0;z-index:77;background:rgba(9,11,22,.86);backdrop-filter:blur(8px);overflow:auto;
+    display:grid;place-items:center;padding:clamp(14px,4vw,32px)}
+  body.lite #detail{backdrop-filter:none;background:rgba(9,11,22,.96)}
+  .dtbox{position:relative;width:100%;max-width:760px;display:flex;gap:clamp(16px,3vw,28px);align-items:flex-start;
+    background:#141726;border:1px solid var(--line);border-radius:16px;padding:clamp(18px,3vw,26px);box-shadow:var(--shadow)}
+  .dtart{flex:0 0 clamp(120px,30%,230px);border-radius:12px;overflow:hidden;background:var(--panel);border:1px solid var(--line);
+    display:grid;place-items:center;min-height:120px;color:var(--muted)}
+  .dtart img{display:block;width:100%;height:auto}
+  .dtart img.pix{image-rendering:pixelated;padding:14%}
+  .dtart .ic{width:48px;height:48px;stroke-width:1.5}
+  .dtinfo{flex:1;min-width:0}
+  .dtsys{display:inline-block;font-size:12.5px;font-weight:700;letter-spacing:.06em;color:var(--ink);
+    border:1px solid color-mix(in srgb,var(--accent,#fff) 55%,transparent);background:color-mix(in srgb,var(--accent,#fff) 14%,transparent);
+    border-radius:6px;padding:4px 9px}
+  .dtinfo h2{margin:10px 40px 14px 0;font-size:clamp(20px,3vw,28px);line-height:1.2;text-wrap:balance;overflow-wrap:anywhere}
+  .dtfacts{margin:0 0 18px;display:grid;grid-template-columns:auto 1fr;gap:7px 16px;font-size:14px}
+  .dtfacts dt{color:var(--faint)} .dtfacts dd{margin:0;color:var(--ink)}
+  .dtacts{display:flex;gap:10px;flex-wrap:wrap}
+  .dtclose{position:absolute;top:14px;right:14px;padding:8px 11px}
+  @media(max-width:560px){.dtbox{flex-direction:column;align-items:stretch} .dtart{flex:none;width:44%;align-self:center}}
+
+  /* skip link + screen-reader-only text */
+  .skip{position:absolute;left:-999px;top:8px;z-index:200;background:var(--ui);color:var(--ui-ink);font-weight:700;padding:10px 14px;border-radius:9px}
+  .skip:focus{left:8px}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
   /* ---- controller hints: shown while a real gamepad is connected ---- */
   #padHints{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:70;display:flex;gap:14px;flex-wrap:wrap;justify-content:center;
     max-width:94vw;background:rgba(13,16,32,.92);border:1px solid var(--line);border-radius:999px;padding:8px 16px;
@@ -316,6 +381,7 @@
      and the hero's blur fill cost real frames on TV browsers. */
   body.lite .status,body.lite .help,body.lite .toast,body.lite .pair,body.lite #search{backdrop-filter:none}
   body.lite #search{background:rgba(9,11,22,.96)}
+  body.lite #settings{backdrop-filter:none;background:rgba(9,11,22,.96)}
   body.lite .card{animation:none}
   body.lite .hero .hbg{display:none}        /* the big blur is the costly part — keep the colour wash only */
 
@@ -446,6 +512,7 @@
   <symbol id="i-logo" viewBox="0 0 24 24"><path d="M12 4l9 16H3z" fill="currentColor" stroke="none"/></symbol>
 </defs></svg>
 
+<a class="skip" href="#main">Skip to games</a>
 <div class="wrap">
   <header class="top">
     <div class="brand">
@@ -474,9 +541,9 @@
   </div>
 
   <!-- player login: username + 4-digit PIN; keeps each player's saves separate -->
-  <div id="login" hidden>
+  <div id="login" hidden role="dialog" aria-modal="true" aria-labelledby="loginHead">
     <div class="loginbox">
-      <div class="lhead">WHO’S PLAYING?</div>
+      <div class="lhead" id="loginHead">WHO’S PLAYING?</div>
       <div class="lsub">Pick your profile so your saved games stay yours.</div>
       <div id="profileList" class="plist"></div>
       <div class="lrow">
@@ -486,8 +553,8 @@
       <div id="pinPanel" hidden>
         <div class="pinwho" id="pinWho"></div>
         <input id="newName" class="lname" placeholder="Choose a name" maxlength="16" autocomplete="off" hidden>
-        <div class="pindots" id="pinDots"><i></i><i></i><i></i><i></i></div>
-        <div class="pinerr" id="pinErr"></div>
+        <div class="pindots" id="pinDots" role="img" aria-label="PIN: 0 of 4 digits entered"><i></i><i></i><i></i><i></i></div>
+        <div class="pinerr" id="pinErr" role="alert"></div>
         <div class="keypad" id="keypad"></div>
         <button class="lbtn ghost" id="pinBack">‹ Back</button>
       </div>
@@ -495,13 +562,13 @@
   </div>
 
   <!-- search overlay: one query across every system + the host emulators -->
-  <div id="search" hidden>
+  <div id="search" hidden role="dialog" aria-modal="true" aria-label="Search your library">
     <div class="searchbox">
       <div class="srow">
         <span class="sicon"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg></span>
-        <input id="searchInput" placeholder="Search your whole library…" autocomplete="off" spellcheck="false">
+        <input id="searchInput" aria-label="Search your whole library" placeholder="Search your whole library…" autocomplete="off" spellcheck="false">
         <button class="mini" id="oskBtn" title="On-screen keys — type with a TV remote (arrows + OK)"><svg class="ic" aria-hidden="true"><use href="#i-keyboard"/></svg> ABC</button>
-        <button class="mini" id="searchClose">✕ Esc</button>
+        <button class="mini" id="searchClose" aria-label="Close search">✕ Esc</button>
       </div>
       <div id="osk" hidden></div>
       <div class="gridcards" id="searchRes"></div>
@@ -509,26 +576,42 @@
   </div>
 
   <!-- settings overlay: playback, look, library links + system status -->
-  <div id="settings" hidden>
+  <div id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="setHead">
     <div class="setbox">
-      <div class="sethead"><h2>Settings</h2><button class="mini" id="setClose">✕ Esc</button></div>
+      <div class="sethead"><h2 id="setHead">Settings</h2><button class="mini" id="setClose" aria-label="Close settings">✕ Esc</button></div>
       <div id="setBody"></div>
     </div>
   </div>
 
   <!-- LIBRARY: hero + one collapsible emulator picker + an art-only game grid -->
-  <div class="libview">
+  <!-- game detail sheet: cover, facts, Play / Start fresh / Favorite -->
+  <div id="detail" hidden role="dialog" aria-modal="true" aria-labelledby="dtTitle">
+    <div class="dtbox">
+      <button class="mini dtclose" id="dtClose" aria-label="Close details">✕</button>
+      <div class="dtart" id="dtArt"></div>
+      <div class="dtinfo">
+        <span class="dtsys" id="dtSys"></span>
+        <h2 id="dtTitle"></h2>
+        <dl class="dtfacts" id="dtFacts"></dl>
+        <div class="dtacts" id="dtActs"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="libview" id="main" role="main" tabindex="-1">
     <div id="hero" hidden></div>
-    <div id="shelves"></div>
+    <div id="shelves"><div class="skel" aria-hidden="true"><i class="sk-hero"></i><i class="sk-h"></i><div class="sk-row"><i></i><i></i><i></i><i></i><i></i></div><i class="sk-h"></i><div class="sk-row"><i></i><i></i><i></i><i></i><i></i></div></div><span class="sr" role="status">Loading your library…</span></div>
     <div class="pickrow">
-      <button class="pick" id="sysPick"><svg class="ic" aria-hidden="true"><use href="#i-gamepad"/></svg> <span id="sysPickLbl">All systems</span> <span class="caret">▾</span></button>
+      <button class="pick" id="sysPick" aria-expanded="false" aria-controls="sysList"><svg class="ic" aria-hidden="true"><use href="#i-gamepad"/></svg> <span id="sysPickLbl">All systems</span> <span class="caret">▾</span></button>
       <span class="count" id="pickCount"></span>
+      <button class="mini sortbtn" id="sortBtn" title="Change the order games are listed in">Sort: <b id="sortLbl">A–Z</b></button>
       <span class="spacer"></span>
-      <div class="status" id="status"><span class="led" id="led"></span><span id="statusTxt">connecting…</span></div>
+      <div class="status" id="status" role="status"><span class="led" id="led"></span><span id="statusTxt">connecting…</span></div>
       <button class="mini" id="refresh"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg> Rescan</button>
     </div>
     <div class="picklist" id="sysList" hidden></div>
     <div class="gridcards" id="gameGrid"></div>
+    <div id="rows"></div>
   </div>
 
   <!-- GBA STAGE -->
@@ -612,12 +695,12 @@
   <footer>ARCADE home server · GBA runs in-page (EmulatorJS / mGBA) · Java Phone via FreeJ2ME-web · supply your own legally-owned game files.</footer>
 </div>
 
-<div id="padHints" hidden>
+<div id="padHints" hidden aria-hidden="true">
   <span class="nav"><b>A</b>Select</span><span class="nav"><b>B</b>Back</span><span class="nav"><b>X</b>Search</span>
   <span class="nav"><b>Y</b>Favorite</span><span class="nav"><b>LB</b><b>RB</b>System</span><span class="nav"><b>START</b>Settings</span>
   <span class="ingame">Hold <b>SELECT</b>+<b>START</b> to return to the library</span>
 </div>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 
 <script>
@@ -660,7 +743,9 @@
     refreshSaves();   // fills "Continue playing" once the profile's saves arrive
   }
   function totalGames(){ return SYS.reduce((a,s)=>a+((LIB[s.key]||[]).length),0); }
+  let ONLINE = true;
   function setStatus(ok){
+    ONLINE = !!ok;
     $('#led').classList.toggle('off', !ok);
     $('#statusTxt').textContent = ok
       ? (LIB.ejsLocal ? 'Connected · offline-ready' : 'Connected')
@@ -689,24 +774,46 @@
     const items = [];
     if(SEL.type==='sys'){
       (LIB[SEL.key]||[]).forEach(g => items.push({ kind:'game', sys:SEL.key, g }));
-      return items;
+      return sortItems(items);
     }
     if(SEL.type==='host'){
       const e = selEmu();
       if(e){
         (e.games||[]).forEach(g => items.push({ kind:'host', e, g }));
+        sortItems(items);
         if(!e.needsRom) items.push({ kind:'host', e, g:{ name:e.name + ' (emulator menu)', file:'' } });
       }
       return items;
     }
     SYS.forEach(s => (LIB[s.key]||[]).forEach(g => items.push({ kind:'game', sys:s.key, g })));
     (LIB.emulators||[]).forEach(e => (e.games||[]).forEach(g => items.push({ kind:'host', e, g })));
-    items.sort((a,b) => a.g.name.localeCompare(b.g.name, undefined, { numeric:true }));
-    return items;
+    return sortItems(items);
   }
-  function setSel(sel){ SEL = sel; saveSel(); closePicker(); renderPicker(); renderShelves(); renderGrid(); }
-  function openPicker(){ buildPickList(); $('#sysList').hidden = false; $('#sysPick').setAttribute('data-open','1'); }
-  function closePicker(){ $('#sysList').hidden = true; $('#sysPick').removeAttribute('data-open'); }
+  /* ---- sort order (the Sort button cycles; remembered on this device) ---- */
+  const SORTS = [['az','A–Z'],['new','Recently added'],['played','Last played']];
+  function playedMap(){                                 // key -> last played time (this device + profile saves)
+    const m = {};
+    SHELF.recent.forEach(r => { m[r.k] = r.t||0; });
+    SAVES.forEach(sv => { (LIB[sv.system]||[]).forEach(g => { if(safeGameJS(g.name) === sv.game){ const k = gkey(sv.system, g); m[k] = Math.max(m[k]||0, sv.mtime||0); } }); });
+    return m;
+  }
+  const itemKey = it => it.kind === 'host' ? hkey(it.e, it.g) : gkey(it.sys, it.g);
+  function sortItems(items){
+    const byName = (a,b) => a.g.name.localeCompare(b.g.name, undefined, { numeric:true });
+    if(SET.sort === 'new') return items.sort((a,b) => (b.g.mtime||0) - (a.g.mtime||0) || byName(a,b));
+    if(SET.sort === 'played'){ const m = playedMap(); return items.sort((a,b) => (m[itemKey(b)]||0) - (m[itemKey(a)]||0) || byName(a,b)); }
+    return items.sort(byName);
+  }
+  function renderSort(){ const l = $('#sortLbl'); if(l) l.textContent = (SORTS.find(x => x[0] === SET.sort) || SORTS[0])[1]; }
+  function cycleSort(){
+    const i = SORTS.findIndex(x => x[0] === SET.sort);
+    SET.sort = SORTS[(i + 1) % SORTS.length][0];
+    saveSet(); renderSort(); renderGrid(); renderRows();
+    toast('Sorted: ' + SORTS.find(x => x[0] === SET.sort)[1]);
+  }
+  function setSel(sel){ SEL = sel; saveSel(); closePicker(); renderPicker(); renderShelves(); renderGrid(); renderRows(); }
+  function openPicker(){ buildPickList(); $('#sysList').hidden = false; $('#sysPick').setAttribute('data-open','1'); $('#sysPick').setAttribute('aria-expanded','true'); }
+  function closePicker(){ $('#sysList').hidden = true; $('#sysPick').removeAttribute('data-open'); $('#sysPick').setAttribute('aria-expanded','false'); }
   function togglePicker(){ $('#sysList').hidden ? openPicker() : closePicker(); }
   function buildPickList(){
     const list = $('#sysList'); list.innerHTML = '';
@@ -762,6 +869,7 @@
     c.style.setProperty('--accent', s.accent);
     if(opts.delay) c.style.animationDelay = opts.delay;
     c.title = g.name + ' · ' + s.label + (g.size ? ' · ' + fmt(g.size) : '');
+    c.setAttribute('aria-label', g.name + ', ' + s.full + (hasSave(sysKey, g.name) ? ', has a save' : '') + (isFav(gkey(sysKey, g)) ? ', favorite' : ''));
     const saved = hasSave(sysKey, g.name);
     c.innerHTML =
       '<div class="art"><div class="glyph">'+esc(initials(g.name))+'</div>'+
@@ -784,7 +892,7 @@
       // no real art -> ask the server for its generated tile in the card's own shape
       img.src = g.thumb + (opts.tall && !g.box ? '?shape=portrait' : '');
     }
-    c.onclick = ev => { if(favClick(ev, c)) return; cardLaunch(sysKey, g); };
+    c.onclick = ev => { if(favClick(ev, c)) return; if(SET.detail) openDetail({ kind:'game', sys:sysKey, g }, c); else cardLaunch(sysKey, g); };
     return c;
   }
   function pspBanner(){
@@ -806,16 +914,19 @@
     grid.innerHTML = '';
     if(SEL.type==='sys' && SEL.key==='psp') grid.appendChild(pspBanner());
     const items = selItems();
+    if(SEL.type === 'all' && items.length){             // home view: one row per system instead (renderRows)
+      grid.classList.remove('tallgrid'); grid.hidden = true; return;
+    }
+    grid.hidden = false;
     if(!items.length){
       grid.classList.remove('tallgrid');
+      if(SEL.type === 'all'){ grid.appendChild(firstRun()); return; }
       const e = document.createElement('div'); e.className = 'empty';
       if(SEL.type==='sys'){
         const s = SYSMAP[SEL.key];
         e.innerHTML = '<div class="big">NO GAMES YET</div>Drop '+s.exts+' files into <code>games/'+SEL.key+'</code> on the host, then press <b>Rescan</b>.';
-      } else if(SEL.type==='host'){
-        e.innerHTML = '<div class="big">NO GAMES LISTED</div>Point this emulator’s <code>roms</code> folder at your games in its <code>emulator.json</code> on the host.';
       } else {
-        e.innerHTML = '<div class="big">NO GAMES YET</div>Drop game files into the <code>games/*</code> folders next to the server, then press <b>Rescan</b>.';
+        e.innerHTML = '<div class="big">NO GAMES LISTED</div>Point this emulator’s <code>roms</code> folder at your games in its <code>emulator.json</code> on the host.';
       }
       grid.appendChild(e);
       return;
@@ -824,6 +935,29 @@
     grid.classList.toggle('tallgrid', tall);
     items.forEach((it,i) => grid.appendChild(
       it.kind==='host' ? hostCard(it.e, it.g) : gameCard(it.sys, it.g, { tall, delay:(Math.min(i,20)*0.02)+'s' })));
+  }
+  // nothing to show on the home view: either the server is unreachable or the folders are empty
+  function firstRun(){
+    const d = document.createElement('div'); d.className = 'firstrun';
+    if(!ONLINE){
+      d.innerHTML = '<h2>Can’t reach the ARCADE server</h2>'+
+        '<p>This page needs the small server program running on the computer that holds your games.</p>'+
+        '<ol><li><b>Start it on that computer</b>Double-click <code>start-windows</code>, <code>start-mac</code> or <code>start-linux</code> and leave its window open.</li>'+
+        '<li><b>Open the address it prints</b>Use that address on this device — opening the file directly can’t list your games.</li></ol>'+
+        '<div class="fr-acts"><button class="btn primary" data-a="rescan">'+I('refresh')+' Try again</button></div>';
+    } else {
+      d.innerHTML = '<h2>Let’s add your first game</h2>'+
+        '<p>ARCADE plays the game files you already own. Put them in its folders on the host computer and they show up here on every screen in the house.</p>'+
+        '<ol><li><b>Copy game files into the matching folder</b>Each system has its own folder next to the server:'+
+          '<div class="fr-sys">'+SYS.map(s => '<span><em>'+s.label+'</em>games/'+s.key+' · '+s.exts+'</span>').join('')+'</div></li>'+
+        '<li><b>They appear by themselves</b>The library refreshes when files are added — or press Rescan.</li>'+
+        '<li><b>Play on any screen</b>Open this same address on a phone, tablet or TV on your Wi-Fi. Plug in a controller, or use a phone as one.</li></ol>'+
+        '<div class="fr-acts"><button class="btn primary" data-a="rescan">'+I('refresh')+' Rescan</button>'+
+        '<button class="btn ghost" data-a="settings">'+I('settings')+' Check setup in Settings</button></div>';
+    }
+    d.querySelector('[data-a="rescan"]').onclick = loadLibrary;
+    const st = d.querySelector('[data-a="settings"]'); if(st) st.onclick = openSettings;
+    return d;
   }
   const esc = s => s.replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 
@@ -876,7 +1010,7 @@
     saveShelf();
   }
   const isFav = k => SHELF.fav.indexOf(k) !== -1;
-  const favStar = k => '<span class="fav" role="button" aria-label="Favorite"'+(isFav(k)?' data-on':'')+'>'+I('star')+'</span>';
+  const favStar = k => '<span class="fav" aria-hidden="true" title="Favorite (F)"'+(isFav(k)?' data-on':'')+'>'+I('star')+'</span>';
   function favClick(ev, card){                          // true when the click was on the star, not the card
     if(!ev || !ev.target || !ev.target.closest || !ev.target.closest('.fav')) return false;
     ev.stopPropagation(); toggleFav(card.dataset.k); return true;
@@ -892,12 +1026,16 @@
       const f = c.querySelector('.fav'); if(!f) return;
       f.toggleAttribute('data-on', on);
     });
-    const act = document.activeElement, inShelf = act && act.closest && act.closest('#shelves');
+    const act = document.activeElement;
+    const sec = act && act.closest && act.closest('.shelfsec'), rowName = sec && sec.dataset.row;
+    const inShelf = !!(sec && sec.closest('#shelves'));
     renderShelves();
-    if(inShelf){                                        // the focused card was rebuilt — put focus back
-      const again = [...document.querySelectorAll('#shelves .card, #gameGrid .card')].find(c => c.dataset.k === k);
+    if(inShelf){                                        // the focused card was rebuilt — put focus back (same row if it still exists)
+      const all = [...document.querySelectorAll('#shelves .card, #rows .card, #gameGrid .card')].filter(c => c.dataset.k === k);
+      const again = all.find(c => { const s2 = c.closest('.shelfsec'); return s2 && s2.dataset.row === rowName; }) || all[0];
       if(again) again.focus();
     }
+    const dt = $('#detail'); if(dt && !dt.hidden && DETAIL && DETAIL.k === k) renderDetail();
     toast(on ? 'Added to Favorites' : 'Removed from Favorites');
   }
   // most recent first: what was launched on this device, merged with the profile's server saves
@@ -914,10 +1052,21 @@
     }
     return Object.values(seen).sort((a,b) => b.t - a.t).slice(0, 12);
   }
-  function shelfRow(title, items){
-    const sec = document.createElement('section'); sec.className = 'shelfsec';
-    const h = document.createElement('h2'); h.textContent = title;
-    const n = document.createElement('span'); n.className = 'n'; n.textContent = items.length; h.appendChild(n);
+  const ROW_MAX = 18;                                    // cards per home row; "See all" opens the full grid
+  function shelfRow(title, items, opts){
+    opts = opts || {};
+    const total = items.length;
+    if(opts.sel) items = items.slice(0, ROW_MAX);
+    const sec = document.createElement('section'); sec.className = 'shelfsec'; sec.dataset.row = title;
+    sec.setAttribute('aria-label', title);
+    const h = document.createElement('h2'); h.appendChild(document.createTextNode(title));
+    const n = document.createElement('span'); n.className = 'n'; n.textContent = total; h.appendChild(n);
+    if(opts.sel){
+      const m = document.createElement('button'); m.className = 'mini more';
+      m.textContent = 'See all'; m.setAttribute('aria-label', 'See all ' + total + ' ' + title + ' games');
+      m.onclick = () => { setSel(opts.sel); const c = $('#gameGrid .card'); if(c) c.focus({ focusVisible:true }); window.scrollTo({ top:0, behavior:'smooth' }); };
+      h.appendChild(m);
+    }
     const tall = tallFor(items);
     const row = document.createElement('div'); row.className = 'shelf' + (tall ? ' tallgrid' : '');
     items.forEach(it => row.appendChild(it.kind==='host' ? hostCard(it.e, it.g) : gameCard(it.sys, it.g, { tall })));
@@ -933,6 +1082,20 @@
     const favs = SHELF.fav.map(resolveKey).filter(Boolean);
     if(favs.length) box.appendChild(shelfRow('Favorites', favs));
   }
+  // home view: one swipeable row per system (and per host emulator), in the chosen sort order
+  function renderRows(){
+    const box = $('#rows'); if(!box) return;
+    box.innerHTML = '';
+    if(SEL.type !== 'all') return;
+    SYS.forEach(s => {
+      const items = (LIB[s.key]||[]).map(g => ({ kind:'game', sys:s.key, g }));
+      if(items.length) box.appendChild(shelfRow(s.full, sortItems(items), { sel:{ type:'sys', key:s.key } }));
+    });
+    (LIB.emulators||[]).forEach(e => {
+      const items = (e.games||[]).map(g => ({ kind:'host', e, g }));
+      if(items.length) box.appendChild(shelfRow(e.name + ' — on host', sortItems(items), { sel:{ type:'host', id:e.id } }));
+    });
+  }
   function newestList(){
     const out = [];
     SYS.forEach(s => (LIB[s.key]||[]).forEach(g => out.push({ sys:s.key, g })));
@@ -942,13 +1105,14 @@
   function hostCard(e, g){
     const c = document.createElement('button'); c.className = 'card'; c.style.setProperty('--accent', '#c3c7cf');
     c.title = g.name + ' · runs on the host';
+    c.setAttribute('aria-label', g.name + ', ' + (e.system||'host') + ', runs on the host' + (isFav(hkey(e, g)) ? ', favorite' : ''));
     c.innerHTML = '<div class="art"><div class="glyph">'+I('gamepad')+'</div>'+
       (e.icon ? '<img class="cover show" src="'+esc(e.icon)+'" alt="">' : '')+'</div>'+
       '<span class="tags"><span class="chip">'+esc(e.system||'HOST')+'</span><span class="badge">HOST</span></span>'+
       favStar(hkey(e, g))+
       '<div class="meta"><div class="nm">'+esc(g.name)+'</div><span class="go">'+I('play')+'Play on host</span></div>';
     c.dataset.k = hkey(e, g);
-    c.onclick = ev => { if(favClick(ev, c)) return; startStream(e, g.file); };
+    c.onclick = ev => { if(favClick(ev, c)) return; if(SET.detail && g.file) openDetail({ kind:'host', e, g }, c); else startStream(e, g.file); };
     return c;
   }
   function renderHome(){
@@ -957,7 +1121,9 @@
     if(heroEl) buildHero(heroEl);
     renderShelves();
     renderPicker();
+    renderSort();
     renderGrid();                          // SAVE badges come from the freshest SAVES
+    renderRows();
   }
 
   /* ---- hero carousel: one game (or platform feature) merchandised at a time.
@@ -997,12 +1163,6 @@
           window.scrollTo({ top:0, behavior:'smooth' });
         } });
     }
-    if(!slides.length){
-      slides.push({ accent:'#9b8bff', thumb:null, icon:'gamepad',
-        badge:'GET STARTED', title:'Add your first game',
-        sub:'Drop legally-owned game files into the <b>games/*</b> folders next to the server, then rescan.',
-        cta:I('refresh')+' Rescan', act:loadLibrary });
-    }
     return slides;
   }
   function buildHero(el){
@@ -1041,7 +1201,7 @@
       '</div></div></div>'+
       (heroSlides.length > 1
         ? '<div class="hthumbs">'+heroSlides.map((s,i) =>
-            '<button data-i="'+i+'"'+(i===heroIdx?' data-on':'')+' aria-label="Spotlight '+(i+1)+' of '+heroSlides.length+'"></button>').join('')+'</div>'
+            '<button data-i="'+i+'"'+(i===heroIdx?' data-on aria-current="true"':'')+' aria-label="Spotlight '+(i+1)+' of '+heroSlides.length+'"></button>').join('')+'</div>'
         : '');
     $('#heroCta').onclick = sl.act;
     const hp = $('#heroPause');
@@ -1050,6 +1210,94 @@
       heroIdx = +b.dataset.i; renderHeroSlide(el);
       const nb = el.querySelector('.hthumbs button[data-i="'+heroIdx+'"]'); if(nb) nb.focus();
     });
+  }
+
+  /* ===== dialogs: remember what opened them, hand focus back on close ===== */
+  function dlgOpen(el, focusSel){
+    if(el.hidden) el._ret = document.activeElement;
+    el.hidden = false;
+    if(focusSel) setTimeout(() => { const f = el.querySelector(focusSel); if(f) f.focus(); }, 40);
+  }
+  function dlgClose(el){
+    if(el.hidden) return;
+    el.hidden = true;
+    const r = el._ret; el._ret = null;
+    if(r && r !== document.body && document.contains(r) && r.getClientRects().length) r.focus();
+  }
+  const OVERLAYS = ['#detail','#search','#settings','#login'];
+  const openOverlay = () => { for(const id of OVERLAYS){ const el = $(id); if(el && !el.hidden) return el; } return null; };
+  // keep Tab inside the open dialog
+  document.addEventListener('keydown', e => {
+    if(e.key !== 'Tab') return;
+    const ov = openOverlay(); if(!ov) return;
+    const f = [...ov.querySelectorAll('button, input, a[href]')].filter(el => !el.disabled && el.getClientRects().length);
+    if(!f.length) return;
+    const i = f.indexOf(document.activeElement);
+    if(e.shiftKey && i <= 0){ f[f.length-1].focus(); e.preventDefault(); }
+    else if(!e.shiftKey && (i === -1 || i === f.length-1)){ f[0].focus(); e.preventDefault(); }
+  });
+
+  /* ===== game detail sheet: what you're about to play, and how ===== */
+  let DETAIL = null, NO_RESUME = false;
+  const ago = t => {
+    if(!t) return '';
+    const d = Math.floor((Date.now() - t) / 86400000);
+    if(d <= 0) return 'today'; if(d === 1) return 'yesterday'; if(d < 30) return d + ' days ago';
+    try{ return new Date(t).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' }); }catch(e){ return ''; }
+  };
+  function openDetail(it, opener){
+    DETAIL = { it, k: itemKey(it) };
+    renderDetail();
+    dlgOpen($('#detail'), '#dtPlay');
+    if(opener && opener.dataset) $('#detail')._retKey = opener.dataset.k;
+  }
+  function closeDetail(){
+    const el = $('#detail'), k = el._retKey; el._retKey = null;
+    const gone = el._ret && !document.contains(el._ret);
+    dlgClose(el);
+    if(gone && k){ const c = [...document.querySelectorAll('#shelves .card, #rows .card, #gameGrid .card')].find(c => c.dataset.k === k); if(c) c.focus(); }
+  }
+  function renderDetail(){
+    if(!DETAIL) return;
+    const it = DETAIL.it, k = DETAIL.k, host = it.kind === 'host', g = it.g;
+    const s = host ? { label: it.e.system || 'HOST', full: it.e.name + ' — runs on the host computer', accent:'#c3c7cf' } : SYSMAP[it.sys];
+    $('#dtSys').textContent = s.label; $('#dtSys').style.setProperty('--accent', s.accent);
+    $('#dtTitle').textContent = g.name;
+    const art = $('#dtArt'); art.innerHTML = I(host ? 'monitor' : 'gamepad');
+    const src = host ? it.e.icon : (g.thumb ? g.thumb + (g.box ? '' : '?shape=portrait') : '');
+    if(src){
+      const img = new Image(); img.alt = '';
+      img.onload = () => { if(img.naturalWidth && img.naturalWidth < 96) img.classList.add('pix'); art.innerHTML = ''; art.appendChild(img); };
+      img.src = src;
+    }
+    const facts = [['System', s.full]];
+    const sv = host ? null : SAVES.find(x => x.system === it.sys && x.game === safeGameJS(g.name));
+    const played = playedMap()[k];
+    facts.push(['Last played', played ? ago(played) : 'Not yet']);
+    if(!host){
+      facts.push(['Saved game', sv
+        ? [sv.state ? 'Save state' : '', sv.srm ? 'In-game save' : ''].filter(Boolean).join(' + ') + ' · ' + ago(sv.mtime)
+        : TOKEN ? 'None yet — progress saves to your profile as you play' : 'Playing as Guest — pick a profile to keep saves on the host']);
+      if(g.size) facts.push(['File', (g.ext ? '.' + g.ext + ' · ' : '') + fmt(g.size)]);
+      if(g.mtime) facts.push(['Added', ago(g.mtime)]);
+    }
+    const dl = $('#dtFacts'); dl.innerHTML = '';
+    facts.forEach(f => { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = f[0]; dd.textContent = f[1]; dl.appendChild(dt); dl.appendChild(dd); });
+    const resume = !!(sv && sv.state && TOKEN && SET.autoresume);
+    const acts = $('#dtActs'), had = acts.contains(document.activeElement) ? document.activeElement.id : '';
+    acts.innerHTML =
+      '<button class="btn primary" id="dtPlay">'+I('play')+(host ? ' Play on host' : resume ? ' Continue' : ' Play')+'</button>'+
+      (resume ? '<button class="btn" id="dtFresh">Start from the beginning</button>' : '')+
+      '<button class="btn" id="dtFav" aria-pressed="'+isFav(k)+'">'+I('star', isFav(k) ? 'solid' : '')+(isFav(k) ? ' Favorited' : ' Favorite')+'</button>';
+    const go = fresh => {
+      NO_RESUME = !!fresh;
+      $('#detail').hidden = true; closeSearch();
+      host ? startStream(it.e, g.file) : cardLaunch(it.sys, g);
+    };
+    $('#dtPlay').onclick = () => go(false);
+    if($('#dtFresh')) $('#dtFresh').onclick = () => go(true);
+    $('#dtFav').onclick = () => toggleFav(k);
+    if(had && $('#'+had)) $('#'+had).focus();
   }
 
   /* ===== search: one query across every system + the host emulators ===== */
@@ -1090,7 +1338,7 @@
     hits.forEach(x => {
       const c = x.it.kind === 'host' ? hostCard(x.it.e, x.it.g) : gameCard(x.it.sys, x.it.g, { tall });
       const launch = c.onclick;
-      c.onclick = ev => { if(favClick(ev, c)) return; closeSearch(); launch(); };   // launching always leaves the overlay
+      c.onclick = ev => { if(favClick(ev, c)) return; if(!SET.detail) closeSearch(); launch(ev); };   // launching always leaves the overlay
       res.appendChild(c);
     });
   }
@@ -1131,20 +1379,20 @@
     try{ localStorage.setItem('arcade_osk', show ? '1' : '0'); }catch(e){}
   }
   function openSearch(){
-    $('#search').hidden = false;
+    dlgOpen($('#search'));
     const inp = $('#searchInput'); inp.value = '';
     renderSearch('');
     let osk = false; try{ osk = localStorage.getItem('arcade_osk') === '1'; }catch(e){}
     if(osk) toggleOSK(true);
     setTimeout(() => inp.focus(), 40);
   }
-  function closeSearch(){ $('#search').hidden = true; }
+  function closeSearch(){ dlgClose($('#search')); }
 
   /* ===== settings: playback, look, library links + system status =====
      Stored per device in localStorage; playback options feed straight into
      the emulator launch, look options into the page, and the library section
      shows exactly which folder each system/emulator is linked to. */
-  const DEFAULT_SET = { shape:'auto', autoresume:1, autosave:45, shader:1, fps:0, names:1, hero:1, fx:'auto', refresh:1 };
+  const DEFAULT_SET = { sort:'az', detail:1, shape:'auto', autoresume:1, autosave:45, shader:1, fps:0, names:1, hero:1, fx:'auto', refresh:1 };
   let SET = Object.assign({}, DEFAULT_SET);
   try{ Object.assign(SET, JSON.parse(localStorage.getItem('arcade_settings')||'{}')); }catch(e){}
   function saveSet(){
@@ -1166,7 +1414,11 @@
     opts.forEach(o => {
       const b = document.createElement('button'); b.textContent = o.label;
       if(o.v === val) b.setAttribute('data-on','');
-      b.onclick = () => { onPick(o.v); renderSettings(); };
+      b.setAttribute('aria-pressed', o.v === val ? 'true' : 'false');
+      b.setAttribute('aria-label', title + ': ' + o.label);
+      b.onclick = () => { const i = [...seg.children].indexOf(b), t = row.querySelector('.t').textContent; onPick(o.v); renderSettings();
+        const again = [...document.querySelectorAll('#setBody .setrow')].find(r => r.querySelector('.t') && r.querySelector('.t').textContent === t);   // keep focus on the same switch
+        const nb = again && again.querySelectorAll('.seg button')[i]; if(nb) nb.focus(); };
       seg.appendChild(b);
     });
     row.appendChild(seg);
@@ -1262,6 +1514,8 @@
     const lk = setSection('Look');
     lk.appendChild(segRow('Game titles on cards','“Always” keeps every name readable on its card; “Hover” shows art only until a card is pointed at or focused (touch screens always show names).',
       [{label:'Always',v:1},{label:'Hover',v:0}], SET.names?1:0, v => { SET.names=v; saveSet(); }));
+    lk.appendChild(segRow('Choosing a game','“Details” opens a sheet with the cover, your save and Play / Favorite; “Play now” starts the game straight away.',
+      [{label:'Details',v:1},{label:'Play now',v:0}], SET.detail?1:0, v => { SET.detail=v; saveSet(); }));
     lk.appendChild(segRow('Card shape','“Auto” switches to box-art-shaped cards wherever most games on show have real cover art; otherwise wide tiles.',
       [{label:'Auto',v:'auto'},{label:'Wide',v:'wide'},{label:'Box art',v:'tall'}], SET.shape, v => { SET.shape=v; saveSet(); renderHome(); }));
     lk.appendChild(segRow('Hero spotlight','The rotating spotlight banner at the top of the library.',
@@ -1335,10 +1589,10 @@
   async function openSettings(){
     await fetchSetupStatus();
     renderSettings();
-    $('#settings').hidden = false;
+    dlgOpen($('#settings'), '#setClose');
     if(SETUP.job && SETUP.job.running) pollSetup();      // a download may already be underway
   }
-  function closeSettings(){ $('#settings').hidden = true; }
+  function closeSettings(){ dlgClose($('#settings')); }
 
   /* ---- live library: poll the tiny /api/version and re-fetch on change,
      so new games/emulators dropped into the folders appear by themselves ---- */
@@ -1407,8 +1661,8 @@
     try{ sessionStorage.removeItem('arcade_user'); sessionStorage.removeItem('arcade_disp'); sessionStorage.removeItem('arcade_token'); sessionStorage.setItem('arcade_guest','1'); }catch(e){}
     updateChip();
   }
-  function showLogin(){ $('#login').hidden=false; backToList(); fetchProfiles(); }
-  function hideLogin(){ $('#login').hidden=true; }
+  function showLogin(){ dlgOpen($('#login'), '#profileList button, #newProfileBtn'); backToList(); fetchProfiles(); }
+  function hideLogin(){ dlgClose($('#login')); }
   function backToList(){ $('#pinPanel').hidden=true; pinBuf=''; $('#newName').hidden=true; $('#pinErr').textContent=''; renderDots(); }
   async function fetchProfiles(){
     const list=$('#profileList');
@@ -1437,7 +1691,7 @@
     else { ni.hidden=true; $('#pinWho').innerHTML='Enter PIN for <b>'+esc(disp||name)+'</b>'; }
     $('#pinErr').textContent=''; renderDots();
   }
-  function renderDots(){ document.querySelectorAll('#pinDots i').forEach((d,i)=>d.classList.toggle('on', i<pinBuf.length)); }
+  function renderDots(){ document.querySelectorAll('#pinDots i').forEach((d,i)=>d.classList.toggle('on', i<pinBuf.length)); $('#pinDots').setAttribute('aria-label','PIN: '+pinBuf.length+' of 4 digits entered'); }
   function buildKeypad(){
     const k=$('#keypad'); if(!k) return; k.innerHTML='';
     ['1','2','3','4','5','6','7','8','9','','0','⌫'].forEach(d=>{
@@ -1555,7 +1809,8 @@
       document.body.appendChild(s);
       startAutoSave();
     };
-    if(TOKEN && SET.autoresume){     // resume this player's saved state automatically, if they have one
+    const fresh = NO_RESUME; NO_RESUME = false;      // "Start from the beginning" in the detail sheet skips the resume once
+    if(TOKEN && SET.autoresume && !fresh){     // resume this player's saved state automatically, if they have one
       fetch(hasUrl(),{cache:'no-store'}).then(r=>r.json()).then(j=>{
         if(j && j.state) window.EJS_loadStateURL = loadUrl('state');
         appendLoader();
@@ -2053,6 +2308,8 @@
      Inactive while a game is playing (the emulator needs the arrow keys) and
      inside text fields; works the same inside the profile picker. */
   function navScope(){
+    const detail = $('#detail');
+    if(detail && !detail.hidden) return detail;                   // game detail sheet open
     const search = $('#search');
     if(search && !search.hidden) return search;                   // search overlay open
     const settings = $('#settings');
@@ -2068,8 +2325,8 @@
     return document.querySelector('.wrap');
   }
   // Up/Down go to the nearest ROW in that direction (then the closest item in it),
-  // so a shelf or button row is never jumped over; Left/Right stay on the current
-  // row when it has anything further along, and only then drift diagonally.
+  // so a shelf or button row is never jumped over; Left/Right only move along the
+  // current row.
   function spatialNext(cur, cands, key){
     const c = cur.getBoundingClientRect();
     const cx = c.left + c.width/2, cy = c.top + c.height/2;
@@ -2093,10 +2350,9 @@
       const near = Math.min.apply(null, list.map(x => x.p));
       pool = list.filter(x => x.p <= near + 48).sort((a,b) => a.o - b.o || a.p - b.p);
     } else {
-      pool = list.filter(x => x.same).sort((a,b) => a.p - b.p);
-      if(!pool.length) pool = list.sort((a,b) => (a.p + a.o*2.5) - (b.p + b.o*2.5));
+      pool = list.filter(x => x.same).sort((a,b) => a.p - b.p);   // end of a row: stay put rather than jump rows
     }
-    return pool[0].el;
+    return pool.length ? pool[0].el : null;
   }
   document.addEventListener('keydown', e => {
     if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) return;
@@ -2121,7 +2377,7 @@
     if(!cands.length) return false;
     const cur = document.activeElement;
     const next = (!cur || cands.indexOf(cur) === -1)
-      ? (cands.find(el => el.matches('#heroCta, #shelves .card, #gameGrid .card, .oskkey, #searchRes .card')) || cands[0])   // first press: the main content (visible ones only)
+      ? (cands.find(el => el.matches('#dtPlay, #heroCta, #shelves .card, #gameGrid .card, #rows .card, .oskkey, #searchRes .card')) || cands[0])   // first press: the main content (visible ones only)
       : spatialNext(cur, cands, key);
     if(!next) return false;
     next.focus({ focusVisible:true });
@@ -2158,6 +2414,7 @@
     return s;
   }
   function gpBack(){
+    if(!$('#detail').hidden) return closeDetail();
     if(!$('#search').hidden) return closeSearch();
     if(!$('#settings').hidden) return closeSettings();
     if(!$('#login').hidden) return $('#pinPanel').hidden ? hideLogin() : backToList();
@@ -2174,7 +2431,7 @@
     let i = list.findIndex(x => x.type===SEL.type && x.key===SEL.key && x.id===SEL.id); if(i < 0) i = 0;
     setSel(list[(i + dir + list.length) % list.length]);
     toast(selLabel());
-    const c = $('#gameGrid .card'); if(c){ c.focus({ focusVisible:true }); try{ c.scrollIntoView({ block:'nearest' }); }catch(_){} }
+    const c = $('#gameGrid .card, #shelves .card, #rows .card'); if(c){ c.focus({ focusVisible:true }); try{ c.scrollIntoView({ block:'nearest' }); }catch(_){} }
   }
   function gpNav(id, s, prev, now){
     // directions: D-pad or stick, with hold-to-repeat
@@ -2192,7 +2449,7 @@
       else navMove('ArrowDown');
     }
     if(hit('b')) gpBack();
-    const overlay = !$('#search').hidden || !$('#settings').hidden || !$('#login').hidden;
+    const overlay = !!openOverlay();
     const lib = !overlay && !document.body.classList.contains('playing');
     if(hit('y')){ const c = document.activeElement; if(c && c.dataset && c.dataset.k) toggleFav(c.dataset.k); }
     if(hit('x') && lib){
@@ -2262,8 +2519,10 @@
   document.addEventListener('keydown', e => {
     const t = e.target;
     const typing = t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA' || t.isContentEditable);
-    if(e.key === '/' && $('#search').hidden && $('#settings').hidden && !typing && !document.body.classList.contains('playing') && $('#login').hidden){
+    if(e.key === '/' && $('#search').hidden && $('#settings').hidden && $('#detail').hidden && !typing && !document.body.classList.contains('playing') && $('#login').hidden){
       e.preventDefault(); openSearch();
+    } else if(e.key === 'Escape' && !$('#detail').hidden){
+      closeDetail();
     } else if(e.key === 'Escape' && !$('#search').hidden){
       closeSearch();
     } else if(e.key === 'Escape' && !$('#settings').hidden){
@@ -2281,6 +2540,9 @@
   // emulator picker + rescan
   if($('#sysPick')) $('#sysPick').onclick = togglePicker;
   if($('#refresh')) $('#refresh').onclick = loadLibrary;
+  if($('#sortBtn')) $('#sortBtn').onclick = cycleSort;
+  if($('#dtClose')) $('#dtClose').onclick = closeDetail;
+  $('#detail').addEventListener('click', e => { if(e.target.id === 'detail') closeDetail(); });   // click outside the sheet
   document.addEventListener('click', e => {           // clicking elsewhere collapses the picker
     const list = $('#sysList');
     if(list && !list.hidden && !e.target.closest('#sysList') && !e.target.closest('#sysPick')) closePicker();

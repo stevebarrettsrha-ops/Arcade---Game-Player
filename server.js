@@ -43,7 +43,7 @@ const MIME = {
   '.css':'text/css; charset=utf-8', '.json':'application/json; charset=utf-8',
   '.txt':'text/plain; charset=utf-8', '.png':'image/png', '.jpg':'image/jpeg',
   '.jpeg':'image/jpeg', '.gif':'image/gif', '.webp':'image/webp', '.svg':'image/svg+xml',
-  '.ico':'image/x-icon', '.wasm':'application/wasm', '.gba':'application/octet-stream',
+  '.ico':'image/x-icon', '.webmanifest':'application/manifest+json; charset=utf-8', '.wasm':'application/wasm', '.gba':'application/octet-stream',
   '.agb':'application/octet-stream', '.bin':'application/octet-stream', '.zip':'application/zip',
   '.7z':'application/x-7z-compressed', '.jar':'application/java-archive',
   '.jad':'text/vnd.sun.j2me.app-descriptor',
