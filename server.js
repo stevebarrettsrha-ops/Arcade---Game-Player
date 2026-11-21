@@ -265,6 +265,12 @@ function listGames(sub, exts) {
   const dir = path.join(GAMES, sub);
   let names = [];
   try { names = fs.readdirSync(dir); } catch (e) { return []; }
+  // which games have REAL cover art (a same-named image beside the ROM, or one
+  // fetched by get-boxart.js) — lets the page pick box-art-shaped cards up front
+  const artNames = new Set();
+  const noteArt = n => { const e = path.extname(n).toLowerCase(); if (IMG_EXT.includes(e)) artNames.add(n.slice(0, -e.length).toLowerCase()); };
+  names.forEach(noteArt);
+  try { fs.readdirSync(path.join(ROOT, 'boxart', sub)).forEach(noteArt); } catch (e) {}
   let list = names
     .filter(f => exts.includes(path.extname(f).toLowerCase()))
     .map(f => {
@@ -273,6 +279,7 @@ function listGames(sub, exts) {
       return {
         name: f.replace(/\.[^.]+$/, ''), file: f,
         ext: path.extname(f).toLowerCase().slice(1), size, mtime,
+        box: artNames.has(f.replace(/\.[^.]+$/, '').toLowerCase()) ? 1 : 0,
         url:   '/games/' + sub + '/' + encodeURIComponent(f),
         thumb: '/thumb/' + sub + '/' + encodeURIComponent(f),
       };
