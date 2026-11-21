@@ -42,6 +42,8 @@
   .tbtn{ font-family:"Chakra Petch",sans-serif; font-weight:700; font-size:12px; letter-spacing:1px; color:#bfeee7;
     background:#152029; border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:6px 10px; cursor:pointer; }
   .tbtn:active{ filter:brightness(1.4); }
+  .tbtn{ white-space:nowrap; }
+  @media (max-width:720px){ .bar{ gap:6px; } .bar .brand, .plab{ display:none; } .tbtn{ padding:6px 8px; font-size:11px; letter-spacing:.5px; } }
   .tbtn.act{ color:#06100f; background:linear-gradient(180deg,#9be0a5,#3fc06a); border-color:transparent; font-weight:700; }
 
   /* play area */
@@ -64,8 +66,12 @@
   @media (min-width:560px){ #r{ right:138px } }
 
   /* analog stick, left */
-  .stickwrap{ position:absolute; left:2vw; bottom:3vh; width:40vw; max-width:300px; display:grid; place-items:center; }
-  .dpad{ position:relative; width:38vw; height:38vw; max-width:230px; max-height:230px; border-radius:50%;
+  /* Default layout is sized by the SHORT side too (vh), so on a landscape phone the
+     D-pad sits under the shoulders and the stick under the D-pad — nothing overlaps.
+     --top = first free row beneath the shoulder buttons. */
+  .body{ --top:calc(max(40px,8.5vh) + 14px); --dp:min(30vw,190px,31vh); --st:min(38vw,230px,37vh); }
+  .stickwrap{ position:absolute; left:2vw; bottom:3vh; width:var(--st); display:grid; place-items:center; }
+  .dpad{ position:relative; width:var(--st); height:var(--st); border-radius:50%;
     background:radial-gradient(circle at 50% 38%,#1b2832,#0c131a); border:1px solid rgba(255,255,255,.08);
     box-shadow:inset 0 8px 22px rgba(0,0,0,.65),inset 0 -2px 0 rgba(255,255,255,.04); display:grid; place-items:center; touch-action:none; }
   .dpad .dcross{ position:absolute; inset:22%; opacity:.4; pointer-events:none; border-radius:8px;
@@ -76,7 +82,7 @@
   .dpad.live{ border-color:color-mix(in srgb,var(--cyan) 50%,transparent); }
 
   /* classic cross D-pad (digital only) — movable like the other units */
-  .dpadwrap{ position:absolute; left:2vw; top:7vh; width:30vw; height:30vw; max-width:190px; max-height:190px; display:grid; place-items:center; }
+  .dpadwrap{ position:absolute; left:calc(2vw + (var(--st) - var(--dp)) / 2); top:var(--top); width:var(--dp); height:var(--dp); display:grid; place-items:center; }
   .realdpad{ position:relative; width:100%; height:100%; touch-action:none; }
   .realdpad .cross{ position:absolute; inset:0;
     background:radial-gradient(circle at 50% 38%,#1b2832,#0c131a); border:1px solid rgba(255,255,255,.10);
@@ -84,7 +90,7 @@
     clip-path:polygon(34% 0,66% 0,66% 34%,100% 34%,100% 66%,66% 66%,66% 100%,34% 100%,34% 66%,0 66%,0 34%,34% 34%); }
   .realdpad.live .cross{ border-color:color-mix(in srgb,var(--cyan) 55%,transparent);
     background:radial-gradient(circle at 50% 40%,#1f3a3a,#0c131a); }
-  .realdpad .arr{ position:absolute; color:#bfeae4; opacity:.45; font-size:3.4vw; line-height:1; pointer-events:none; }
+  .realdpad .arr{ position:absolute; color:#bfeae4; opacity:.45; font-size:min(3.4vw,5vh); line-height:1; pointer-events:none; }
   .realdpad .a-up{ top:4%; left:50%; transform:translateX(-50%); }
   .realdpad .a-down{ bottom:4%; left:50%; transform:translateX(-50%); }
   .realdpad .a-left{ left:5%; top:50%; transform:translateY(-50%); }
@@ -93,7 +99,7 @@
   @media (min-width:560px){ .realdpad .arr{ font-size:19px; } }
 
   /* face diamond, right */
-  .actions{ position:absolute; right:2vw; bottom:3vh; width:40vw; height:40vw; max-width:240px; max-height:240px; }
+  .actions{ --fa:min(36vw,240px,64vh); position:absolute; right:2vw; bottom:3vh; width:var(--fa); height:var(--fa); }
   .ab{ position:absolute; width:42%; height:42%; border-radius:50%; font-size:22px; border-color:rgba(255,255,255,.28); }
   .ab.x{ left:29%; top:0;    background:linear-gradient(180deg,#bdb2ff,#7b6fe0); color:#06100f; }
   .ab.y{ left:0;   top:29%;  background:linear-gradient(180deg,#8bd07a,#4f9b3e); color:#06100f; }
@@ -101,7 +107,8 @@
   .ab.b{ left:29%; bottom:0; background:linear-gradient(180deg,#ffd884,#dca02a); color:#06100f; }
 
   /* center column: start/select + extras */
-  .center{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  /* sits in the free strip under the shoulders, clear of the stick and the face diamond */
+  .center{ position:absolute; left:50%; top:var(--top); transform:translateX(-50%);
     display:flex; flex-direction:column; align-items:center; gap:10px; }
   .pill{ padding:9px 14px; border-radius:999px; font-size:9px; letter-spacing:1.5px; font-family:"Silkscreen",monospace; }
   .pills{ display:flex; gap:10px; }
