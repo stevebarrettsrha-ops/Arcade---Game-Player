@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ARCADE — home game server</title>
+<meta name="theme-color" content="#0e1120">
+<meta name="color-scheme" content="dark">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="assets/icon.svg">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ARCADE">
 <style>
   /* bundled fonts — no internet needed */
   @font-face{font-family:'Chakra Petch';font-weight:400 500;font-style:normal;src:url('assets/fonts/ChakraPetch-Medium.ttf') format('truetype');font-display:swap}
@@ -12,7 +21,7 @@
 </style>
 <style>
   :root{
-    --bg:#0e1120;--ink:#eef0f6;--muted:#9aa1b5;--faint:#6b7186;
+    --bg:#0e1120;--ink:#eef0f6;--muted:#aab0c3;--faint:#8b92a8;--ui:#a99bff;--ui-ink:#12142a;
     --panel:rgba(255,255,255,.05);--panel2:rgba(255,255,255,.08);--line:rgba(255,255,255,.10);
     --glass:rgba(255,255,255,.05);--glass-line:rgba(255,255,255,.10);
     --cyan:#3fe0cf;--amber:#f2b545;--violet:#9b8bff;
@@ -29,16 +38,31 @@
       radial-gradient(70% 55% at 10% 108%,#301b3f 0,transparent 55%),
       linear-gradient(180deg,#0d1020,#101226 55%,#131132)}
 
-  .wrap{max-width:1180px;margin:0 auto;padding:clamp(16px,3vw,32px) clamp(16px,4vw,32px) 80px}
-  header.top{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;
-    opacity:0;transform:translateY(10px);animation:rise .6s .05s cubic-bezier(.2,.8,.2,1) forwards}
-  .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .wrap{--gut:clamp(16px,4vw,32px);max-width:1180px;margin:0 auto;padding:0 var(--gut) 80px}
+  /* slim sticky bar: brand left, four actions right — stays on one row down to phone width */
+  header.top{position:sticky;top:0;z-index:60;display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:10px 0;margin-bottom:14px;animation:fadein .5s ease both}
+  header.top::before{content:"";position:absolute;top:0;bottom:0;left:-100vw;right:-100vw;z-index:-1;
+    background:rgba(13,16,32,.86);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  body.lite header.top::before{backdrop-filter:none;background:rgba(13,16,32,.97)}
+  body.playing header.top{position:static}
+  body.playing header.top::before{display:none}
+  @keyframes fadein{from{opacity:0}to{opacity:1}}
+  .brand{display:flex;align-items:baseline;gap:12px;min-width:0}
+  .brand .mark{white-space:nowrap}
+  .brand .tag{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .topacts .mini{white-space:nowrap}
+  #userChip{max-width:150px;overflow:hidden;text-overflow:ellipsis}
+  @media(max-width:860px){.brand .tag{display:none}}
+  .topacts .mini .lb{overflow:hidden;text-overflow:ellipsis}
+  @media(max-width:640px){.topacts .mini .lb{display:none} .topacts{gap:6px} .topacts .mini{padding:9px 11px} .brand .mark{font-size:18px}}
+  .card,.mini,.pick,.pk,.btn{scroll-margin-top:76px}
   .mark{font-weight:700;letter-spacing:.02em;font-size:clamp(20px,3.4vw,26px);line-height:1;color:var(--ink)}
   .mark .dot{color:var(--violet)}
-  .tag{color:var(--faint);font-size:12.5px}
-  .topacts{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .tag{color:var(--faint);font-size:13px}
+  .topacts{display:flex;gap:10px;align-items:center;flex:none}
   .status{display:flex;align-items:center;gap:9px;padding:8px 14px;border-radius:999px;background:var(--panel);
-    border:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+    border:1px solid var(--line);font-size:13px;color:var(--muted)}
   .led{width:8px;height:8px;border-radius:50%;background:#5fe0a0}
   .led.off{background:#e0584f}
 
@@ -52,51 +76,68 @@
   .tab[data-active]{color:var(--ink);background:var(--panel2);border-color:var(--line)}
   .spacer{flex:1}
   .mini{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);
-    font-family:inherit;font-size:13px;font-weight:600;padding:9px 14px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:.15s}
+    font-family:inherit;font-size:14px;font-weight:600;padding:9px 14px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:.15s}
   .mini:hover{background:var(--panel2);border-color:rgba(255,255,255,.22)}
-  #perfBtn.on{color:var(--amber);border-color:color-mix(in srgb,var(--amber) 45%,transparent);background:color-mix(in srgb,var(--amber) 10%,transparent)}
 
   /* ---- player login ---- */
   #login{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;
-    background:radial-gradient(120% 120% at 50% 0%,#0c151c,#05080b 70%);padding:20px;overflow:auto}
+    background:radial-gradient(120% 120% at 50% 0%,#171a30,#090b16 70%);padding:20px;overflow:auto}
   #login[hidden]{display:none}
-  .loginbox{width:100%;max-width:440px;background:linear-gradient(180deg,#101a22,#0a1117);
+  .loginbox{width:100%;max-width:440px;background:linear-gradient(180deg,#171a2c,#111324);
     border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:26px 24px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.55)}
   .lhead{font-size:19px;font-weight:700;letter-spacing:.05em;color:var(--ink)}
-  .lsub{color:var(--muted);font-size:13px;margin:8px 0 18px}
+  .lsub{color:var(--muted);font-size:14px;margin:8px 0 18px}
   .plist{display:flex;flex-direction:column;gap:8px;max-height:34vh;overflow:auto;margin-bottom:12px}
   .pchip{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
-    background:#0e1820;border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:12px 14px;color:#dffaf5;font-size:15px;transition:.15s}
-  .pchip:hover{border-color:color-mix(in srgb,var(--cyan) 45%,transparent);background:#102230}
+    background:#1b1e33;border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:12px 14px;color:var(--ink);font-size:15.5px;transition:.15s}
+  .pchip:hover{border-color:color-mix(in srgb,var(--ui) 55%,transparent);background:#22263f}
   .pchip .av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#06100f;
     background:linear-gradient(180deg,#5fecdb,#16a899);font-size:13px}
   .pempty{color:var(--faint);font-size:13px;padding:14px}
   .lrow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
   .lbtn{appearance:none;font-family:inherit;font-size:14px;cursor:pointer;padding:11px 16px;border-radius:11px;
-    background:linear-gradient(180deg,#5fecdb,#16a899);color:#06100f;border:none;font-weight:700}
+    background:var(--ui);color:var(--ui-ink);border:none;font-weight:700}
   .lbtn.ghost{background:transparent;border:1px solid rgba(255,255,255,.16);color:var(--muted);font-weight:400}
   .lbtn:hover{filter:brightness(1.08)}
   #pinPanel{margin-top:14px;border-top:1px solid rgba(255,255,255,.08);padding-top:16px}
   .pinwho{font-size:14px;color:var(--ink);margin-bottom:10px}
-  .pinwho b{color:var(--cyan)}
-  .lname{width:100%;box-sizing:border-box;background:#0a1117;border:1px solid rgba(255,255,255,.14);border-radius:10px;
+  .pinwho b{color:var(--ui)}
+  .lname{width:100%;box-sizing:border-box;background:#0d0f1d;border:1px solid rgba(255,255,255,.14);border-radius:10px;
     color:#fff;font-family:inherit;font-size:16px;padding:11px 12px;margin-bottom:12px;text-align:center}
   .pindots{display:flex;gap:14px;justify-content:center;margin:6px 0 12px}
   .pindots i{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.3);transition:.15s}
-  .pindots i.on{background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 10px color-mix(in srgb,var(--cyan) 60%,transparent)}
+  .pindots i.on{background:var(--ui);border-color:var(--ui)}
   .pinerr{color:#f0a59f;font-size:13px;min-height:18px;margin-bottom:8px}
   .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:280px;margin:0 auto 14px}
-  .keypad button{appearance:none;font-family:inherit;font-size:22px;font-weight:700;color:#dffaf5;cursor:pointer;
-    background:#0e1820;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:16px 0;transition:.1s}
+  .keypad button{appearance:none;font-family:inherit;font-size:22px;font-weight:700;color:var(--ink);cursor:pointer;
+    background:#1b1e33;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:16px 0;transition:.1s}
   .keypad button:active{filter:brightness(1.5);transform:translateY(2px)}
   .keypad button.wide{grid-column:span 1}
 
 
+  /* one inline icon set (the <svg> sprite at the top of <body>) — same look on every device */
+  .ic{width:1.15em;height:1.15em;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.18em}
+  .ic.solid{fill:currentColor;stroke:none}
+  .ic.big{width:54px;height:54px;stroke-width:1.5}
+  .mini .ic{width:17px;height:17px}
+
+  /* 10-foot screens: more room, bigger type */
+  @media(min-width:1700px){
+    .wrap{max-width:1520px}
+    .mini{font-size:15.5px;padding:11px 16px} .btn{font-size:16px} .pick{font-size:17px}
+    .card .meta .nm{font-size:16.5px} .card .chip,.card .badge{font-size:13px}
+    .shelfsec h2{font-size:19px} .hsub{font-size:16.5px} footer{font-size:14px}
+    .gridcards{grid-template-columns:repeat(auto-fill,minmax(290px,1fr))}
+    .gridcards.tallgrid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+  }
+
   /* keyboard / TV-remote focus: always visible */
   button:focus-visible,a:focus-visible{outline:2px solid rgba(238,240,246,.9);outline-offset:2px}
 
-  /* ---- game cards: art only — name + Play appear on hover / focus ---- */
-  .gridcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px}
+  /* ---- game cards: art with the name always readable along the bottom
+     (Settings → Look can switch to hover-only on mouse devices) ---- */
+  .gridcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(250px,calc(50% - 7px)),1fr));gap:18px}
+  @media(max-width:560px){.gridcards{gap:12px} .shelf .card{flex-basis:46vw} .shelf.tallgrid .card{flex-basis:36vw} .card .meta{padding:22px 9px 8px} .card .meta .nm{font-size:12.5px}}
   .card{--accent:var(--cyan);position:relative;aspect-ratio:16/9;border-radius:var(--radius);overflow:hidden;cursor:pointer;text-align:left;padding:0;
     font-family:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);
     box-shadow:var(--shadow);transition:transform .2s,border-color .2s;animation:pop .4s both}
@@ -108,52 +149,75 @@
     font-size:30px;font-weight:700;letter-spacing:2px;color:color-mix(in srgb,var(--accent) 65%,#fff);opacity:.55}
   .card .art .cover{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .3s}
   .card .art .cover.show{opacity:1}
-  .card .art .cover.tall{object-fit:contain}     /* portrait boxart inside the wide frame */
+  .card .art .cover.fit{object-fit:contain}      /* art whose shape doesn't match the card: show all of it */
   .card .art .cover.pix{object-fit:contain;image-rendering:pixelated;padding:12%}
-  .card .chip{position:absolute;z-index:3;top:8px;left:8px;font-size:10.5px;font-weight:700;letter-spacing:.06em;
+  .card .tags{position:absolute;z-index:3;top:8px;left:8px;right:44px;display:flex;gap:6px;flex-wrap:wrap}
+  .card .chip{font-size:12px;font-weight:700;letter-spacing:.06em;
     color:#dfe3ef;background:rgba(10,12,22,.62);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
-  .card .badge{position:absolute;z-index:3;top:8px;right:8px;font-size:10.5px;font-weight:700;letter-spacing:.04em;
-    color:#151725;background:#ffd884;border-radius:6px;padding:4px 8px}
+  .card .badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;letter-spacing:.04em;
+    color:#151725;background:#ffd884;border-radius:6px;padding:4px 8px;border:1px solid transparent}
+  /* favourite star: always shown once set; otherwise appears on hover / focus / touch */
+  .card .fav{position:absolute;z-index:4;top:6px;right:6px;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
+    font-size:16px;line-height:1;color:#fff;background:rgba(10,12,22,.62);border:1px solid var(--line);opacity:0;transition:.15s}
+  .card:hover .fav,.card:focus-visible .fav,.card .fav[data-on]{opacity:1}
+  .card .fav .ic{width:16px;height:16px}
+  .card .fav[data-on]{color:#ffd884;border-color:rgba(255,216,132,.55)}
+  .card .fav[data-on] .ic{fill:currentColor}
+  .card .fav:hover{background:rgba(255,255,255,.18)}
+  @media(hover:none){.card .fav{opacity:1}}
   .card .meta{position:absolute;left:0;right:0;bottom:0;z-index:3;padding:30px 12px 10px;
     display:flex;align-items:flex-end;justify-content:space-between;gap:10px;
-    background:linear-gradient(transparent,rgba(8,10,18,.94) 62%);
-    opacity:0;transform:translateY(4px);transition:.18s}
-  .card:hover .meta,.card:focus-visible .meta{opacity:1;transform:none}
-  .card .meta .nm{font-size:14px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .card .meta .go{flex:none;font-size:12.5px;font-weight:700;color:var(--ink);
-    background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 12px;white-space:nowrap}
+    background:linear-gradient(transparent,rgba(8,10,18,.94) 62%);transition:.18s}
+  .card .meta .go{display:none}
+  .card:hover .meta .go,.card:focus-visible .meta .go{display:inline-flex}
+  @media(hover:hover){
+    body.arthover .card .meta{opacity:0;transform:translateY(4px)}
+    body.arthover .card:hover .meta,body.arthover .card:focus-visible .meta{opacity:1;transform:none}
+  }
+  .card .meta .nm{font-size:14.5px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .card .meta .go{flex:none;align-items:center;gap:5px;font-size:13px;font-weight:700;color:var(--ui-ink);
+    background:var(--ui);border:1px solid transparent;border-radius:8px;padding:7px 12px;white-space:nowrap}
+  /* box-art-shaped cards: used when most of what's on show has real cover art (Settings → Look) */
+  .gridcards.tallgrid{grid-template-columns:repeat(auto-fill,minmax(min(168px,calc(50% - 7px)),1fr))}
+  .tallgrid .card{aspect-ratio:3/4}
+  .shelf.tallgrid .card{flex-basis:clamp(132px,15vw,176px)}
+  .tallgrid .card .meta{padding:26px 10px 9px}
   @keyframes pop{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 
-  /* ---- hero: full-bleed art, copy on the right, thumbnail slide selectors ---- */
-  .hero{position:relative;border-radius:16px;overflow:hidden;margin:2px 0 22px;min-height:min(430px,54vh);
-    border:1px solid var(--line);box-shadow:var(--shadow);background:#12141f;animation:rise .5s ease both}
+  /* ---- hero: compact spotlight. The game's art, heavily blurred, washes the
+     panel in its colours; real box art also stands sharp beside the copy.
+     Height follows the content — no art means a slim banner. ---- */
+  .hero{position:relative;border-radius:16px;overflow:hidden;margin:2px 0 22px;padding:clamp(18px,3vw,28px);
+    border:1px solid var(--line);box-shadow:var(--shadow);animation:rise .5s ease both;
+    background:radial-gradient(130% 170% at 0% 0%,color-mix(in srgb,var(--haccent,#9b8bff) 30%,#12141f),#12141f 68%)}
   .hero .hbg{position:absolute;inset:0;overflow:hidden}
-  .hero .hbg img{width:100%;height:100%;object-fit:cover}
-  .hero .hbg img.tall{filter:blur(22px) brightness(.8);transform:scale(1.3)}   /* portrait art: cinematic fill */
-  .hero .hshade{position:absolute;inset:0;background:
-      linear-gradient(90deg,transparent 26%,rgba(10,11,22,.9) 74%),
-      linear-gradient(0deg,rgba(10,11,22,.78),transparent 44%)}
-  .hero .hin{position:absolute;right:clamp(18px,5vw,64px);top:0;bottom:92px;z-index:1;max-width:min(46%,430px);
-    display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:12px}
-  @media(max-width:640px){.hero .hin{left:18px;right:18px;max-width:none}}
-  .hbadge{font-size:11.5px;font-weight:700;letter-spacing:.08em;color:#cdd3e6;background:rgba(10,12,22,.55);
+  .hero .hbg img{width:100%;height:100%;object-fit:cover;filter:blur(34px) saturate(1.25) brightness(.62);transform:scale(1.45)}
+  .hero .hshade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,11,22,.62),rgba(10,11,22,.28))}
+  .hrow{position:relative;z-index:1;display:flex;align-items:center;gap:clamp(16px,3vw,30px)}
+  .hposter{flex:none;height:clamp(120px,22vw,208px);max-width:42%;width:auto;object-fit:contain;border-radius:10px;
+    box-shadow:0 14px 34px -10px rgba(0,0,0,.7)}
+  .hicon{flex:none;width:76px;height:76px;border-radius:18px;display:grid;place-items:center;
+    background:color-mix(in srgb,var(--haccent,#9b8bff) 22%,rgba(10,12,22,.5));border:1px solid var(--line);color:var(--ink)}
+  .hicon .ic{width:38px;height:38px;stroke-width:1.6}
+  @media(max-width:560px){.hicon{display:none}}
+  @media(max-width:640px){.hero{padding-bottom:34px}}   /* keep the slide bars clear of the buttons */
+  .hero .hin{min-width:0;max-width:640px;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+  .hbadge{font-size:12.5px;font-weight:700;letter-spacing:.08em;color:#dfe3f2;background:rgba(10,12,22,.55);
     border:1px solid color-mix(in srgb,var(--haccent,#fff) 30%,transparent);border-radius:999px;padding:6px 12px}
-  .htitle{font-size:clamp(22px,3.6vw,34px);font-weight:700;line-height:1.15;color:var(--ink);
+  .htitle{font-size:clamp(21px,3.2vw,32px);font-weight:700;line-height:1.15;color:var(--ink);
     text-wrap:balance;text-shadow:0 2px 16px rgba(0,0,0,.55)}
-  .hsub{font-size:14.5px;color:#c6cbdd;line-height:1.55;text-shadow:0 1px 8px rgba(0,0,0,.5)}
+  .hsub{font-size:15px;color:#d3d7e6;line-height:1.5;text-shadow:0 1px 8px rgba(0,0,0,.5)}
   .hsub b{color:#fff}
   .hacts{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:4px}
-  .hpause{appearance:none;cursor:pointer;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);
-    background:rgba(10,12,22,.5);color:var(--ink);font-size:13px;display:grid;place-items:center}
+  .hpause{appearance:none;cursor:pointer;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);
+    background:rgba(10,12,22,.5);color:var(--ink);display:grid;place-items:center}
   .hpause:hover{background:rgba(255,255,255,.12)}
-  .hthumbs{position:absolute;left:0;right:0;bottom:16px;z-index:2;display:flex;gap:10px;justify-content:center}
-  .hthumbs button{appearance:none;cursor:pointer;padding:0;width:92px;aspect-ratio:16/9;border-radius:8px;overflow:hidden;
-    border:2px solid transparent;background:#1a1d30;opacity:.6;transition:.2s;display:grid;place-items:center;color:var(--ink)}
-  .hthumbs button img{width:100%;height:100%;object-fit:cover;display:block}
-  .hthumbs button .em{font-size:20px}
-  .hthumbs button[data-on]{border-color:#fff;opacity:1}
-  .hthumbs button:hover{opacity:1}
-  @media(max-width:560px){.hthumbs button{width:58px}}
+  /* slide selectors: small bars, bottom-right */
+  .hthumbs{position:absolute;right:14px;bottom:8px;z-index:2;display:flex;gap:2px}
+  .hthumbs button{appearance:none;cursor:pointer;border:0;background:none;padding:9px 4px;border-radius:6px}
+  .hthumbs button::before{content:"";display:block;width:20px;height:5px;border-radius:3px;background:rgba(255,255,255,.34);transition:.2s}
+  .hthumbs button[data-on]::before{width:32px;background:#fff}
+  .hthumbs button:hover::before{background:rgba(255,255,255,.7)}
 
   /* ---- emulator picker: a collapsible dropdown chooses what the grid shows ---- */
   .pickrow{display:flex;gap:12px;align-items:center;margin:2px 0 14px;flex-wrap:wrap}
@@ -162,15 +226,15 @@
   .pick:hover{background:var(--panel2)}
   .pick .caret{font-size:11px;color:var(--muted);transition:transform .2s}
   .pick[data-open] .caret{transform:rotate(180deg)}
-  .pickrow .count{font-size:12.5px;color:var(--faint)}
+  .pickrow .count{font-size:13.5px;color:var(--muted)}
   .picklist{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;margin:0 0 16px;
     background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;animation:rise .2s ease both}
   .pk{appearance:none;cursor:pointer;display:flex;align-items:center;gap:10px;text-align:left;font-family:inherit;font-size:13.5px;font-weight:600;
     color:var(--muted);background:transparent;border:1px solid transparent;border-radius:9px;padding:10px 12px}
   .pk:hover{color:var(--ink);background:var(--panel2)}
-  .pk[data-on]{color:var(--ink);background:var(--panel2);border-color:var(--line)}
+  .pk[data-on]{color:var(--ink);background:var(--panel2);border-color:color-mix(in srgb,var(--ui) 55%,transparent)}
   .pk .pl{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .pk .n{font-size:11px;color:var(--faint)}
+  .pk .n{font-size:12.5px;color:var(--faint)}
   .pk .sw{width:9px;height:9px;border-radius:3px;flex:none}
 
   /* ---- search overlay (🔍 button or the / key) ---- */
@@ -202,17 +266,17 @@
   .sethead{display:flex;align-items:center;gap:12px}
   .sethead h2{margin:0;font-size:20px;flex:1}
   .setsec{margin-top:24px}
-  .setsec .shd{font-size:11.5px;font-weight:700;letter-spacing:.12em;color:var(--faint);text-transform:uppercase;
+  .setsec .shd{font-size:12.5px;font-weight:700;letter-spacing:.12em;color:var(--faint);text-transform:uppercase;
     padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08)}
   .setrow{display:flex;align-items:center;gap:14px;padding:13px 2px;border-bottom:1px solid rgba(255,255,255,.05)}
   .setrow .st{flex:1;min-width:0}
   .setrow .st .t{font-size:14.5px;font-weight:600}
-  .setrow .st .d{font-size:12.5px;color:var(--muted);line-height:1.45;margin-top:3px}
+  .setrow .st .d{font-size:13px;color:var(--muted);line-height:1.45;margin-top:3px}
   .seg{display:flex;gap:3px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:3px;flex:none}
-  .seg button{appearance:none;border:0;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;
+  .seg button{appearance:none;border:0;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;
     color:var(--muted);background:transparent;border-radius:7px;padding:7px 13px}
   .seg button:hover{color:var(--ink)}
-  .seg button[data-on]{background:var(--panel2);color:var(--ink)}
+  .seg button[data-on]{background:var(--ui);color:var(--ui-ink)}
   .strow{display:flex;gap:10px;padding:10px 2px;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px;align-items:baseline;flex-wrap:wrap}
   .strow .si{flex:none;font-weight:700;width:18px;text-align:center}
   .strow .si.ok{color:#5fe0a0} .strow .si.no{color:#e0584f} .strow .si.na{color:var(--faint)}
@@ -232,8 +296,96 @@
   .sjob pre{margin:9px 0 0;font-size:11.5px;line-height:1.55;color:var(--muted);white-space:pre-wrap;
     word-break:break-word;max-height:190px;overflow:auto;font-family:ui-monospace,Menlo,Consolas,monospace}
 
-  /* card titles: hover-only by default; "Always" setting pins them on */
-  body.titles .card .meta{opacity:1;transform:none}
+  .setnote{font-size:13.5px;color:var(--muted);line-height:1.55;padding:12px 2px 10px}
+  .setnote b{color:var(--ink)}
+  .frow .mini.dl{flex:none;padding:6px 12px;font-size:12.5px}
+  .emuform{margin-top:14px;background:#0f1220;border:1px solid var(--line);border-radius:12px;padding:16px;
+    display:grid;grid-template-columns:minmax(150px,200px) 1fr;gap:6px 14px;align-items:center}
+  .emuform .eft{grid-column:1/-1;font-size:15.5px;font-weight:700;margin-bottom:6px}
+  .emuform label{font-size:14px;font-weight:600;grid-column:1}
+  .emuform input{grid-column:2;min-width:0;background:#0a0c18;border:1px solid var(--line);border-radius:8px;color:var(--ink);
+    font-family:inherit;font-size:14.5px;padding:9px 11px}
+  .emuform input:focus-visible{outline:2px solid var(--ui);outline-offset:1px}
+  .emuform small{grid-column:2;font-size:12.5px;color:var(--faint);line-height:1.45;margin-bottom:8px}
+  .emuform .eferr{grid-column:1/-1;color:#f0a59f;font-size:13.5px;min-height:18px}
+  .emuform .btn{grid-column:2;justify-self:start}
+  @media(max-width:600px){.emuform{grid-template-columns:1fr} .emuform label,.emuform input,.emuform small,.emuform .btn{grid-column:1}}
+
+  /* ---- home shelves: Continue playing + Favorites, one swipeable row each ---- */
+  .shelfsec{margin:0 0 20px}
+  .shelfsec h2{margin:0 0 6px;font-size:16px;font-weight:700;display:flex;gap:10px;align-items:baseline}
+  .shelfsec h2 .n{font-size:13.5px;font-weight:500;color:var(--faint)}
+  .shelf{display:flex;gap:14px;overflow-x:auto;padding:8px;margin:0 -8px;scroll-snap-type:x proximity;
+    scroll-padding:0 8px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
+  .shelf .card{flex:0 0 clamp(190px,24vw,262px);scroll-snap-align:start}
+  .pickrow .status{padding:7px 12px}
+
+  .shelfsec h2 .more{margin-left:auto;font-size:13px;padding:6px 12px}
+  .sortbtn b{font-weight:700;color:var(--ink)} .sortbtn{color:var(--muted)}
+
+  /* ---- loading skeletons (shown until the library answers) ---- */
+  .skel{pointer-events:none}
+  .skel i{display:block;border-radius:var(--radius);background:linear-gradient(100deg,rgba(255,255,255,.05) 30%,rgba(255,255,255,.11) 50%,rgba(255,255,255,.05) 70%);
+    background-size:300% 100%;animation:shim 1.4s linear infinite}
+  .skel .sk-hero{height:210px;border-radius:16px;margin:2px 0 22px}
+  .skel .sk-h{width:170px;height:20px;border-radius:6px;margin:0 0 14px}
+  .skel .sk-row{display:flex;gap:14px;overflow:hidden;margin-bottom:26px}
+  .skel .sk-row i{flex:0 0 clamp(190px,24vw,262px);aspect-ratio:16/9}
+  @keyframes shim{from{background-position:100% 0}to{background-position:-100% 0}}
+  body.lite .skel i{animation:none}
+
+  /* ---- first run / no server: a guided start instead of an empty box ---- */
+  .firstrun{grid-column:1/-1;border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:clamp(20px,4vw,36px)}
+  .firstrun h2{margin:0 0 6px;font-size:clamp(20px,3vw,26px)}
+  .firstrun>p{margin:0 0 18px;color:var(--muted);font-size:15px;line-height:1.55;max-width:680px}
+  .firstrun ol{margin:0 0 20px;padding:0;list-style:none;counter-reset:st;display:grid;gap:14px}
+  .firstrun li{counter-increment:st;position:relative;padding-left:44px;font-size:14.5px;line-height:1.55;color:var(--muted)}
+  .firstrun li::before{content:counter(st);position:absolute;left:0;top:0;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
+    font-weight:700;color:var(--ui-ink);background:var(--ui)}
+  .firstrun li b{color:var(--ink);display:block;font-size:15.5px}
+  .firstrun code{background:var(--panel2);color:var(--ink);padding:2px 7px;border-radius:5px;font-size:13px}
+  .fr-sys{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .fr-sys span{font-size:13px;background:rgba(10,12,22,.5);border:1px solid var(--line);border-radius:8px;padding:5px 9px;color:var(--muted)}
+  .fr-sys span em{font-style:normal;font-weight:700;color:var(--ink);margin-right:6px}
+  .fr-acts{display:flex;gap:10px;flex-wrap:wrap}
+
+  /* ---- game detail sheet ---- */
+  #detail{position:fixed;inset:0;z-index:77;background:rgba(9,11,22,.86);backdrop-filter:blur(8px);overflow:auto;
+    display:grid;place-items:center;padding:clamp(14px,4vw,32px)}
+  body.lite #detail{backdrop-filter:none;background:rgba(9,11,22,.96)}
+  .dtbox{position:relative;width:100%;max-width:760px;display:flex;gap:clamp(16px,3vw,28px);align-items:flex-start;
+    background:#141726;border:1px solid var(--line);border-radius:16px;padding:clamp(18px,3vw,26px);box-shadow:var(--shadow)}
+  .dtart{flex:0 0 clamp(120px,30%,230px);border-radius:12px;overflow:hidden;background:var(--panel);border:1px solid var(--line);
+    display:grid;place-items:center;min-height:120px;color:var(--muted)}
+  .dtart img{display:block;width:100%;height:auto}
+  .dtart img.pix{image-rendering:pixelated;padding:14%}
+  .dtart .ic{width:48px;height:48px;stroke-width:1.5}
+  .dtinfo{flex:1;min-width:0}
+  .dtsys{display:inline-block;font-size:12.5px;font-weight:700;letter-spacing:.06em;color:var(--ink);
+    border:1px solid color-mix(in srgb,var(--accent,#fff) 55%,transparent);background:color-mix(in srgb,var(--accent,#fff) 14%,transparent);
+    border-radius:6px;padding:4px 9px}
+  .dtinfo h2{margin:10px 40px 14px 0;font-size:clamp(20px,3vw,28px);line-height:1.2;text-wrap:balance;overflow-wrap:anywhere}
+  .dtfacts{margin:0 0 18px;display:grid;grid-template-columns:auto 1fr;gap:7px 16px;font-size:14px}
+  .dtfacts dt{color:var(--faint)} .dtfacts dd{margin:0;color:var(--ink)}
+  .dtacts{display:flex;gap:10px;flex-wrap:wrap}
+  .dtclose{position:absolute;top:14px;right:14px;padding:8px 11px}
+  @media(max-width:560px){.dtbox{flex-direction:column;align-items:stretch} .dtart{flex:none;width:44%;align-self:center}}
+
+  /* skip link + screen-reader-only text */
+  .skip{position:absolute;left:-999px;top:8px;z-index:200;background:var(--ui);color:var(--ui-ink);font-weight:700;padding:10px 14px;border-radius:9px}
+  .skip:focus{left:8px}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+  /* ---- controller hints: shown while a real gamepad is connected ---- */
+  #padHints{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:70;display:flex;gap:14px;flex-wrap:wrap;justify-content:center;
+    max-width:94vw;background:rgba(13,16,32,.92);border:1px solid var(--line);border-radius:999px;padding:8px 16px;
+    font-size:12.5px;color:var(--muted);pointer-events:none}
+  #padHints b{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;margin-right:5px;border-radius:999px;
+    background:var(--panel2);border:1px solid var(--line);color:var(--ink);font-size:11px}
+  #padHints:not([hidden]) + .toast{bottom:62px}
+  @media(max-width:600px){#padHints{display:none} #padHints:not([hidden]) + .toast{bottom:26px}}
+  body.playing #padHints .nav{display:none}
+  body:not(.playing) #padHints .ingame{display:none}
 
   /* header avatar: the signed-in profile's own colour */
   .uav{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;flex:none;
@@ -244,8 +396,9 @@
      and the hero's blur fill cost real frames on TV browsers. */
   body.lite .status,body.lite .help,body.lite .toast,body.lite .pair,body.lite #search{backdrop-filter:none}
   body.lite #search{background:rgba(9,11,22,.96)}
+  body.lite #settings{backdrop-filter:none;background:rgba(9,11,22,.96)}
   body.lite .card{animation:none}
-  body.lite .hero .hbg img.tall{filter:brightness(.45);transform:none}
+  body.lite .hero .hbg{display:none}        /* the big blur is the costly part — keep the colour wash only */
 
   .empty{grid-column:1/-1;border:1px dashed var(--line);border-radius:var(--radius);padding:34px 26px;text-align:center;color:var(--muted);background:var(--panel)}
   .empty .big{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px;letter-spacing:.04em}
@@ -259,16 +412,16 @@
   .pspbanner .pb-note{font-size:13px;color:var(--muted);flex:1;min-width:200px;line-height:1.5}
   .pspbanner .pb-note b{color:#dfe3ea}
   .pspbanner .pb-sub{margin-top:10px;font-size:12px;color:var(--faint);line-height:1.5}
-  .empty code{background:rgba(63,224,207,.1);color:var(--cyan);padding:2px 7px;border-radius:5px;font-size:13px}
+  .empty code{background:var(--panel2);color:var(--ink);padding:2px 7px;border-radius:5px;font-size:13px}
   .empty.amber code{background:rgba(242,181,69,.12);color:var(--amber)}
   .empty .load{margin-top:16px}
 
-  .btn{appearance:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:14px;
+  .btn{appearance:none;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-family:inherit;font-weight:700;font-size:14.5px;
     padding:11px 18px;border-radius:9px;color:var(--ink);background:var(--panel2);border:1px solid var(--line);
     transition:background .15s,transform .12s}
   .btn:hover{background:rgba(255,255,255,.16)} .btn:active{transform:translateY(1px)}
-  .btn.primary{background:#e9ecf6;color:#12142a;border-color:transparent}
-  .btn.primary:hover{background:#fff}
+  .btn.primary{background:var(--ui);color:var(--ui-ink);border-color:transparent}
+  .btn.primary:hover{background:#c2b8ff}
   .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
   .btn.ghost:hover{background:var(--panel)}
 
@@ -316,7 +469,7 @@
   .keys{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 16px;font-size:13px;color:var(--muted)}
   .keys b{color:var(--ink);font-weight:700;font-size:12.5px;margin-right:8px}
 
-  footer{margin-top:38px;color:var(--faint);font-size:12px;text-align:center;line-height:1.7}
+  footer{margin-top:38px;color:var(--faint);font-size:13px;text-align:center;line-height:1.7}
   /* toast (launch/save feedback) */
   .toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);z-index:300;opacity:0;pointer-events:none;
     background:rgba(16,22,28,.95);border:1px solid var(--glass-line);backdrop-filter:blur(10px);
@@ -338,7 +491,7 @@
   .mpbtn{margin-top:8px;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--ink);
     background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}
   .mpbtn:hover{background:rgba(255,255,255,.16)}
-  .mpbtn.on{color:#12142a;background:#9be0a5;border-color:transparent}
+  .mpbtn.on{color:var(--ui-ink);background:var(--ui);border-color:transparent}
   .pair .pstat{margin-top:8px;font-size:12px;color:var(--faint)}
   .pair .pstat.good{color:var(--cyan)}
 
@@ -354,21 +507,39 @@
 </head>
 <body>
 <div class="bg-mesh"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></symbol>
+  <symbol id="i-gamepad" viewBox="0 0 24 24"><path d="M7 7h10a5 5 0 0 1 5 5v1.5a3.5 3.5 0 0 1-6.3 2.1L15 15H9l-.7.6A3.5 3.5 0 0 1 2 13.5V12a5 5 0 0 1 5-5z"/><path d="M7 10.5v3M5.5 12h3M16 11h0M18 13h0"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 3h11l4 4v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14" stroke-width="3"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.2l2.700 5.6 6.1.9-4.400 4.3 1 6.1L12 17.2l-5.400 2.9 1-6.1-4.400-4.3 6.1-.9z"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 5v5h-5"/><path d="M19.5 10A8 8 0 1 0 20 14"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M11 5l-7 7 7 7M4 12h16"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+  <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h0M10 10h0M14 10h0M18 10h0M7 14h10"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-logo" viewBox="0 0 24 24"><path d="M12 4l9 16H3z" fill="currentColor" stroke="none"/></symbol>
+</defs></svg>
 
+<a class="skip" href="#main">Skip to games</a>
 <div class="wrap">
   <header class="top">
     <div class="brand">
-      <div class="mark">▲ arcade<span class="dot">·</span>deck</div>
+      <div class="mark"><svg class="ic" aria-hidden="true"><use href="#i-logo"/></svg> arcade<span class="dot">·</span>deck</div>
       <div class="tag">your folder, your games — on every screen</div>
     </div>
     <div class="topacts">
-      <button class="mini" id="userChip">👤 Guest</button>
-      <button class="mini" id="searchBtn" title="Search every system (press /)">🔍 Search</button>
-      <button class="mini" id="phoneBtn">📱 Phone</button>
-      <button class="mini" id="perfBtn" title="For slow TVs: disables shader, unsynced video, shows FPS — and lightens the page's own effects. Restart a game after toggling.">⚡ Performance: OFF</button>
-      <button class="mini" id="setBtn" title="Playback, look, library and system settings">⚙️ Settings</button>
-      <button class="mini" id="streamBtn" title="Run a real emulator on the host (e.g. Steam Deck) and stream it here." hidden>🖥️ Host emulators</button>
-      <div class="status" id="status"><span class="led" id="led"></span><span id="statusTxt">connecting…</span></div>
+      <button class="mini" id="searchBtn" aria-label="Search" title="Search every system (press /)"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg><span class="lb">Search</span></button>
+      <button class="mini" id="streamBtn" aria-label="Host emulators" title="Run a real emulator on the host (e.g. Steam Deck) and stream it here." hidden><svg class="ic" aria-hidden="true"><use href="#i-monitor"/></svg><span class="lb">Host</span></button>
+      <button class="mini" id="phoneBtn" aria-label="Use a phone as the controller" title="Use a phone as the controller"><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg><span class="lb">Phone</span></button>
+      <button class="mini" id="setBtn" aria-label="Settings" title="Playback, performance, look, library and system settings"><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg><span class="lb">Settings</span></button>
+      <button class="mini" id="userChip" aria-label="Player profile" title="Player profile"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg><span class="lb">Guest</span></button>
     </div>
   </header>
 
@@ -385,9 +556,9 @@
   </div>
 
   <!-- player login: username + 4-digit PIN; keeps each player's saves separate -->
-  <div id="login" hidden>
+  <div id="login" hidden role="dialog" aria-modal="true" aria-labelledby="loginHead">
     <div class="loginbox">
-      <div class="lhead">WHO’S PLAYING?</div>
+      <div class="lhead" id="loginHead">WHO’S PLAYING?</div>
       <div class="lsub">Pick your profile so your saved games stay yours.</div>
       <div id="profileList" class="plist"></div>
       <div class="lrow">
@@ -397,8 +568,8 @@
       <div id="pinPanel" hidden>
         <div class="pinwho" id="pinWho"></div>
         <input id="newName" class="lname" placeholder="Choose a name" maxlength="16" autocomplete="off" hidden>
-        <div class="pindots" id="pinDots"><i></i><i></i><i></i><i></i></div>
-        <div class="pinerr" id="pinErr"></div>
+        <div class="pindots" id="pinDots" role="img" aria-label="PIN: 0 of 4 digits entered"><i></i><i></i><i></i><i></i></div>
+        <div class="pinerr" id="pinErr" role="alert"></div>
         <div class="keypad" id="keypad"></div>
         <button class="lbtn ghost" id="pinBack">‹ Back</button>
       </div>
@@ -406,13 +577,13 @@
   </div>
 
   <!-- search overlay: one query across every system + the host emulators -->
-  <div id="search" hidden>
+  <div id="search" hidden role="dialog" aria-modal="true" aria-label="Search your library">
     <div class="searchbox">
       <div class="srow">
-        <span class="sicon">🔍</span>
-        <input id="searchInput" placeholder="Search your whole library…" autocomplete="off" spellcheck="false">
-        <button class="mini" id="oskBtn" title="On-screen keys — type with a TV remote (arrows + OK)">⌨ ABC</button>
-        <button class="mini" id="searchClose">✕ Esc</button>
+        <span class="sicon"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg></span>
+        <input id="searchInput" aria-label="Search your whole library" placeholder="Search your whole library…" autocomplete="off" spellcheck="false">
+        <button class="mini" id="oskBtn" title="On-screen keys — type with a TV remote (arrows + OK)"><svg class="ic" aria-hidden="true"><use href="#i-keyboard"/></svg> ABC</button>
+        <button class="mini" id="searchClose" aria-label="Close search">✕ Esc</button>
       </div>
       <div id="osk" hidden></div>
       <div class="gridcards" id="searchRes"></div>
@@ -420,24 +591,42 @@
   </div>
 
   <!-- settings overlay: playback, look, library links + system status -->
-  <div id="settings" hidden>
+  <div id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="setHead">
     <div class="setbox">
-      <div class="sethead"><h2>⚙️ Settings</h2><button class="mini" id="setClose">✕ Esc</button></div>
+      <div class="sethead"><h2 id="setHead">Settings</h2><button class="mini" id="setClose" aria-label="Close settings">✕ Esc</button></div>
       <div id="setBody"></div>
     </div>
   </div>
 
   <!-- LIBRARY: hero + one collapsible emulator picker + an art-only game grid -->
-  <div class="libview">
+  <!-- game detail sheet: cover, facts, Play / Start fresh / Favorite -->
+  <div id="detail" hidden role="dialog" aria-modal="true" aria-labelledby="dtTitle">
+    <div class="dtbox">
+      <button class="mini dtclose" id="dtClose" aria-label="Close details">✕</button>
+      <div class="dtart" id="dtArt"></div>
+      <div class="dtinfo">
+        <span class="dtsys" id="dtSys"></span>
+        <h2 id="dtTitle"></h2>
+        <dl class="dtfacts" id="dtFacts"></dl>
+        <div class="dtacts" id="dtActs"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="libview" id="main" role="main" tabindex="-1">
     <div id="hero" hidden></div>
+    <div id="shelves"><div class="skel" aria-hidden="true"><i class="sk-hero"></i><i class="sk-h"></i><div class="sk-row"><i></i><i></i><i></i><i></i><i></i></div><i class="sk-h"></i><div class="sk-row"><i></i><i></i><i></i><i></i><i></i></div></div><span class="sr" role="status">Loading your library…</span></div>
     <div class="pickrow">
-      <button class="pick" id="sysPick">🎮 <span id="sysPickLbl">All systems</span> <span class="caret">▾</span></button>
+      <button class="pick" id="sysPick" aria-expanded="false" aria-controls="sysList"><svg class="ic" aria-hidden="true"><use href="#i-gamepad"/></svg> <span id="sysPickLbl">All systems</span> <span class="caret">▾</span></button>
       <span class="count" id="pickCount"></span>
+      <button class="mini sortbtn" id="sortBtn" title="Change the order games are listed in">Sort: <b id="sortLbl">A–Z</b></button>
       <span class="spacer"></span>
-      <button class="mini" id="refresh">↻ Rescan</button>
+      <div class="status" id="status" role="status"><span class="led" id="led"></span><span id="statusTxt">connecting…</span></div>
+      <button class="mini" id="refresh"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg> Rescan</button>
     </div>
     <div class="picklist" id="sysList" hidden></div>
     <div class="gridcards" id="gameGrid"></div>
+    <div id="rows"></div>
   </div>
 
   <!-- GBA STAGE -->
@@ -445,23 +634,23 @@
     <div class="stagebar">
       <span class="title" style="color:var(--cyan)" id="gbaTitle">GBA</span>
       <div class="acts">
-        <button class="btn ghost" style="--accent:var(--cyan)" onclick="goFull('game')">⛶ Fullscreen</button>
-        <button class="btn ghost" style="--accent:var(--cyan)" onclick="ejectAll()">⏏ Back to library</button>
+        <button class="btn ghost" style="--accent:var(--cyan)" onclick="goFull('game')"><svg class="ic" aria-hidden="true"><use href="#i-expand"/></svg> Fullscreen</button>
+        <button class="btn ghost" style="--accent:var(--cyan)" onclick="ejectAll()"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg> Back to library</button>
       </div>
     </div>
     <div class="bezel" id="gbaBezel"><div class="screen"><div id="game"></div></div></div>
     <div id="pspLaunch" hidden style="min-height:340px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:34px 26px;background:radial-gradient(120% 90% at 50% 0%,#10171d,#06090c);border:1px solid rgba(195,199,207,.18)">
-      <div style="font-size:54px;line-height:1">🎮</div>
+      <div style="line-height:1;color:#c3c7cf"><svg class="ic big" aria-hidden="true"><use href="#i-gamepad"/></svg></div>
       <div id="pspHead" style="font-size:18px;font-weight:700;color:#c3c7cf">PSP game</div>
       <p id="pspNote" style="font-size:13.5px;color:var(--muted);max-width:440px;line-height:1.55;margin:0"></p>
-      <button class="btn" style="--accent:#c3c7cf;max-width:280px" id="pspOpenBtn">▶ Open PPSSPP</button>
+      <button class="btn" style="--accent:#c3c7cf;max-width:280px" id="pspOpenBtn">Open PPSSPP</button>
       <div id="pspFile" style="font-size:13px;color:#cfe;line-height:1.6;max-width:460px"></div>
       <div id="pspBeta" style="font-size:12.5px;color:var(--faint);line-height:1.5;max-width:460px;margin-top:4px"></div>
     </div>
     <div class="help" id="gbaHelp"><h3>Controls</h3>
       <div class="keys">
         <div><b>↑↓←→</b>D-pad</div><div><b>Z / X</b>B / A</div><div><b>A / S</b>L / R</div>
-        <div><b>⏎</b>Start</div><div><b>⇧</b>Select</div><div><b>📱</b>or use a phone as the pad (above)</div>
+        <div><b>⏎</b>Start</div><div><b>⇧</b>Select</div><div><b>Phone</b>scan the code under Phone (top bar)</div><div><b>Controller</b>USB / Bluetooth pads just work — press a button to wake it</div><div><b>SELECT+START</b>hold to return to the library</div>
       </div>
     </div>
   </section>
@@ -471,8 +660,8 @@
     <div class="stagebar">
       <span class="title" style="color:var(--amber)" id="j2meTitle">JAVA PHONE</span>
       <div class="acts">
-        <button class="btn ghost" style="--accent:var(--amber)" id="j2meTab">⇱ Open handset in new tab</button>
-        <button class="btn ghost" style="--accent:var(--amber)" onclick="ejectAll()">⏏ Back to library</button>
+        <button class="btn ghost" style="--accent:var(--amber)" id="j2meTab"><svg class="ic" aria-hidden="true"><use href="#i-external"/></svg> Open handset in new tab</button>
+        <button class="btn ghost" style="--accent:var(--amber)" onclick="ejectAll()"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg> Back to library</button>
       </div>
     </div>
     <div class="loadbar" id="loadbar"></div>
@@ -480,11 +669,11 @@
       <div class="speaker"></div>
       <iframe id="j2meFrame" title="Java handset" allow="autoplay; fullscreen" hidden></iframe>
       <div class="j2me-launch" id="j2meLaunch">
-        <div class="jl-icon">📱</div>
+        <div class="jl-icon" style="color:var(--amber)"><svg class="ic big" aria-hidden="true"><use href="#i-phone"/></svg></div>
         <div class="jl-head" id="j2meHead">Java handset</div>
         <p class="jl-note">The FreeJ2ME handset runs in its <b>own browser tab</b> — it can’t be embedded here
           (the host site blocks framing). Open it, then load your game file into it.</p>
-        <button class="btn" style="--accent:var(--amber)" id="j2meOpen">▶ Open Java handset</button>
+        <button class="btn" style="--accent:var(--amber)" id="j2meOpen"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> Open Java handset</button>
         <div class="jl-file" id="j2meFile"></div>
       </div>
       <div class="nub"></div>
@@ -502,8 +691,8 @@
     <div class="stagebar">
       <span class="title" style="color:#c3c7cf" id="streamTitle">HOST EMULATORS</span>
       <div class="acts">
-        <button class="btn ghost" style="--accent:#c3c7cf" onclick="goFull('streamFrame')">⛶ Fullscreen</button>
-        <button class="btn ghost" style="--accent:#c3c7cf" id="streamBack">⏏ Back to library</button>
+        <button class="btn ghost" style="--accent:#c3c7cf" onclick="goFull('streamFrame')"><svg class="ic" aria-hidden="true"><use href="#i-expand"/></svg> Fullscreen</button>
+        <button class="btn ghost" style="--accent:#c3c7cf" id="streamBack"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg> Back to library</button>
       </div>
     </div>
     <div id="streamList" class="gridcards"></div>
@@ -513,7 +702,7 @@
           style="width:100%;height:100%;border:0;display:block;background:#000"></iframe>
       </div>
       <div class="help" style="margin-top:14px"><h3>Streaming from the host</h3>
-        <div class="keys"><div>Pair a phone (📱 above) to use it as the controller — input is sent to the emulator on the host.</div></div>
+        <div class="keys"><div>Pair a phone (Phone, top bar) or use a controller on this device — input is sent to the emulator on the host.</div></div>
       </div>
     </div>
   </section>
@@ -521,7 +710,13 @@
   <footer>ARCADE home server · GBA runs in-page (EmulatorJS / mGBA) · Java Phone via FreeJ2ME-web · supply your own legally-owned game files.</footer>
 </div>
 
-<div class="toast" id="toast"></div>
+<div id="padHints" hidden aria-hidden="true">
+  <span class="nav"><b>A</b>Select</span><span class="nav"><b>B</b>Back</span><span class="nav"><b>X</b>Search</span>
+  <span class="nav"><b>Y</b>Favorite</span><span class="nav"><b>LB</b><b>RB</b>System</span><span class="nav"><b>START</b>Settings</span>
+  <span class="ingame">Hold <b>SELECT</b>+<b>START</b> to return to the library</span>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
 
 <script>
   const J2ME_URL = "https://zb3.github.io/freej2me-web/";
@@ -545,6 +740,7 @@
   let LIB = {};
 
   const $ = s => document.querySelector(s);
+  const I = (n, c) => '<svg class="ic'+(c?' '+c:'')+'" aria-hidden="true"><use href="#i-'+n+'"/></svg>';   // icon from the sprite
   const fmt = b => b >= 1048576 ? (b/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(b/1024))+' KB';
 
   /* ---- library load ---- */
@@ -562,10 +758,12 @@
     refreshSaves();   // fills "Continue playing" once the profile's saves arrive
   }
   function totalGames(){ return SYS.reduce((a,s)=>a+((LIB[s.key]||[]).length),0); }
+  let ONLINE = true;
   function setStatus(ok){
+    ONLINE = !!ok;
     $('#led').classList.toggle('off', !ok);
     $('#statusTxt').textContent = ok
-      ? totalGames() + ' games in your folders' + (LIB.ejsLocal ? ' · offline-ready' : '')
+      ? (LIB.ejsLocal ? 'Connected · offline-ready' : 'Connected')
       : 'no server — run start-* (file:// can\'t list the folders)';
   }
   function initials(name){
@@ -591,24 +789,46 @@
     const items = [];
     if(SEL.type==='sys'){
       (LIB[SEL.key]||[]).forEach(g => items.push({ kind:'game', sys:SEL.key, g }));
-      return items;
+      return sortItems(items);
     }
     if(SEL.type==='host'){
       const e = selEmu();
       if(e){
         (e.games||[]).forEach(g => items.push({ kind:'host', e, g }));
+        sortItems(items);
         if(!e.needsRom) items.push({ kind:'host', e, g:{ name:e.name + ' (emulator menu)', file:'' } });
       }
       return items;
     }
     SYS.forEach(s => (LIB[s.key]||[]).forEach(g => items.push({ kind:'game', sys:s.key, g })));
     (LIB.emulators||[]).forEach(e => (e.games||[]).forEach(g => items.push({ kind:'host', e, g })));
-    items.sort((a,b) => a.g.name.localeCompare(b.g.name, undefined, { numeric:true }));
-    return items;
+    return sortItems(items);
   }
-  function setSel(sel){ SEL = sel; saveSel(); closePicker(); renderPicker(); renderGrid(); }
-  function openPicker(){ buildPickList(); $('#sysList').hidden = false; $('#sysPick').setAttribute('data-open','1'); }
-  function closePicker(){ $('#sysList').hidden = true; $('#sysPick').removeAttribute('data-open'); }
+  /* ---- sort order (the Sort button cycles; remembered on this device) ---- */
+  const SORTS = [['az','A–Z'],['new','Recently added'],['played','Last played']];
+  function playedMap(){                                 // key -> last played time (this device + profile saves)
+    const m = {};
+    SHELF.recent.forEach(r => { m[r.k] = r.t||0; });
+    SAVES.forEach(sv => { (LIB[sv.system]||[]).forEach(g => { if(safeGameJS(g.name) === sv.game){ const k = gkey(sv.system, g); m[k] = Math.max(m[k]||0, sv.mtime||0); } }); });
+    return m;
+  }
+  const itemKey = it => it.kind === 'host' ? hkey(it.e, it.g) : gkey(it.sys, it.g);
+  function sortItems(items){
+    const byName = (a,b) => a.g.name.localeCompare(b.g.name, undefined, { numeric:true });
+    if(SET.sort === 'new') return items.sort((a,b) => (b.g.mtime||0) - (a.g.mtime||0) || byName(a,b));
+    if(SET.sort === 'played'){ const m = playedMap(); return items.sort((a,b) => (m[itemKey(b)]||0) - (m[itemKey(a)]||0) || byName(a,b)); }
+    return items.sort(byName);
+  }
+  function renderSort(){ const l = $('#sortLbl'); if(l) l.textContent = (SORTS.find(x => x[0] === SET.sort) || SORTS[0])[1]; }
+  function cycleSort(){
+    const i = SORTS.findIndex(x => x[0] === SET.sort);
+    SET.sort = SORTS[(i + 1) % SORTS.length][0];
+    saveSet(); renderSort(); renderGrid(); renderRows();
+    toast('Sorted: ' + SORTS.find(x => x[0] === SET.sort)[1]);
+  }
+  function setSel(sel){ SEL = sel; saveSel(); closePicker(); renderPicker(); renderShelves(); renderGrid(); renderRows(); }
+  function openPicker(){ buildPickList(); $('#sysList').hidden = false; $('#sysPick').setAttribute('data-open','1'); $('#sysPick').setAttribute('aria-expanded','true'); }
+  function closePicker(){ $('#sysList').hidden = true; $('#sysPick').removeAttribute('data-open'); $('#sysPick').setAttribute('aria-expanded','false'); }
   function togglePicker(){ $('#sysList').hidden ? openPicker() : closePicker(); }
   function buildPickList(){
     const list = $('#sysList'); list.innerHTML = '';
@@ -629,7 +849,7 @@
       mk(s.full, n, s.accent, { type:'sys', key:s.key }, SEL.type==='sys' && SEL.key===s.key);
     });
     (LIB.emulators||[]).forEach(e =>
-      mk('🖥️ '+e.name, (e.games||[]).length || 'menu', '#c3c7cf', { type:'host', id:e.id }, SEL.type==='host' && SEL.id===e.id));
+      mk(e.name+' — on host', (e.games||[]).length || 'menu', '#c3c7cf', { type:'host', id:e.id }, SEL.type==='host' && SEL.id===e.id));
   }
   function renderPicker(){
     $('#sysPickLbl').textContent = selLabel();
@@ -643,6 +863,12 @@
     if(SEL.type==='host' && !selEmu()) SEL = { type:'all' };
     renderPicker();
     renderHome();
+  }
+  // box-art-shaped cards for this set of items? (Settings → Look → Card shape)
+  function tallFor(items){
+    if(SET.shape === 'tall') return true;
+    if(SET.shape === 'wide' || !items.length) return false;
+    return items.filter(it => it.kind === 'game' && it.g.box).length * 2 >= items.length;
   }
   function cardLaunch(sysKey, g){
     sysKey==='j2me' ? launchJ2ME(g) : sysKey==='psp' ? launchPSP(g) : launchEmu(sysKey, g.url, g.name);
@@ -658,25 +884,30 @@
     c.style.setProperty('--accent', s.accent);
     if(opts.delay) c.style.animationDelay = opts.delay;
     c.title = g.name + ' · ' + s.label + (g.size ? ' · ' + fmt(g.size) : '');
+    c.setAttribute('aria-label', g.name + ', ' + s.full + (hasSave(sysKey, g.name) ? ', has a save' : '') + (isFav(gkey(sysKey, g)) ? ', favorite' : ''));
     const saved = hasSave(sysKey, g.name);
     c.innerHTML =
       '<div class="art"><div class="glyph">'+esc(initials(g.name))+'</div>'+
         (g.thumb ? '<img class="cover" loading="lazy" alt="">' : '')+'</div>'+
-      '<span class="chip">'+s.label+'</span>'+
-      (saved ? '<span class="badge">💾 SAVE</span>' : '')+
+      '<span class="tags"><span class="chip">'+s.label+'</span>'+
+      (saved ? '<span class="badge">'+I('save')+'SAVE</span>' : '')+'</span>'+
+      favStar(gkey(sysKey, g))+
       '<div class="meta"><div class="nm">'+esc(g.name)+'</div>'+
-      '<span class="go">'+(saved ? '▶ Continue' : '▶ Play')+'</span></div>';
+      '<span class="go">'+I('play')+(saved ? 'Continue' : 'Play')+'</span></div>';
+    c.dataset.k = gkey(sysKey, g);
     const img = c.querySelector('.cover');
     if(img){
       img.onload  = function(){
-        if(this.naturalWidth && this.naturalWidth < 96) this.classList.add('pix');
-        else if(this.naturalHeight > this.naturalWidth) this.classList.add('tall');
+        const w = this.naturalWidth, h = this.naturalHeight;
+        if(w && w < 96) this.classList.add('pix');
+        else if(opts.tall ? w > h * 0.95 : h > w) this.classList.add('fit');   // shape mismatch: letterbox, don't crop
         this.classList.add('show');
       };
       img.onerror = function(){ this.remove(); };
-      img.src = g.thumb;
+      // no real art -> ask the server for its generated tile in the card's own shape
+      img.src = g.thumb + (opts.tall && !g.box ? '?shape=portrait' : '');
     }
-    c.onclick = () => cardLaunch(sysKey, g);
+    c.onclick = ev => { if(favClick(ev, c)) return; if(SET.detail) openDetail({ kind:'game', sys:sysKey, g }, c); else cardLaunch(sysKey, g); };
     return c;
   }
   function pspBanner(){
@@ -685,7 +916,7 @@
     banner.innerHTML =
       '<div class="pb-h">Two PSP engines</div>'+
       '<div class="pb-row">'+
-        '<button class="pb-btn primary" id="ppssppBtn">▸ Open PPSSPP'+(LIB.pspWeb?' (offline copy)':'')+'</button>'+
+        '<button class="pb-btn primary" id="ppssppBtn">Open PPSSPP'+(LIB.pspWeb?' (offline copy)':'')+'</button>'+
         '<span class="pb-note">Real PPSSPP — best compatibility, its own controls. '+
           (LIB.pspWeb ? 'Running your local offline copy.' : 'Opens the PPSSPP web app; use its <b>Install</b> option once online to keep it offline.')+'</span>'+
       '</div>'+
@@ -698,21 +929,50 @@
     grid.innerHTML = '';
     if(SEL.type==='sys' && SEL.key==='psp') grid.appendChild(pspBanner());
     const items = selItems();
+    if(SEL.type === 'all' && items.length){             // home view: one row per system instead (renderRows)
+      grid.classList.remove('tallgrid'); grid.hidden = true; return;
+    }
+    grid.hidden = false;
     if(!items.length){
+      grid.classList.remove('tallgrid');
+      if(SEL.type === 'all'){ grid.appendChild(firstRun()); return; }
       const e = document.createElement('div'); e.className = 'empty';
       if(SEL.type==='sys'){
         const s = SYSMAP[SEL.key];
-        e.innerHTML = '<div class="big">NO GAMES YET</div>Drop '+s.exts+' files into <code>games/'+SEL.key+'</code> on the host, then press <b>↻ Rescan</b>.';
-      } else if(SEL.type==='host'){
-        e.innerHTML = '<div class="big">NO GAMES LISTED</div>Point this emulator’s <code>roms</code> folder at your games in its <code>emulator.json</code> on the host.';
+        e.innerHTML = '<div class="big">NO GAMES YET</div>Drop '+s.exts+' files into <code>games/'+SEL.key+'</code> on the host, then press <b>Rescan</b>.';
       } else {
-        e.innerHTML = '<div class="big">NO GAMES YET</div>Drop game files into the <code>games/*</code> folders next to the server, then press <b>↻ Rescan</b>.';
+        e.innerHTML = '<div class="big">NO GAMES LISTED</div>Point this emulator’s <code>roms</code> folder at your games in its <code>emulator.json</code> on the host.';
       }
       grid.appendChild(e);
       return;
     }
+    const tall = tallFor(items);
+    grid.classList.toggle('tallgrid', tall);
     items.forEach((it,i) => grid.appendChild(
-      it.kind==='host' ? hostCard(it.e, it.g) : gameCard(it.sys, it.g, { delay:(Math.min(i,20)*0.02)+'s' })));
+      it.kind==='host' ? hostCard(it.e, it.g) : gameCard(it.sys, it.g, { tall, delay:(Math.min(i,20)*0.02)+'s' })));
+  }
+  // nothing to show on the home view: either the server is unreachable or the folders are empty
+  function firstRun(){
+    const d = document.createElement('div'); d.className = 'firstrun';
+    if(!ONLINE){
+      d.innerHTML = '<h2>Can’t reach the ARCADE server</h2>'+
+        '<p>This page needs the small server program running on the computer that holds your games.</p>'+
+        '<ol><li><b>Start it on that computer</b>Double-click <code>start-windows</code>, <code>start-mac</code> or <code>start-linux</code> and leave its window open.</li>'+
+        '<li><b>Open the address it prints</b>Use that address on this device — opening the file directly can’t list your games.</li></ol>'+
+        '<div class="fr-acts"><button class="btn primary" data-a="rescan">'+I('refresh')+' Try again</button></div>';
+    } else {
+      d.innerHTML = '<h2>Let’s add your first game</h2>'+
+        '<p>ARCADE plays the game files you already own. Put them in its folders on the host computer and they show up here on every screen in the house.</p>'+
+        '<ol><li><b>Copy game files into the matching folder</b>Each system has its own folder next to the server:'+
+          '<div class="fr-sys">'+SYS.map(s => '<span><em>'+s.label+'</em>games/'+s.key+' · '+s.exts+'</span>').join('')+'</div></li>'+
+        '<li><b>They appear by themselves</b>The library refreshes when files are added — or press Rescan.</li>'+
+        '<li><b>Play on any screen</b>Open this same address on a phone, tablet or TV on your Wi-Fi. Plug in a controller, or use a phone as one.</li></ol>'+
+        '<div class="fr-acts"><button class="btn primary" data-a="rescan">'+I('refresh')+' Rescan</button>'+
+        '<button class="btn ghost" data-a="settings">'+I('settings')+' Check setup in Settings</button></div>';
+    }
+    d.querySelector('[data-a="rescan"]').onclick = loadLibrary;
+    const st = d.querySelector('[data-a="settings"]'); if(st) st.onclick = openSettings;
+    return d;
   }
   const esc = s => s.replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 
@@ -734,15 +994,122 @@
   // the server stores saves under a sanitised name — apply the same transform to match
   const safeGameJS = s => String(s||'').replace(/[^A-Za-z0-9 ._()\[\]+-]/g,'_').slice(0,120) || 'game';
   function hasSave(sys, name){ const k = safeGameJS(name); return SAVES.some(sv => sv.system===sys && sv.game===k); }
+  /* ---- recently played + favourites: remembered per profile on this device.
+     Keys: "<system>|<game name>" for library games, "host|<emulator>|<file>"
+     for games that run on the host. ---- */
+  let SHELF = { fav:[], recent:[] };                    // recent: [{k, t}] newest first
+  const shelfKey = () => 'arcade_shelf_' + (USER || 'guest');
+  function loadShelf(){
+    SHELF = { fav:[], recent:[] };
+    try{ const j = JSON.parse(localStorage.getItem(shelfKey())||'null');
+      if(j){ if(Array.isArray(j.fav)) SHELF.fav = j.fav; if(Array.isArray(j.recent)) SHELF.recent = j.recent; } }catch(e){}
+  }
+  function saveShelf(){ try{ localStorage.setItem(shelfKey(), JSON.stringify(SHELF)); }catch(e){} }
+  const gkey = (sys, g) => sys + '|' + g.name;
+  const hkey = (e, g) => 'host|' + e.id + '|' + (g.file||'');
+  function resolveKey(k){                               // -> {kind, sys?, e?, g} or null if the game is gone
+    const p = String(k).split('|');
+    if(p[0]==='host'){
+      const e = (LIB.emulators||[]).find(e => e.id === p[1]); if(!e) return null;
+      const file = p.slice(2).join('|');
+      const g = (e.games||[]).find(g => (g.file||'') === file);
+      return g ? { kind:'host', e, g, k } : null;
+    }
+    const name = p.slice(1).join('|');
+    const g = (LIB[p[0]]||[]).find(g => g.name === name);
+    return (g && SYSMAP[p[0]]) ? { kind:'game', sys:p[0], g, k } : null;
+  }
+  function markPlayed(k){
+    loadShelf();
+    SHELF.recent = [{ k, t:Date.now() }].concat(SHELF.recent.filter(r => r.k !== k)).slice(0, 24);
+    saveShelf();
+  }
+  const isFav = k => SHELF.fav.indexOf(k) !== -1;
+  const favStar = k => '<span class="fav" aria-hidden="true" title="Favorite (F)"'+(isFav(k)?' data-on':'')+'>'+I('star')+'</span>';
+  function favClick(ev, card){                          // true when the click was on the star, not the card
+    if(!ev || !ev.target || !ev.target.closest || !ev.target.closest('.fav')) return false;
+    ev.stopPropagation(); toggleFav(card.dataset.k); return true;
+  }
+  function toggleFav(k){
+    if(!k) return;
+    loadShelf();
+    const on = !isFav(k);
+    SHELF.fav = on ? [k].concat(SHELF.fav) : SHELF.fav.filter(x => x !== k);
+    saveShelf();
+    document.querySelectorAll('.card').forEach(c => {   // update every copy of the card in place
+      if(c.dataset.k !== k) return;
+      const f = c.querySelector('.fav'); if(!f) return;
+      f.toggleAttribute('data-on', on);
+    });
+    const act = document.activeElement;
+    const sec = act && act.closest && act.closest('.shelfsec'), rowName = sec && sec.dataset.row;
+    const inShelf = !!(sec && sec.closest('#shelves'));
+    renderShelves();
+    if(inShelf){                                        // the focused card was rebuilt — put focus back (same row if it still exists)
+      const all = [...document.querySelectorAll('#shelves .card, #rows .card, #gameGrid .card')].filter(c => c.dataset.k === k);
+      const again = all.find(c => { const s2 = c.closest('.shelfsec'); return s2 && s2.dataset.row === rowName; }) || all[0];
+      if(again) again.focus();
+    }
+    const dt = $('#detail'); if(dt && !dt.hidden && DETAIL && DETAIL.k === k) renderDetail();
+    toast(on ? 'Added to Favorites' : 'Removed from Favorites');
+  }
+  // most recent first: what was launched on this device, merged with the profile's server saves
   function continueList(){
-    const out = [];
+    const seen = {};
+    SHELF.recent.forEach(r => { const it = resolveKey(r.k); if(it){ it.t = r.t||0; seen[r.k] = it; } });
     for(const sv of SAVES){
       if(!SYSMAP[sv.system]) continue;
       const g = (LIB[sv.system]||[]).find(g => safeGameJS(g.name) === sv.game);
-      if(g) out.push({ sys: sv.system, g });
-      if(out.length >= 12) break;
+      if(!g) continue;
+      const k = gkey(sv.system, g), t = sv.mtime||0;
+      if(!seen[k]) seen[k] = { kind:'game', sys:sv.system, g, k, t };
+      else if(t > seen[k].t) seen[k].t = t;
     }
-    return out;
+    return Object.values(seen).sort((a,b) => b.t - a.t).slice(0, 12);
+  }
+  const ROW_MAX = 18;                                    // cards per home row; "See all" opens the full grid
+  function shelfRow(title, items, opts){
+    opts = opts || {};
+    const total = items.length;
+    if(opts.sel) items = items.slice(0, ROW_MAX);
+    const sec = document.createElement('section'); sec.className = 'shelfsec'; sec.dataset.row = title;
+    sec.setAttribute('aria-label', title);
+    const h = document.createElement('h2'); h.appendChild(document.createTextNode(title));
+    const n = document.createElement('span'); n.className = 'n'; n.textContent = total; h.appendChild(n);
+    if(opts.sel){
+      const m = document.createElement('button'); m.className = 'mini more';
+      m.textContent = 'See all'; m.setAttribute('aria-label', 'See all ' + total + ' ' + title + ' games');
+      m.onclick = () => { setSel(opts.sel); const c = $('#gameGrid .card'); if(c) c.focus({ focusVisible:true }); window.scrollTo({ top:0, behavior:'smooth' }); };
+      h.appendChild(m);
+    }
+    const tall = tallFor(items);
+    const row = document.createElement('div'); row.className = 'shelf' + (tall ? ' tallgrid' : '');
+    items.forEach(it => row.appendChild(it.kind==='host' ? hostCard(it.e, it.g) : gameCard(it.sys, it.g, { tall })));
+    sec.appendChild(h); sec.appendChild(row);
+    return sec;
+  }
+  function renderShelves(){
+    const box = $('#shelves'); if(!box) return;
+    box.innerHTML = '';
+    if(SEL.type !== 'all') return;                      // shelves belong to the "everything" home view
+    const cont = continueList();
+    if(cont.length) box.appendChild(shelfRow('Continue playing', cont));
+    const favs = SHELF.fav.map(resolveKey).filter(Boolean);
+    if(favs.length) box.appendChild(shelfRow('Favorites', favs));
+  }
+  // home view: one swipeable row per system (and per host emulator), in the chosen sort order
+  function renderRows(){
+    const box = $('#rows'); if(!box) return;
+    box.innerHTML = '';
+    if(SEL.type !== 'all') return;
+    SYS.forEach(s => {
+      const items = (LIB[s.key]||[]).map(g => ({ kind:'game', sys:s.key, g }));
+      if(items.length) box.appendChild(shelfRow(s.full, sortItems(items), { sel:{ type:'sys', key:s.key } }));
+    });
+    (LIB.emulators||[]).forEach(e => {
+      const items = (e.games||[]).map(g => ({ kind:'host', e, g }));
+      if(items.length) box.appendChild(shelfRow(e.name + ' — on host', sortItems(items), { sel:{ type:'host', id:e.id } }));
+    });
   }
   function newestList(){
     const out = [];
@@ -753,18 +1120,25 @@
   function hostCard(e, g){
     const c = document.createElement('button'); c.className = 'card'; c.style.setProperty('--accent', '#c3c7cf');
     c.title = g.name + ' · runs on the host';
-    c.innerHTML = '<div class="art"><div class="glyph">🎮</div>'+
+    c.setAttribute('aria-label', g.name + ', ' + (e.system||'host') + ', runs on the host' + (isFav(hkey(e, g)) ? ', favorite' : ''));
+    c.innerHTML = '<div class="art"><div class="glyph">'+I('gamepad')+'</div>'+
       (e.icon ? '<img class="cover show" src="'+esc(e.icon)+'" alt="">' : '')+'</div>'+
-      '<span class="chip">'+esc(e.system||'HOST')+'</span><span class="badge">HOST</span>'+
-      '<div class="meta"><div class="nm">'+esc(g.name)+'</div><span class="go">▶ Play on host</span></div>';
-    c.onclick = () => startStream(e, g.file);
+      '<span class="tags"><span class="chip">'+esc(e.system||'HOST')+'</span><span class="badge">HOST</span></span>'+
+      favStar(hkey(e, g))+
+      '<div class="meta"><div class="nm">'+esc(g.name)+'</div><span class="go">'+I('play')+'Play on host</span></div>';
+    c.dataset.k = hkey(e, g);
+    c.onclick = ev => { if(favClick(ev, c)) return; if(SET.detail && g.file) openDetail({ kind:'host', e, g }, c); else startStream(e, g.file); };
     return c;
   }
   function renderHome(){
     const heroEl = $('#hero');
+    loadShelf();
     if(heroEl) buildHero(heroEl);
+    renderShelves();
     renderPicker();
+    renderSort();
     renderGrid();                          // SAVE badges come from the freshest SAVES
+    renderRows();
   }
 
   /* ---- hero carousel: one game (or platform feature) merchandised at a time.
@@ -772,43 +1146,37 @@
   let heroSlides = [], heroIdx = 0, heroTimer = null, heroPaused = false;
   function buildHeroSlides(){
     const slides = [];
-    const cont = continueList();
+    const cont = continueList().filter(it => it.kind === 'game');
     if(cont.length){
       const it = cont[0], s = SYSMAP[it.sys];
-      slides.push({ accent:s.accent, thumb:it.g.thumb,
-        badge:'💾 CONTINUE PLAYING'+(USERDISP && USERDISP!=='Guest' ? ' · '+esc(USERDISP.toUpperCase()) : ''),
-        title:it.g.name, sub:s.label+' — you have a save; it loads automatically when the game starts.',
-        cta:'▶ Continue', act:() => cardLaunch(it.sys, it.g) });
+      slides.push({ accent:s.accent, thumb:it.g.thumb, box:it.g.box,
+        badge:'CONTINUE PLAYING'+(USERDISP && USERDISP!=='Guest' ? ' · '+esc(USERDISP.toUpperCase()) : ''),
+        title:it.g.name, sub:s.label+(hasSave(it.sys, it.g.name) ? ' — you have a save; it loads automatically when the game starts.' : ' — the last game played on this screen.'),
+        cta:I('play')+' Continue', act:() => cardLaunch(it.sys, it.g) });
     }
     const fresh = newestList();
     if(fresh.length){
       const it = fresh[0], s = SYSMAP[it.sys];
-      slides.push({ accent:s.accent, thumb:it.g.thumb,
-        badge:'★ NEW IN YOUR LIBRARY', title:it.g.name,
+      slides.push({ accent:s.accent, thumb:it.g.thumb, box:it.g.box,
+        badge:'NEW IN YOUR LIBRARY', title:it.g.name,
         sub:s.full+' — no download, no install: pick it and play, on any screen in the house.',
-        cta:'▶ Play', act:() => cardLaunch(it.sys, it.g) });
+        cta:I('play')+' Play', act:() => cardLaunch(it.sys, it.g) });
     }
     if(LIB.stream && (LIB.emulators||[]).some(e => (e.games||[]).length || !e.needsRom)){
-      slides.push({ accent:'#c3c7cf', thumb:null, icon:'🖥️',
-        badge:'🖥️ STREAMING MODE ON', title:'Big consoles, every screen',
+      slides.push({ accent:'#c3c7cf', thumb:null, icon:'monitor',
+        badge:'STREAMING MODE ON', title:'Big consoles, every screen',
         sub:'PS2, XBOX and more run on the host computer and stream here — phones are the controllers.',
         cta:'Browse host games', act:openStreamPicker });
     }
     if(totalGames() > 0){
-      slides.push({ accent:'#f2b545', thumb:null, icon:'📱',
-        badge:'📱 GAME NIGHT', title:'Phones are the controllers',
+      slides.push({ accent:'#f2b545', thumb:null, icon:'phone',
+        badge:'GAME NIGHT', title:'Phones are the controllers',
         sub:'Scan a QR code and up to four phones become gamepads for the game on this screen — <b>SAVE</b>, <b>TURBO</b> and fast-forward included.',
-        cta:'📱 Show the code', act:() => {
+        cta:I('phone')+' Show the code', act:() => {
           const p = $('#pairPanel');
           if(p.hidden){ ensurePairing(); p.hidden = false; }
           window.scrollTo({ top:0, behavior:'smooth' });
         } });
-    }
-    if(!slides.length){
-      slides.push({ accent:'#9b8bff', thumb:null, icon:'▲',
-        badge:'GET STARTED', title:'Add your first game',
-        sub:'Drop legally-owned game files into the <b>games/*</b> folders next to the server, then rescan.',
-        cta:'↻ Rescan', act:loadLibrary });
     }
     return slides;
   }
@@ -835,33 +1203,116 @@
     el.hidden = false;
     el.className = 'hero';
     el.style.setProperty('--haccent', sl.accent);
+    const pauseIc = () => I(heroPaused ? 'play' : 'pause');
     el.innerHTML =
-      '<div class="hbg">'+(sl.thumb ? '<img alt="" id="heroBg">' : '')+'</div><div class="hshade"></div>'+
-      '<div class="hin"><span class="hbadge">'+sl.badge+'</span>'+
-      '<div class="htitle">'+esc(sl.title)+'</div>'+
-      '<div class="hsub">'+sl.sub+'</div>'+
-      '<div class="hacts"><button class="btn primary" id="heroCta">'+sl.cta+'</button>'+
-        (heroSlides.length > 1 ? '<button class="hpause" id="heroPause" title="Pause or resume the carousel">'+(heroPaused?'▶':'⏸')+'</button>' : '')+
-      '</div></div>'+
+      '<div class="hbg">'+(sl.thumb ? '<img alt="" src="'+sl.thumb+'">' : '')+'</div><div class="hshade"></div>'+
+      '<div class="hrow">'+
+        (sl.thumb && sl.box ? '<img class="hposter" alt="" src="'+sl.thumb+'">' : sl.icon ? '<div class="hicon">'+I(sl.icon)+'</div>' : '')+
+        '<div class="hin"><span class="hbadge">'+sl.badge+'</span>'+
+        '<div class="htitle">'+esc(sl.title)+'</div>'+
+        '<div class="hsub">'+sl.sub+'</div>'+
+        '<div class="hacts"><button class="btn primary" id="heroCta">'+sl.cta+'</button>'+
+          (heroSlides.length > 1 ? '<button class="hpause" id="heroPause" aria-label="Pause or resume the spotlight" title="Pause or resume the spotlight">'+pauseIc()+'</button>' : '')+
+      '</div></div></div>'+
       (heroSlides.length > 1
         ? '<div class="hthumbs">'+heroSlides.map((s,i) =>
-            '<button data-i="'+i+'"'+(i===heroIdx?' data-on':'')+' aria-label="slide '+(i+1)+'">'+
-            (s.thumb ? '<img alt="" src="'+s.thumb+'">' : '<span class="em">'+(s.icon||'▶')+'</span>')+
-            '</button>').join('')+'</div>'
+            '<button data-i="'+i+'"'+(i===heroIdx?' data-on aria-current="true"':'')+' aria-label="Spotlight '+(i+1)+' of '+heroSlides.length+'"></button>').join('')+'</div>'
         : '');
-    const bg = el.querySelector('#heroBg');
-    if(bg){
-      // wide art (incl. the generated SVG tiles) shows sharp; portrait boxart gets a cinematic blur-fill
-      bg.onload = function(){ if(this.naturalHeight > this.naturalWidth) this.classList.add('tall'); };
-      bg.src = sl.thumb;
-    }
     $('#heroCta').onclick = sl.act;
     const hp = $('#heroPause');
-    if(hp) hp.onclick = () => { heroPaused = !heroPaused; hp.textContent = heroPaused ? '▶' : '⏸'; };
+    if(hp) hp.onclick = () => { heroPaused = !heroPaused; hp.innerHTML = pauseIc(); };
     el.querySelectorAll('.hthumbs button').forEach(b => b.onclick = () => {
       heroIdx = +b.dataset.i; renderHeroSlide(el);
       const nb = el.querySelector('.hthumbs button[data-i="'+heroIdx+'"]'); if(nb) nb.focus();
     });
+  }
+
+  /* ===== dialogs: remember what opened them, hand focus back on close ===== */
+  function dlgOpen(el, focusSel){
+    if(el.hidden) el._ret = document.activeElement;
+    el.hidden = false;
+    if(focusSel) setTimeout(() => { const f = el.querySelector(focusSel); if(f) f.focus(); }, 40);
+  }
+  function dlgClose(el){
+    if(el.hidden) return;
+    el.hidden = true;
+    const r = el._ret; el._ret = null;
+    if(r && r !== document.body && document.contains(r) && r.getClientRects().length) r.focus();
+  }
+  const OVERLAYS = ['#detail','#search','#settings','#login'];
+  const openOverlay = () => { for(const id of OVERLAYS){ const el = $(id); if(el && !el.hidden) return el; } return null; };
+  // keep Tab inside the open dialog
+  document.addEventListener('keydown', e => {
+    if(e.key !== 'Tab') return;
+    const ov = openOverlay(); if(!ov) return;
+    const f = [...ov.querySelectorAll('button, input, a[href]')].filter(el => !el.disabled && el.getClientRects().length);
+    if(!f.length) return;
+    const i = f.indexOf(document.activeElement);
+    if(e.shiftKey && i <= 0){ f[f.length-1].focus(); e.preventDefault(); }
+    else if(!e.shiftKey && (i === -1 || i === f.length-1)){ f[0].focus(); e.preventDefault(); }
+  });
+
+  /* ===== game detail sheet: what you're about to play, and how ===== */
+  let DETAIL = null, NO_RESUME = false;
+  const ago = t => {
+    if(!t) return '';
+    const d = Math.floor((Date.now() - t) / 86400000);
+    if(d <= 0) return 'today'; if(d === 1) return 'yesterday'; if(d < 30) return d + ' days ago';
+    try{ return new Date(t).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' }); }catch(e){ return ''; }
+  };
+  function openDetail(it, opener){
+    DETAIL = { it, k: itemKey(it) };
+    renderDetail();
+    dlgOpen($('#detail'), '#dtPlay');
+    if(opener && opener.dataset) $('#detail')._retKey = opener.dataset.k;
+  }
+  function closeDetail(){
+    const el = $('#detail'), k = el._retKey; el._retKey = null;
+    const gone = el._ret && !document.contains(el._ret);
+    dlgClose(el);
+    if(gone && k){ const c = [...document.querySelectorAll('#shelves .card, #rows .card, #gameGrid .card')].find(c => c.dataset.k === k); if(c) c.focus(); }
+  }
+  function renderDetail(){
+    if(!DETAIL) return;
+    const it = DETAIL.it, k = DETAIL.k, host = it.kind === 'host', g = it.g;
+    const s = host ? { label: it.e.system || 'HOST', full: it.e.name + ' — runs on the host computer', accent:'#c3c7cf' } : SYSMAP[it.sys];
+    $('#dtSys').textContent = s.label; $('#dtSys').style.setProperty('--accent', s.accent);
+    $('#dtTitle').textContent = g.name;
+    const art = $('#dtArt'); art.innerHTML = I(host ? 'monitor' : 'gamepad');
+    const src = host ? it.e.icon : (g.thumb ? g.thumb + (g.box ? '' : '?shape=portrait') : '');
+    if(src){
+      const img = new Image(); img.alt = '';
+      img.onload = () => { if(img.naturalWidth && img.naturalWidth < 96) img.classList.add('pix'); art.innerHTML = ''; art.appendChild(img); };
+      img.src = src;
+    }
+    const facts = [['System', s.full]];
+    const sv = host ? null : SAVES.find(x => x.system === it.sys && x.game === safeGameJS(g.name));
+    const played = playedMap()[k];
+    facts.push(['Last played', played ? ago(played) : 'Not yet']);
+    if(!host){
+      facts.push(['Saved game', sv
+        ? [sv.state ? 'Save state' : '', sv.srm ? 'In-game save' : ''].filter(Boolean).join(' + ') + ' · ' + ago(sv.mtime)
+        : TOKEN ? 'None yet — progress saves to your profile as you play' : 'Playing as Guest — pick a profile to keep saves on the host']);
+      if(g.size) facts.push(['File', (g.ext ? '.' + g.ext + ' · ' : '') + fmt(g.size)]);
+      if(g.mtime) facts.push(['Added', ago(g.mtime)]);
+    }
+    const dl = $('#dtFacts'); dl.innerHTML = '';
+    facts.forEach(f => { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = f[0]; dd.textContent = f[1]; dl.appendChild(dt); dl.appendChild(dd); });
+    const resume = !!(sv && sv.state && TOKEN && SET.autoresume);
+    const acts = $('#dtActs'), had = acts.contains(document.activeElement) ? document.activeElement.id : '';
+    acts.innerHTML =
+      '<button class="btn primary" id="dtPlay">'+I('play')+(host ? ' Play on host' : resume ? ' Continue' : ' Play')+'</button>'+
+      (resume ? '<button class="btn" id="dtFresh">Start from the beginning</button>' : '')+
+      '<button class="btn" id="dtFav" aria-pressed="'+isFav(k)+'">'+I('star', isFav(k) ? 'solid' : '')+(isFav(k) ? ' Favorited' : ' Favorite')+'</button>';
+    const go = fresh => {
+      NO_RESUME = !!fresh;
+      $('#detail').hidden = true; closeSearch();
+      host ? startStream(it.e, g.file) : cardLaunch(it.sys, g);
+    };
+    $('#dtPlay').onclick = () => go(false);
+    if($('#dtFresh')) $('#dtFresh').onclick = () => go(true);
+    $('#dtFav').onclick = () => toggleFav(k);
+    if(had && $('#'+had)) $('#'+had).focus();
   }
 
   /* ===== search: one query across every system + the host emulators ===== */
@@ -897,10 +1348,12 @@
       .sort((a,b) => a.sc - b.sc || a.it.g.name.localeCompare(b.it.g.name))
       .slice(0, 40);
     if(!hits.length){ res.innerHTML = '<div class="snote">No matches for “'+esc(qRaw.trim())+'”.</div>'; return; }
+    const tall = tallFor(hits.map(x => x.it));
+    res.classList.toggle('tallgrid', tall);
     hits.forEach(x => {
-      const c = x.it.kind === 'host' ? hostCard(x.it.e, x.it.g) : gameCard(x.it.sys, x.it.g);
+      const c = x.it.kind === 'host' ? hostCard(x.it.e, x.it.g) : gameCard(x.it.sys, x.it.g, { tall });
       const launch = c.onclick;
-      c.onclick = () => { closeSearch(); launch(); };   // launching always leaves the overlay
+      c.onclick = ev => { if(favClick(ev, c)) return; if(!SET.detail) closeSearch(); launch(ev); };   // launching always leaves the overlay
       res.appendChild(c);
     });
   }
@@ -941,20 +1394,20 @@
     try{ localStorage.setItem('arcade_osk', show ? '1' : '0'); }catch(e){}
   }
   function openSearch(){
-    $('#search').hidden = false;
+    dlgOpen($('#search'));
     const inp = $('#searchInput'); inp.value = '';
     renderSearch('');
     let osk = false; try{ osk = localStorage.getItem('arcade_osk') === '1'; }catch(e){}
     if(osk) toggleOSK(true);
     setTimeout(() => inp.focus(), 40);
   }
-  function closeSearch(){ $('#search').hidden = true; }
+  function closeSearch(){ dlgClose($('#search')); }
 
   /* ===== settings: playback, look, library links + system status =====
      Stored per device in localStorage; playback options feed straight into
      the emulator launch, look options into the page, and the library section
      shows exactly which folder each system/emulator is linked to. */
-  const DEFAULT_SET = { autoresume:1, autosave:45, shader:1, fps:0, titles:0, hero:1, fx:'auto', refresh:1 };
+  const DEFAULT_SET = { sort:'az', detail:1, shape:'auto', autoresume:1, autosave:45, shader:1, fps:0, names:1, hero:1, fx:'auto', refresh:1 };
   let SET = Object.assign({}, DEFAULT_SET);
   try{ Object.assign(SET, JSON.parse(localStorage.getItem('arcade_settings')||'{}')); }catch(e){}
   function saveSet(){
@@ -962,7 +1415,7 @@
     applySet();
   }
   function applySet(){
-    document.body.classList.toggle('titles', !!SET.titles);
+    document.body.classList.toggle('arthover', !SET.names);
     applyLite();
     const h = $('#hero');
     if(h && LIB && Object.keys(LIB).length) buildHero(h);   // hero on/off applies immediately
@@ -976,7 +1429,11 @@
     opts.forEach(o => {
       const b = document.createElement('button'); b.textContent = o.label;
       if(o.v === val) b.setAttribute('data-on','');
-      b.onclick = () => { onPick(o.v); renderSettings(); };
+      b.setAttribute('aria-pressed', o.v === val ? 'true' : 'false');
+      b.setAttribute('aria-label', title + ': ' + o.label);
+      b.onclick = () => { const i = [...seg.children].indexOf(b), t = row.querySelector('.t').textContent; onPick(o.v); renderSettings();
+        const again = [...document.querySelectorAll('#setBody .setrow')].find(r => r.querySelector('.t') && r.querySelector('.t').textContent === t);   // keep focus on the same switch
+        const nb = again && again.querySelectorAll('.seg button')[i]; if(nb) nb.focus(); };
       seg.appendChild(b);
     });
     row.appendChild(seg);
@@ -994,7 +1451,7 @@
     if(job){                                             // the host can run the one-time downloader itself
       const running = SETUP.job && SETUP.job.running;
       const b = document.createElement('button'); b.className = 'mini dl';
-      b.textContent = (running && SETUP.job.id === job) ? '⏳ Running…' : '⬇ Download';
+      b.innerHTML = (running && SETUP.job.id === job) ? 'Running…' : I('download')+' Download';
       b.disabled = !!running;
       b.onclick = () => runSetup(job);
       const sd = r.querySelector('.sd');
@@ -1038,7 +1495,7 @@
     if(!j){ el.hidden = true; return; }
     el.hidden = false;
     el.innerHTML = '<div class="sjh"><span class="si '+(j.running?'na':(j.ok?'ok':'no'))+'">'+
-        (j.running ? '⏳' : j.ok ? '✓' : '✗')+'</span><span></span></div>'+
+        (j.running ? '…' : j.ok ? '✓' : '✗')+'</span><span></span></div>'+
       '<pre></pre>';
     el.querySelector('.sjh span:last-child').textContent =
       j.name + (j.running ? ' — downloading…' : j.ok ? ' — finished' : ' — failed (exit '+j.code+')');
@@ -1061,6 +1518,8 @@
     pb.appendChild(segRow('Auto-save while playing','How often progress is saved to your profile on the host.',
       [{label:'Off',v:0},{label:'30s',v:30},{label:'45s',v:45},{label:'90s',v:90}], SET.autosave,
       v => { SET.autosave=v; saveSet(); if(document.body.classList.contains('playing')) startAutoSave(); }));
+    pb.appendChild(segRow('Performance mode','For slow TVs: no shader, unsynced video, FPS shown, lower resolution on N64/PS1/PSP — and a lighter page. Restart a game after changing.',
+      ONOFF, PERF?1:0, v => setPerf(v)));
     pb.appendChild(segRow('Shader','The emulator’s CRT-style video filter. Restart the game to apply.',
       ONOFF, SET.shader?1:0, v => { SET.shader=v; saveSet(); }));
     pb.appendChild(segRow('FPS counter','Show the frames-per-second readout in the emulator. Restart the game to apply.',
@@ -1068,11 +1527,15 @@
     body.appendChild(pb);
 
     const lk = setSection('Look');
-    lk.appendChild(segRow('Game titles on cards','“Always” pins every name under the art; “Hover” keeps the wall art-only.',
-      [{label:'Hover',v:0},{label:'Always',v:1}], SET.titles?1:0, v => { SET.titles=v; saveSet(); }));
-    lk.appendChild(segRow('Hero spotlight','The big rotating banner at the top of the library.',
+    lk.appendChild(segRow('Game titles on cards','“Always” keeps every name readable on its card; “Hover” shows art only until a card is pointed at or focused (touch screens always show names).',
+      [{label:'Always',v:1},{label:'Hover',v:0}], SET.names?1:0, v => { SET.names=v; saveSet(); }));
+    lk.appendChild(segRow('Choosing a game','“Details” opens a sheet with the cover, your save and Play / Favorite; “Play now” starts the game straight away.',
+      [{label:'Details',v:1},{label:'Play now',v:0}], SET.detail?1:0, v => { SET.detail=v; saveSet(); }));
+    lk.appendChild(segRow('Card shape','“Auto” switches to box-art-shaped cards wherever most games on show have real cover art; otherwise wide tiles.',
+      [{label:'Auto',v:'auto'},{label:'Wide',v:'wide'},{label:'Box art',v:'tall'}], SET.shape, v => { SET.shape=v; saveSet(); renderHome(); }));
+    lk.appendChild(segRow('Hero spotlight','The rotating spotlight banner at the top of the library.',
       ONOFF, SET.hero?1:0, v => { SET.hero=v; saveSet(); }));
-    lk.appendChild(segRow('Visual effects','“Lite” drops blurs and animations — helps weak TV browsers. “Auto” follows ⚡ Performance mode.',
+    lk.appendChild(segRow('Visual effects','“Lite” drops blurs and animations — helps weak TV browsers. “Auto” follows Performance mode.',
       [{label:'Auto',v:'auto'},{label:'Full',v:'full'},{label:'Lite',v:'lite'}], SET.fx, v => { SET.fx=v; saveSet(); }));
     body.appendChild(lk);
 
@@ -1081,7 +1544,7 @@
       ONOFF, SET.refresh?1:0, v => { SET.refresh=v; saveSet(); }));
     const rs = document.createElement('div'); rs.className = 'setrow';
     rs.innerHTML = '<div class="st"><div class="t">Rescan now</div><div class="d">Re-list every folder immediately.</div></div>';
-    const rb = document.createElement('button'); rb.className = 'mini'; rb.textContent = '↻ Rescan';
+    const rb = document.createElement('button'); rb.className = 'mini'; rb.innerHTML = I('refresh')+' Rescan';
     rb.onclick = async () => { await loadLibrary(); renderSettings(); toast('Library rescanned'); };
     rs.appendChild(rb); li.appendChild(rs);
     SYS.forEach(s => {
@@ -1093,18 +1556,66 @@
       f.querySelector('.fn').textContent = n + (n===1?' game':' games');
       li.appendChild(f);
     });
+    body.appendChild(li);
+
+    /* host emulators: what's linked, plus a form to add your own */
+    const he = setSection('Host emulators — your own emulators and game folders');
+    const intro = document.createElement('div'); intro.className = 'setnote';
+    intro.innerHTML = 'Any emulator installed on the host computer can be added here with its own games folder. Its games then appear in the library and are streamed to every screen.'+
+      (LIB.stream ? '' : ' <b>Streaming mode is off</b> — start the server with <code>start-*-stream</code> for host emulators to show up and play.');
+    he.appendChild(intro);
     (LIB.emulators||[]).forEach(e => {
       const f = document.createElement('div'); f.className = 'frow';
       f.innerHTML = '<span class="fs"></span><span class="fp"></span><span class="fn"></span>';
-      f.querySelector('.fs').textContent = '🖥️ '+(e.system||'HOST');
+      f.querySelector('.fs').textContent = e.system||'HOST';
       f.querySelector('.fp').innerHTML = esc(e.name)+(e.bin ? ' · <code>'+esc(e.bin)+'</code>' : '')+
         (e.found===false
           ? ' · <b style="color:#e0584f">program not found</b> — install it, or fix the path in <code>emulators/'+esc(e.id)+'/emulator.json</code> (the <code>fix-emulator-paths</code> script can do it for you)'
           : e.found===true ? ' · installed ✓' : '');
       f.querySelector('.fn').textContent = (e.games||[]).length + ' games';
-      li.appendChild(f);
+      if(e.custom && LIB.admin){
+        const rm = document.createElement('button'); rm.className = 'mini dl'; rm.textContent = 'Remove';
+        rm.setAttribute('aria-label', 'Remove ' + e.name);
+        rm.onclick = async () => {
+          if(rm.dataset.sure !== '1'){ rm.dataset.sure = '1'; rm.textContent = 'Really remove?'; return; }   // second press confirms
+          const r = await postJson('/api/emulators/remove', { id:e.id });
+          if(r && r.ok){ toast(e.name + ' removed — its game files are untouched'); await loadLibrary(); renderSettings(); }
+          else toast((r && r.error) || 'Could not remove it', true);
+        };
+        f.appendChild(rm);
+      }
+      he.appendChild(f);
     });
-    body.appendChild(li);
+    if(LIB.admin){
+      const form = document.createElement('form'); form.className = 'emuform'; form.autocomplete = 'off';
+      const fld = (id, label, ph, hint) => '<label for="ef_'+id+'">'+label+'</label><input id="ef_'+id+'" name="'+id+'" placeholder="'+ph+'" spellcheck="false">'+
+        (hint ? '<small>'+hint+'</small>' : '');
+      form.innerHTML = '<div class="eft">Add an emulator</div>'+
+        fld('name', 'Name', 'e.g. Dolphin', 'What the library calls it.')+
+        fld('system', 'System label', 'e.g. WII', 'Short tag shown on its game cards.')+
+        fld('program', 'Emulator program', LIB.win ? 'C:\\Emulators\\Dolphin\\Dolphin.exe' : '/usr/bin/dolphin-emu', 'Full path to the program on this computer.')+
+        fld('args', 'Launch options (optional)', 'e.g. --fullscreen {rom}', 'Extra options. <code>{rom}</code> is where the chosen game goes — added at the end if you leave it out.')+
+        fld('roms', 'Games folder', LIB.win ? 'D:\\Games\\Wii' : '/home/you/roms/wii', 'Full path to any folder on this computer. Leave empty for an emulator you browse yourself.')+
+        fld('exts', 'Game file types', '.iso .wbfs .rvz', 'Which files in that folder are games. Empty lists every file.')+
+        fld('window', 'Window title (optional)', 'e.g. Dolphin', 'Part of the emulator’s window title — lets ARCADE stream just that window.')+
+        '<div class="eferr" role="alert"></div>'+
+        '<button class="btn primary" type="submit">Add emulator</button>';
+      form.onsubmit = async ev => {
+        ev.preventDefault();
+        const data = {}; form.querySelectorAll('input').forEach(i => data[i.name] = i.value);
+        const err = form.querySelector('.eferr'); err.textContent = '';
+        const r = await postJson('/api/emulators/add', data);
+        if(!r || !r.ok){ err.textContent = (r && r.error) || 'Could not reach the server.'; return; }
+        toast(data.name + ' added' + (r.stream ? '' : ' — it shows up once streaming mode is on'));
+        await loadLibrary(); renderSettings();
+      };
+      he.appendChild(form);
+    } else {
+      const lock = document.createElement('div'); lock.className = 'setnote';
+      lock.innerHTML = 'To add or remove an emulator, open this page <b>on the host computer itself</b> (<code>http://localhost:'+esc(location.port||'8080')+'</code>). It is locked from other devices because it tells the host which program to run.';
+      he.appendChild(lock);
+    }
+    body.appendChild(he);
 
     const st = setSection('System status');
     st.appendChild(statusRow(!!LIB.ejsLocal, 'Offline emulator engine',
@@ -1141,10 +1652,10 @@
   async function openSettings(){
     await fetchSetupStatus();
     renderSettings();
-    $('#settings').hidden = false;
+    dlgOpen($('#settings'), '#setClose');
     if(SETUP.job && SETUP.job.running) pollSetup();      // a download may already be underway
   }
-  function closeSettings(){ $('#settings').hidden = true; }
+  function closeSettings(){ dlgClose($('#settings')); }
 
   /* ---- live library: poll the tiny /api/version and re-fetch on change,
      so new games/emulators dropped into the folders appear by themselves ---- */
@@ -1193,12 +1704,12 @@
   function updateChip(){
     const c=$('#userChip'); if(!c) return;
     if(USER){
-      c.innerHTML = '<span class="uav"></span><span></span>';
+      c.innerHTML = '<span class="uav"></span><span class="lb"></span>';
       const av = c.querySelector('.uav');
       av.textContent = (USERDISP||USER).trim().slice(0,2).toUpperCase();
       av.style.background = avatarBg(USER);
       c.lastChild.textContent = USERDISP || USER;
-    } else c.textContent = '👤 Guest';
+    } else c.innerHTML = I('user')+'<span class="lb">Guest</span>';
   }
   function loadSession(){
     try{ USER=sessionStorage.getItem('arcade_user')||null; USERDISP=sessionStorage.getItem('arcade_disp')||'Guest'; TOKEN=sessionStorage.getItem('arcade_token')||null; }catch(e){}
@@ -1213,8 +1724,8 @@
     try{ sessionStorage.removeItem('arcade_user'); sessionStorage.removeItem('arcade_disp'); sessionStorage.removeItem('arcade_token'); sessionStorage.setItem('arcade_guest','1'); }catch(e){}
     updateChip();
   }
-  function showLogin(){ $('#login').hidden=false; backToList(); fetchProfiles(); }
-  function hideLogin(){ $('#login').hidden=true; }
+  function showLogin(){ dlgOpen($('#login'), '#profileList button, #newProfileBtn'); backToList(); fetchProfiles(); }
+  function hideLogin(){ dlgClose($('#login')); }
   function backToList(){ $('#pinPanel').hidden=true; pinBuf=''; $('#newName').hidden=true; $('#pinErr').textContent=''; renderDots(); }
   async function fetchProfiles(){
     const list=$('#profileList');
@@ -1243,7 +1754,7 @@
     else { ni.hidden=true; $('#pinWho').innerHTML='Enter PIN for <b>'+esc(disp||name)+'</b>'; }
     $('#pinErr').textContent=''; renderDots();
   }
-  function renderDots(){ document.querySelectorAll('#pinDots i').forEach((d,i)=>d.classList.toggle('on', i<pinBuf.length)); }
+  function renderDots(){ document.querySelectorAll('#pinDots i').forEach((d,i)=>d.classList.toggle('on', i<pinBuf.length)); $('#pinDots').setAttribute('aria-label','PIN: '+pinBuf.length+' of 4 digits entered'); }
   function buildKeypad(){
     const k=$('#keypad'); if(!k) return; k.innerHTML='';
     ['1','2','3','4','5','6','7','8','9','','0','⌫'].forEach(d=>{
@@ -1305,13 +1816,14 @@
   /* ---- launch an EmulatorJS system on this screen ---- */
   function launchEmu(system, url, name){
     curGame = { system, url, name };
+    markPlayed(system + '|' + name);
     // profiles no longer block the library — nudge once per session instead,
     // so guests know server-side saves exist without being forced to sign in
     if(!TOKEN){
       try{
         if(!sessionStorage.getItem('arcade_nudged')){
           sessionStorage.setItem('arcade_nudged','1');
-          toast('Playing as Guest — tap 👤 to keep saves in a profile');
+          toast('Playing as Guest — open your profile (top right) to keep saves');
         }
       }catch(e){}
     }
@@ -1360,7 +1872,8 @@
       document.body.appendChild(s);
       startAutoSave();
     };
-    if(TOKEN && SET.autoresume){     // resume this player's saved state automatically, if they have one
+    const fresh = NO_RESUME; NO_RESUME = false;      // "Start from the beginning" in the detail sheet skips the resume once
+    if(TOKEN && SET.autoresume && !fresh){     // resume this player's saved state automatically, if they have one
       fetch(hasUrl(),{cache:'no-store'}).then(r=>r.json()).then(j=>{
         if(j && j.state) window.EJS_loadStateURL = loadUrl('state');
         appendLoader();
@@ -1373,6 +1886,7 @@
   // click never silently boots the wrong/garbage core.
   function launchPSP(g){
     curGame = { system:'psp', url:g.url, name:g.name };
+    markPlayed('psp|' + g.name);
     document.body.classList.add('playing');
     showStage('gbaStage');
     if($('#gbaBezel')) $('#gbaBezel').hidden = true;
@@ -1384,7 +1898,7 @@
     const fileLink = g.url ? '<a href="'+g.url+'" target="_blank" rel="noopener">'+esc(fileName)+' ↗</a>' : '<b>'+esc(fileName)+'</b>';
     $('#pspNote').innerHTML = 'PSP runs best in <b>PPSSPP</b>'+(LIB.pspWeb?' (your offline copy)':'')+
       ' — a full, accurate PSP emulator with its own controls.';
-    $('#pspOpenBtn').textContent = '▶ Open PPSSPP'+(LIB.pspWeb?' (offline copy)':'');
+    $('#pspOpenBtn').textContent = 'Open PPSSPP'+(LIB.pspWeb?' (offline copy)':'');
     $('#pspOpenBtn').onclick = openPPSSPP;
     $('#pspFile').innerHTML = 'Then in PPSSPP tap <b>Load…</b> and choose '+fileLink+' from your <b>games/psp</b> folder.';
     const beta = $('#pspBeta');
@@ -1415,11 +1929,11 @@
     emus.forEach(e => {
       const n = (e.games||[]).length;
       const c = document.createElement('button'); c.className = 'card'; c.style.setProperty('--accent', '#c3c7cf');
-      c.innerHTML = '<div class="art"><div class="glyph">🖥️</div>'+
+      c.innerHTML = '<div class="art"><div class="glyph">'+I('monitor')+'</div>'+
         (e.icon ? '<img class="cover show" src="'+esc(e.icon)+'" alt="">' : '')+'</div>'+
-        '<span class="chip">'+(e.system?esc(e.system):'HOST')+'</span><span class="badge">HOST</span>'+
+        '<span class="tags"><span class="chip">'+(e.system?esc(e.system):'HOST')+'</span><span class="badge">HOST</span></span>'+
         '<div class="meta"><div class="nm">'+esc(e.name)+'</div>'+
-        '<span class="go">'+(n? n+(n===1?' game ▸':' games ▸'):'▶ Open')+'</span></div>';
+        '<span class="go">'+(n? n+(n===1?' game':' games'):I('play')+'Open')+'</span></div>';
       c.onclick = () => (n ? openStreamGames(e) : startStream(e));
       list.appendChild(c);
     });
@@ -1433,22 +1947,23 @@
     const mk = (head, sub, onclick) => {
       const c = document.createElement('button'); c.className = 'card'; c.style.setProperty('--accent', '#c3c7cf');
       c.innerHTML = '<div class="art"><div class="glyph">'+head+'</div></div>'+
-        '<span class="badge">HOST</span>'+
+        '<span class="tags"><span class="badge">HOST</span></span>'+
         '<div class="meta"><div class="nm"></div><span class="go">'+sub+'</span></div>';
       c.querySelector('.nm').textContent = '';
       c.onclick = onclick; list.appendChild(c); return c;
     };
     const back = mk('‹', 'BACK', openStreamPicker); back.querySelector('.nm').textContent = 'All emulators';
     const bb = back.querySelector('.badge'); if(bb) bb.remove();
-    if(!e.needsRom){ const m = mk('🖥️', 'NO GAME — HOST MENU', () => startStream(e)); m.querySelector('.nm').textContent = 'Open '+e.name; }
+    if(!e.needsRom){ const m = mk(I('monitor'), 'NO GAME — HOST MENU', () => startStream(e)); m.querySelector('.nm').textContent = 'Open '+e.name; }
     (e.games||[]).forEach(g => {
-      const c = mk('🎮', (e.system?esc(e.system)+' · ':'')+'ON HOST', () => startStream(e, g.file));
+      const c = mk(I('gamepad'), (e.system?esc(e.system)+' · ':'')+'ON HOST', () => startStream(e, g.file));
       c.querySelector('.nm').textContent = g.name;
     });
   }
   async function startStream(e, rom){ return startStreamRemote({ emu: e.id, rom: rom || '', name: e.name }); }
   // also used when a phone pad asks the TV to start a host game ({t:'launch', stream:1, ...})
   async function startStreamRemote(m){
+    if(m.rom) markPlayed('host|' + m.emu + '|' + m.rom);
     document.body.classList.add('playing');
     showStage('streamStage');
     $('#streamTitle').textContent = (m.name||'HOST').toUpperCase();
@@ -1471,6 +1986,7 @@
   /* ---- J2ME ---- */
   function launchJ2ME(g){
     curGame = { system:'j2me', url:g.url, name:g.name };   // lets the phone pad route keys into the handset
+    markPlayed('j2me|' + g.name);
     document.body.classList.add('playing');
     showStage('j2meStage');
     $('#j2meTitle').textContent = 'JAVA PHONE · ' + g.name.toUpperCase();
@@ -1506,7 +2022,7 @@
     }
     $('#j2meFile').innerHTML = file;
     $('#loadbar').innerHTML =
-      'Step 1 — tap <b>▶ Open Java handset</b> (opens a new tab). '+
+      'Step 1 — tap <b>Open Java handset</b> (opens a new tab). '+
       'Step 3 — if it looks wrong, press <b>Esc</b> in the handset to set screen size (e.g. <b>640×360</b>), phone type, or sound.';
   }
 
@@ -1738,6 +2254,7 @@
     if(m.t==='mp'){ if((m.p|0)===0) setFourPlayer(m.on); return; }
     if(m.t==='hk'){ emuHotkey(m.a); return; }
     if(m.t==='axis'){ axis(m.x, m.y, m.p); return; }
+    if(m.t==='axis2' || m.t==='trig') return;          // right stick / analog triggers: host-streamed games only
     if(curGame && curGame.system==='j2me' && j2meForward(m.t, m.b)) return;
     inject(m.t, m.b, m.p);
   }
@@ -1825,7 +2342,6 @@
     psx: { 'pcsx_rearmed_frameskip':'1' },
     psp: { 'ppsspp_internal_resolution':'1', 'ppsspp_frameskip':'1' },
   };
-  function updatePerfBtn(){ const b=$('#perfBtn'); if(b){ b.textContent='⚡ Performance: '+(PERF?'ON':'OFF'); b.classList.toggle('on',PERF); } }
   // chrome-lite: performance mode (or a reduced-motion preference) also strips the
   // page's expensive effects — blur blobs, scanlines, backdrop filters — for weak TVs
   function applyLite(){
@@ -1833,7 +2349,12 @@
     const fx = (typeof SET !== 'undefined' && SET.fx) || 'auto';   // settings can force Full/Lite; Auto follows ⚡/reduced-motion
     document.body.classList.toggle('lite', fx === 'lite' || (fx !== 'full' && (PERF || reduce)));
   }
-  (function(){ const b=$('#perfBtn'); if(b){ b.onclick=()=>{ PERF=!PERF; try{localStorage.setItem('arcade_perf',PERF?'1':'0');}catch(e){} updatePerfBtn(); applyLite(); toast('Performance mode '+(PERF?'ON':'OFF')+(document.body.classList.contains('playing')?' — restart the game to apply':'')); }; updatePerfBtn(); } applyLite(); })();
+  function setPerf(on){
+    PERF = !!on; try{ localStorage.setItem('arcade_perf', PERF?'1':'0'); }catch(e){}
+    applyLite();
+    toast('Performance mode '+(PERF?'ON':'OFF')+(document.body.classList.contains('playing')?' — restart the game to apply':''));
+  }
+  applyLite();
   // host-side streaming entry points
   if($('#streamBtn')) $('#streamBtn').onclick = openStreamPicker;
   if($('#streamBack')) $('#streamBack').onclick = ejectAll;
@@ -1851,19 +2372,30 @@
      Inactive while a game is playing (the emulator needs the arrow keys) and
      inside text fields; works the same inside the profile picker. */
   function navScope(){
+    const detail = $('#detail');
+    if(detail && !detail.hidden) return detail;                   // game detail sheet open
     const search = $('#search');
     if(search && !search.hidden) return search;                   // search overlay open
     const settings = $('#settings');
     if(settings && !settings.hidden) return settings;             // settings overlay open
     const login = $('#login');
     if(login && !login.hidden) return login;                      // profile picker open
-    if(document.body.classList.contains('playing')) return null;  // emulator owns the keys
+    if(document.body.classList.contains('playing')){
+      // the host-emulator picker is a plain card grid — navigable; a running game owns the keys
+      const ss = $('#streamStage'), sl = $('#streamList');
+      if(ss && ss.classList.contains('live') && sl && !sl.hidden && $('#streamFrameWrap').hidden) return ss;
+      return null;
+    }
     return document.querySelector('.wrap');
   }
+  // Up/Down go to the nearest ROW in that direction (then the closest item in it),
+  // so a shelf or button row is never jumped over; Left/Right only move along the
+  // current row.
   function spatialNext(cur, cands, key){
     const c = cur.getBoundingClientRect();
     const cx = c.left + c.width/2, cy = c.top + c.height/2;
-    let best = null, bestScore = Infinity;
+    const vert = key==='ArrowUp' || key==='ArrowDown';
+    const list = [];
     for(const el of cands){
       if(el === cur) continue;
       const r = el.getBoundingClientRect();
@@ -1873,10 +2405,18 @@
       else if(key==='ArrowRight'){ if(dx <=  4) continue; p =  dx; o = Math.abs(dy); }
       else if(key==='ArrowUp')   { if(dy >= -4) continue; p = -dy; o = Math.abs(dx); }
       else                       { if(dy <=  4) continue; p =  dy; o = Math.abs(dx); }
-      const score = p + o*2.5;                   // prefer the straight-ahead neighbour
-      if(score < bestScore){ bestScore = score; best = el; }
+      const same = vert ? false : (r.top < c.bottom - 4 && r.bottom > c.top + 4);   // shares the current row
+      list.push({ el, p, o, same });
     }
-    return best;
+    if(!list.length) return null;
+    let pool;
+    if(vert){
+      const near = Math.min.apply(null, list.map(x => x.p));
+      pool = list.filter(x => x.p <= near + 48).sort((a,b) => a.o - b.o || a.p - b.p);
+    } else {
+      pool = list.filter(x => x.same).sort((a,b) => a.p - b.p);   // end of a row: stay put rather than jump rows
+    }
+    return pool.length ? pool[0].el : null;
   }
   document.addEventListener('keydown', e => {
     if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) return;
@@ -1888,25 +2428,179 @@
       }
       return;
     }
-    const scope = navScope(); if(!scope) return;
+    if(navMove(e.key)) e.preventDefault();
+  });
+  // move focus one step in a direction — shared by arrow keys, TV remotes and real gamepads
+  function navMove(key){
+    const scope = navScope(); if(!scope) return false;
     const cands = [...scope.querySelectorAll('button, a[href]')].filter(el => {
       if(el.disabled) return false;
       const r = el.getBoundingClientRect();
       return r.width > 4 && r.height > 4;        // skip hidden panels / collapsed items
     });
-    if(!cands.length) return;
+    if(!cands.length) return false;
     const cur = document.activeElement;
     const next = (!cur || cands.indexOf(cur) === -1)
-      ? (scope.querySelector('#heroCta, #gameGrid .card') || cands[0])   // first press: hero CTA, else the grid
-      : spatialNext(cur, cands, e.key);
-    if(next){ next.focus(); try{ next.scrollIntoView({block:'nearest', inline:'nearest'}); }catch(_){} e.preventDefault(); }
+      ? (cands.find(el => el.matches('#dtPlay, #heroCta, #shelves .card, #gameGrid .card, #rows .card, .oskkey, #searchRes .card')) || cands[0])   // first press: the main content (visible ones only)
+      : spatialNext(cur, cands, key);
+    if(!next) return false;
+    next.focus({ focusVisible:true });
+    try{ next.scrollIntoView({block:'nearest', inline:'nearest'}); }catch(_){}
+    return true;
+  }
+  // F on a focused card toggles its favourite star (same as Y on a controller)
+  document.addEventListener('keydown', e => {
+    if(e.key !== 'f' && e.key !== 'F') return;
+    const c = document.activeElement;
+    if(c && c.classList && c.classList.contains('card') && c.dataset.k && navScope()){ toggleFav(c.dataset.k); e.preventDefault(); }
   });
+
+  /* ===== real controllers (Gamepad API): Xbox / PlayStation / Switch / 8BitDo… =====
+     Library: D-pad or left stick moves focus, A selects, B goes back, X searches,
+       Y favourites, LB/RB switch system, Start opens settings.
+     In-page games: EmulatorJS reads the gamepad itself (remap in its ⚙ menu);
+       we only add "hold SELECT+START to quit".
+     Java handset and host-streamed games have no gamepad path of their own, so
+       the pad is translated into the same messages a phone controller sends.   */
+  const GP = { prev:{}, rep:{}, hold:{}, sent:{}, on:false, seen:0 };
+  function gpPads(){
+    try{ return [...(navigator.getGamepads ? navigator.getGamepads() : [])].filter(p => p && p.connected); }catch(e){ return []; }
+  }
+  function gpRead(p){
+    const b = i => !!(p.buttons[i] && (p.buttons[i].pressed || p.buttons[i].value > 0.5));
+    const dz = v => Math.abs(v) < 0.18 ? 0 : v;
+    const s = { a:b(0), b:b(1), x:b(2), y:b(3), l:b(4), r:b(5), l2:b(6), r2:b(7), select:b(8), start:b(9),
+      up:b(12), down:b(13), left:b(14), right:b(15), ax:dz(p.axes[0]||0), ay:dz(p.axes[1]||0),
+      rx:dz(p.axes[2]||0), ry:dz(p.axes[3]||0),                              // right stick
+      lt:(p.buttons[6] && p.buttons[6].value) || 0, rt:(p.buttons[7] && p.buttons[7].value) || 0 };   // triggers 0..1
+    if(p.mapping !== 'standard' && p.axes.length >= 8){      // unmapped pads often report the D-pad as a hat on axes 6/7
+      s.left = s.left || p.axes[6] < -0.5; s.right = s.right || p.axes[6] > 0.5;
+      s.up = s.up || p.axes[7] < -0.5;     s.down = s.down || p.axes[7] > 0.5;
+    }
+    return s;
+  }
+  function gpBack(){
+    if(!$('#detail').hidden) return closeDetail();
+    if(!$('#search').hidden) return closeSearch();
+    if(!$('#settings').hidden) return closeSettings();
+    if(!$('#login').hidden) return $('#pinPanel').hidden ? hideLogin() : backToList();
+    if(!$('#sysList').hidden) return closePicker();
+    if(!$('#pairPanel').hidden){ $('#pairPanel').hidden = true; return; }
+    if(document.body.classList.contains('playing')) return ejectAll();   // host-emulator picker -> library
+    window.scrollTo({ top:0, behavior:'smooth' });
+  }
+  function gpCycleSystem(dir){
+    const list = [{ type:'all' }];
+    SYS.forEach(s => { if((LIB[s.key]||[]).length) list.push({ type:'sys', key:s.key }); });
+    (LIB.emulators||[]).forEach(e => list.push({ type:'host', id:e.id }));
+    if(list.length < 2) return;
+    let i = list.findIndex(x => x.type===SEL.type && x.key===SEL.key && x.id===SEL.id); if(i < 0) i = 0;
+    setSel(list[(i + dir + list.length) % list.length]);
+    toast(selLabel());
+    const c = $('#gameGrid .card, #shelves .card, #rows .card'); if(c){ c.focus({ focusVisible:true }); try{ c.scrollIntoView({ block:'nearest' }); }catch(_){} }
+  }
+  function gpNav(id, s, prev, now){
+    // directions: D-pad or stick, with hold-to-repeat
+    const dirs = { ArrowUp: s.up || s.ay < -0.55, ArrowDown: s.down || s.ay > 0.55, ArrowLeft: s.left || s.ax < -0.55, ArrowRight: s.right || s.ax > 0.55 };
+    for(const k in dirs){
+      const rk = id + k;
+      if(!dirs[k]){ delete GP.rep[rk]; continue; }
+      if(GP.rep[rk] === undefined){ navMove(k); GP.rep[rk] = now + 380; }
+      else if(now >= GP.rep[rk]){ navMove(k); GP.rep[rk] = now + 120; }
+    }
+    const hit = k => s[k] && !prev[k];
+    if(hit('a')){
+      const el = document.activeElement, scope = navScope();
+      if(el && el !== document.body && scope && scope.contains(el) && el.tagName !== 'INPUT') el.click();
+      else navMove('ArrowDown');
+    }
+    if(hit('b')) gpBack();
+    const overlay = !!openOverlay();
+    const lib = !overlay && !document.body.classList.contains('playing');
+    if(hit('y')){ const c = document.activeElement; if(c && c.dataset && c.dataset.k) toggleFav(c.dataset.k); }
+    if(hit('x') && lib){
+      openSearch(); toggleOSK(true);                    // a pad can't type — bring up the on-screen keys
+      setTimeout(() => { const k = $('#osk .oskkey'); if(k) k.focus({ focusVisible:true }); }, 80);
+    }
+    if(hit('start')){ if(!$('#settings').hidden) closeSettings(); else if(lib) openSettings(); }
+    if(lib && hit('l')) gpCycleSystem(-1);
+    if(lib && hit('r')) gpCycleSystem(1);
+  }
+  // physical position -> ARCADE pad name (bottom=b, right=a, left=y, top=x: the phone pad's diamond)
+  const GP_NAMES = { b:'a', a:'b', y:'x', x:'y', l:'l', r:'r', l2:'l2', r2:'r2', select:'select', start:'start', up:'up', down:'down', left:'left', right:'right' };
+  function gpSendHost(msg){
+    try{ fetch('/input?room='+encodeURIComponent(ensureRoom()), { method:'POST', body:JSON.stringify(msg), keepalive:true }).catch(()=>{}); }catch(e){}
+  }
+  function gpGame(id, slot, s, prev, now){
+    // hold SELECT + START for a second: back to the library (saves first when signed in)
+    if(s.select && s.start){
+      if(!GP.hold[id]) GP.hold[id] = now;
+      else if(GP.hold[id] > 0 && now - GP.hold[id] > 900){ GP.hold[id] = -1; toast('Back to library…'); ejectAll(); return; }
+    } else GP.hold[id] = 0;
+    const j2me = curGame && curGame.system === 'j2me' && $('#j2meStage').classList.contains('live');
+    const host = $('#streamStage').classList.contains('live') && !$('#streamFrameWrap').hidden;
+    if(!j2me && !host){
+      // PSP chooser screen: A opens PPSSPP. Everything else here is EmulatorJS's own gamepad handling.
+      const pl = $('#pspLaunch');
+      if(pl && !pl.hidden && s.a && !prev.a) $('#pspOpenBtn').click();
+      return;
+    }
+    // the stick doubles as a D-pad for the handset; the host gets true analog as well
+    const d = { up: s.up || (j2me && s.ay < -0.5), down: s.down || (j2me && s.ay > 0.5), left: s.left || (j2me && s.ax < -0.5), right: s.right || (j2me && s.ax > 0.5) };
+    const cur = Object.assign({}, s, d), was = GP.prev[id + ':g'] || {};
+    for(const k in GP_NAMES){
+      if(host && (k === 'l2' || k === 'r2')) continue;  // the host gets the triggers as analog values below
+      if(!!cur[k] === !!was[k]) continue;
+      const t = cur[k] ? 'down' : 'up', name = GP_NAMES[k];
+      if(j2me) j2meForward(t, name); else gpSendHost({ t, b:name, p:slot });
+    }
+    GP.prev[id + ':g'] = cur;
+    if(host){
+      // each controller is its own player (slot) on the host: both sticks + analog triggers
+      const f = v => +v.toFixed(3);
+      gpAnalog(id + ':l', [s.ax, s.ay], now, () => gpSendHost({ t:'axis',  x:f(s.ax), y:f(s.ay), p:slot }));
+      gpAnalog(id + ':r', [s.rx, s.ry], now, () => gpSendHost({ t:'axis2', x:f(s.rx), y:f(s.ry), p:slot }));
+      const tq = v => Math.round(v * 20) / 20;          // 5% steps: plenty for a trigger, far fewer messages
+      gpAnalog(id + ':t', [tq(s.lt), tq(s.rt)], now, () => gpSendHost({ t:'trig', l:tq(s.lt), r:tq(s.rt), p:slot }));
+    }
+  }
+  // send an analog reading when it changed — at most every 45 ms, but a return to rest always goes out
+  function gpAnalog(key, vals, now, send){
+    const last = GP.sent[key] || { v:vals.map(() => 0), t:0 };
+    if(vals.every((v,i) => v === last.v[i])) return;
+    if(!vals.every(v => v === 0) && now - last.t < 45) return;
+    GP.sent[key] = { v:vals.slice(), t:now };
+    send();
+  }
+  function gpTick(){
+    requestAnimationFrame(gpTick);
+    const pads = gpPads();
+    const hints = $('#padHints'); if(hints && hints.hidden !== !pads.length) hints.hidden = !pads.length;
+    if(!pads.length) return;
+    const now = performance.now(), playing = document.body.classList.contains('playing');
+    pads.forEach((p, slot) => {
+      const s = gpRead(p), prev = GP.prev[p.index] || {};
+      if(playing && !navScope()) gpGame(p.index, slot, s, prev, now);
+      else gpNav(p.index, s, prev, now);
+      GP.prev[p.index] = s;
+    });
+  }
+  function gpStart(){ if(GP.on) return; GP.on = true; requestAnimationFrame(gpTick); }
+  window.addEventListener('gamepadconnected', e => {
+    gpStart();
+    const n = (e.gamepad && e.gamepad.id || 'Controller').replace(/\s*\(.*$/, '').trim().slice(0, 40) || 'Controller';
+    toast(n + ' connected');
+  });
+  window.addEventListener('gamepaddisconnected', () => toast('Controller disconnected'));
+  if(gpPads().length) gpStart();
   // "/" opens search from anywhere in the library; Escape closes overlays
   document.addEventListener('keydown', e => {
     const t = e.target;
     const typing = t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA' || t.isContentEditable);
-    if(e.key === '/' && $('#search').hidden && $('#settings').hidden && !typing && !document.body.classList.contains('playing') && $('#login').hidden){
+    if(e.key === '/' && $('#search').hidden && $('#settings').hidden && $('#detail').hidden && !typing && !document.body.classList.contains('playing') && $('#login').hidden){
       e.preventDefault(); openSearch();
+    } else if(e.key === 'Escape' && !$('#detail').hidden){
+      closeDetail();
     } else if(e.key === 'Escape' && !$('#search').hidden){
       closeSearch();
     } else if(e.key === 'Escape' && !$('#settings').hidden){
@@ -1924,6 +2618,9 @@
   // emulator picker + rescan
   if($('#sysPick')) $('#sysPick').onclick = togglePicker;
   if($('#refresh')) $('#refresh').onclick = loadLibrary;
+  if($('#sortBtn')) $('#sortBtn').onclick = cycleSort;
+  if($('#dtClose')) $('#dtClose').onclick = closeDetail;
+  $('#detail').addEventListener('click', e => { if(e.target.id === 'detail') closeDetail(); });   // click outside the sheet
   document.addEventListener('click', e => {           // clicking elsewhere collapses the picker
     const list = $('#sysList');
     if(list && !list.hidden && !e.target.closest('#sysList') && !e.target.closest('#sysPick')) closePicker();

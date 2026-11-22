@@ -181,6 +181,15 @@
        manual-saves/ppsspp/ - each has a short how-to note inside.
      - To remove a player, delete their folder under users/.
 
+   REAL CONTROLLERS (USB / Bluetooth: Xbox, PlayStation, Switch, 8BitDo)
+   Plug one into (or pair it with) the device showing the page and press
+   any button to wake it. In the library: D-pad / left stick moves,
+   A selects, B goes back, X searches, Y adds a favorite, LB / RB switch
+   system, Start opens Settings. In a game the emulator reads the
+   controller directly (remap in its gear menu); hold SELECT + START for
+   a second to return to the library. Java phone games and host-streamed
+   games are driven by the controller too.
+
 5. PHONE AS A CONTROLLER (great on a TV)
    Open ARCADE in the TV's web browser using the WiFi address. Click
    "Phone" (top right): a panel shows a QR code and a short link like

@@ -43,7 +43,7 @@ const MIME = {
   '.css':'text/css; charset=utf-8', '.json':'application/json; charset=utf-8',
   '.txt':'text/plain; charset=utf-8', '.png':'image/png', '.jpg':'image/jpeg',
   '.jpeg':'image/jpeg', '.gif':'image/gif', '.webp':'image/webp', '.svg':'image/svg+xml',
-  '.ico':'image/x-icon', '.wasm':'application/wasm', '.gba':'application/octet-stream',
+  '.ico':'image/x-icon', '.webmanifest':'application/manifest+json; charset=utf-8', '.wasm':'application/wasm', '.gba':'application/octet-stream',
   '.agb':'application/octet-stream', '.bin':'application/octet-stream', '.zip':'application/zip',
   '.7z':'application/x-7z-compressed', '.jar':'application/java-archive',
   '.jad':'text/vnd.sun.j2me.app-descriptor',
@@ -160,6 +160,65 @@ function setupWatchers() {
       if (!n.startsWith('.') && !n.startsWith('_')) watchDir(path.join(emuDir, n));
   } catch (e) {}
   for (const s of BIOS_SYSTEMS) watchDir(path.join(ROOT, 'bios', s));
+  // games folders linked by host emulators can live anywhere on the host
+  if (streamMod && streamMod.romDirs) { try { streamMod.romDirs().forEach(watchDir); } catch (e) {} }
+}
+
+/* ---- add / remove a host emulator from the Settings page ----
+   An emulator is a folder in emulators/ holding an emulator.json. Because that
+   file names a PROGRAM the host will run, these two routes only answer requests
+   made on the host computer itself (localhost) — another device on the WiFi
+   must not be able to make this machine run a program of its choosing.
+   Set ARCADE_REMOTE_ADMIN=1 to lift that on a network you fully trust. */
+function isLocalReq(req) {
+  if (process.env.ARCADE_REMOTE_ADMIN === '1') return true;
+  const a = String((req.socket && req.socket.remoteAddress) || '');
+  return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1';
+}
+function addEmulator(b) {
+  const clean = (v, n) => String(v == null ? '' : v).replace(/[\r\n\t]/g, ' ').trim().slice(0, n);
+  const name = clean(b.name, 60), system = clean(b.system, 16).toUpperCase();
+  const exe = clean(b.program, 400), args = clean(b.args, 300);
+  const roms = clean(b.roms, 400), win = clean(b.window, 80);
+  if (name.length < 2) return { ok: false, error: 'Give the emulator a name.' };
+  if (!exe) return { ok: false, error: 'Enter the emulator program (its full path on this computer).' };
+  if (/["']/.test(exe) || /["']/.test(roms)) return { ok: false, error: 'Paths can\'t contain quote marks — type them plain.' };
+  if (path.isAbsolute(exe) && !fs.existsSync(exe)) return { ok: false, error: 'No program found at "' + exe + '". Check the path.' };
+  let exts = [];
+  if (roms) {
+    if (!path.isAbsolute(roms)) return { ok: false, error: 'The games folder must be a full path, e.g. D:\\Games\\PS2 or /home/me/roms/ps2.' };
+    let st = null; try { st = fs.statSync(roms); } catch (e) {}
+    if (!st || !st.isDirectory()) return { ok: false, error: 'No folder found at "' + roms + '". Check the path.' };
+    exts = clean(b.exts, 120).toLowerCase().split(/[\s,;]+/).filter(Boolean)
+      .map(x => x.startsWith('.') ? x : '.' + x).filter(x => /^\.[a-z0-9]{1,8}$/.test(x)).slice(0, 16);
+  }
+  let cmd = '"' + exe + '"' + (args ? ' ' + args : '');
+  if (roms && !cmd.includes('{rom}')) cmd += ' {rom}';
+  const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32) || 'emulator';
+  const emuDir = path.join(ROOT, 'emulators');
+  let id = base, n = 2;
+  while (fs.existsSync(path.join(emuDir, id))) id = base + '-' + (n++);
+  const manifest = { name, cmd, capture: win ? 'window' : 'auto', window: win, needsRom: !!roms,
+                     system: system || 'HOST', addedBy: 'settings' };
+  if (roms) { manifest.roms = roms; manifest.exts = exts; }
+  try {
+    fs.mkdirSync(path.join(emuDir, id), { recursive: true });
+    fs.writeFileSync(path.join(emuDir, id, 'emulator.json'), JSON.stringify(manifest, null, 2) + '\n');
+  } catch (e) { return { ok: false, error: 'Couldn\'t write emulators/' + id + ': ' + e.message }; }
+  bumpVersion();
+  return { ok: true, id, stream: STREAM };
+}
+function removeEmulator(id) {
+  id = String(id || '');
+  if (!/^[a-z0-9-]{1,48}$/.test(id)) return { ok: false, error: 'Unknown emulator.' };
+  const dir = path.join(ROOT, 'emulators', id), mf = path.join(dir, 'emulator.json');
+  let m = null; try { m = JSON.parse(fs.readFileSync(mf, 'utf8')); } catch (e) {}
+  if (!m) return { ok: false, error: 'Unknown emulator.' };
+  if (m.addedBy !== 'settings') return { ok: false, error: 'That one wasn\'t added from this page — delete its folder in emulators/ on the host instead.' };
+  try { fs.unlinkSync(mf); } catch (e) { return { ok: false, error: e.message }; }
+  try { fs.rmdirSync(dir); } catch (e) {}       // only goes if nothing else was put in it
+  bumpVersion();
+  return { ok: true };
 }
 // any local boxart downloaded yet? (for the settings status panel)
 function hasBoxart() {
@@ -265,6 +324,12 @@ function listGames(sub, exts) {
   const dir = path.join(GAMES, sub);
   let names = [];
   try { names = fs.readdirSync(dir); } catch (e) { return []; }
+  // which games have REAL cover art (a same-named image beside the ROM, or one
+  // fetched by get-boxart.js) — lets the page pick box-art-shaped cards up front
+  const artNames = new Set();
+  const noteArt = n => { const e = path.extname(n).toLowerCase(); if (IMG_EXT.includes(e)) artNames.add(n.slice(0, -e.length).toLowerCase()); };
+  names.forEach(noteArt);
+  try { fs.readdirSync(path.join(ROOT, 'boxart', sub)).forEach(noteArt); } catch (e) {}
   let list = names
     .filter(f => exts.includes(path.extname(f).toLowerCase()))
     .map(f => {
@@ -273,6 +338,7 @@ function listGames(sub, exts) {
       return {
         name: f.replace(/\.[^.]+$/, ''), file: f,
         ext: path.extname(f).toLowerCase().slice(1), size, mtime,
+        box: artNames.has(f.replace(/\.[^.]+$/, '').toLowerCase()) ? 1 : 0,
         url:   '/games/' + sub + '/' + encodeURIComponent(f),
         thumb: '/thumb/' + sub + '/' + encodeURIComponent(f),
       };
@@ -789,6 +855,17 @@ const requestHandler = async (req, res) => {
     return jsonRes(res, { v: libVersion });
   }
 
+  /* ---- host emulators: add / remove from the settings page (host computer only) ---- */
+  if (url === '/api/emulators/add' || url === '/api/emulators/remove') {
+    if (req.method !== 'POST') { res.writeHead(405); return res.end(); }
+    if (!isLocalReq(req)) return jsonRes(res, { ok: false, error: 'Emulators can only be added or removed from the host computer itself.' }, 403);
+    return readJsonBody(req, body => {
+      if (!body) return jsonRes(res, { ok: false, error: 'bad request' }, 400);
+      const r = url.endsWith('/add') ? addEmulator(body) : removeEmulator(body.id);
+      jsonRes(res, r, r.ok ? 200 : 400);
+    });
+  }
+
   /* ---- one-time downloaders (settings page) ---- */
   if (url === '/api/setup/run') {
     if (req.method !== 'POST') { res.writeHead(405); return res.end(); }
@@ -890,7 +967,7 @@ const requestHandler = async (req, res) => {
   }
 
   if (url === '/api/library') {
-    const lib = { version: libVersion,
+    const lib = { version: libVersion, admin: isLocalReq(req), win: process.platform === 'win32',
                   boxart: BOXART, bios: {}, ejsLocal: fs.existsSync(path.join(ROOT, 'emulatorjs', 'loader.js')), isolated: ISOLATE,
                   pspWeb: fs.existsSync(path.join(ROOT, 'psp-ppsspp', 'index.html')),
                   j2meWeb: fs.existsSync(path.join(ROOT, 'j2me-web', 'web', 'index.html')),
