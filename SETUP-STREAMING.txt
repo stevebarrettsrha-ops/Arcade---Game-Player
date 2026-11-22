@@ -218,6 +218,13 @@ WHAT IT DOES
   Now the phone pad drives a real controller: the analog stick is true
   analog, L2/R2 are the triggers, and every button maps to its Xbox
   equivalent — so you don't bind anything inside PPSSPP/PCSX2/xemu/etc.
+
+  Each player gets their OWN virtual pad (up to 4): phone pad P2, or a
+  second real controller plugged into the viewing device, appears as a
+  second Xbox controller on the host. Real controllers also forward the
+  right stick and analog triggers. (Keyboard-injection hosts - Mac, Linux,
+  or Windows without ViGEm - still share one key set between players and
+  have no right stick.)
   Force it on/off with ARCADE_STREAM_INPUT=gamepad / =powershell.
 
   If the controller can't start (driver not installed, a reboot is still

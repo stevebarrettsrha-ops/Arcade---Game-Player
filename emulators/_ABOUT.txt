@@ -82,10 +82,17 @@ HOW TO ADD AN EMULATOR
       needsRom  true if cmd uses {rom}; false for emulators you point at a
                 game from their own menu
       system    (optional) short label shown on the cards, e.g. "PS2", "XBOX"
-      roms      (optional) a folder INSIDE the ARCADE folder whose files are
-                listed as launchable games, e.g. "games/ps2". Those games
-                then appear in the Host-emulators picker AND in the phone
-                pad's Games drawer.
+      roms      (optional) the folder whose files are listed as launchable
+                games: either a folder inside the ARCADE folder, e.g.
+                "games/ps2", or a FULL path to any folder on this computer,
+                e.g. "D:\\Games\\PS2" (in JSON a backslash is written
+                twice). Those games then appear in the library, the
+                Host-emulators picker AND the phone pad's Games drawer.
+
+  EASIER: on the host computer open ARCADE at http://localhost:8080, go to
+  Settings > Host emulators and fill in "Add an emulator" - it writes this
+  file for you and the library updates by itself. (That form only works on
+  the host computer, because it names a program for the host to run.)
       exts      (optional) which file types in that folder count as games,
                 e.g. [".iso", ".chd"] — leave out to list every file.
 

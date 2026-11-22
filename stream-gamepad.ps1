@@ -10,10 +10,13 @@
 #     - ViGEmBus driver installed (https://github.com/nefarius/ViGEmBus)
 #     - ViGEmClient.dll next to this script, or path in $env:ARCADE_VIGEM_DLL
 #
-#   Protocol: one line per event on stdin
-#       b <name> <0|1>   button down/up
-#                        name = a b x y l r l2 r2 start select up down left right
-#       a <lx> <ly>      left analog stick, floats -1..1 (phone y+ = down)
+#   Protocol: one line per event on stdin. The trailing player number
+#   (0-3) is optional and defaults to 0; each player gets their own pad.
+#       b <name> <0|1> [p]   button down/up
+#                            name = a b x y l r l2 r2 start select up down left right
+#       a <lx> <ly> [p]      left analog stick, floats -1..1 (y+ = down)
+#       r <rx> <ry> [p]      right analog stick, floats -1..1 (y+ = down)
+#       t <lt> <rt> [p]      analog triggers, floats 0..1
 # ============================================================
 $ErrorActionPreference = 'Stop'
 
@@ -52,8 +55,6 @@ public static class ViGEm {
 $client = [ViGEm]::vigem_alloc()
 if ($client -eq [IntPtr]::Zero) { Write-Error 'vigem_alloc failed'; exit 1 }
 if ([ViGEm]::vigem_connect($client) -ne 0) { Write-Error 'vigem_connect failed - is ViGEmBus installed?'; exit 1 }
-$pad = [ViGEm]::vigem_target_x360_alloc()
-if ([ViGEm]::vigem_target_add($client, $pad) -ne 0) { Write-Error 'vigem_target_add failed'; exit 1 }
 
 # ARCADE button name -> Xbox 360 (XUSB) button flag. Face buttons map by physical
 # position (top/left/right/bottom), matching the in-browser pad: ARCADE x=top->Y,
@@ -63,17 +64,49 @@ $BTN = @{
   'start'=0x0010; 'select'=0x0020; 'l'=0x0100; 'r'=0x0200;
   'b'=0x1000; 'a'=0x2000; 'y'=0x4000; 'x'=0x8000;
 }
-$buttons = 0; $lt = 0; $rt = 0; $lx = 0; $ly = 0
 
-function Send-State {
+# One virtual pad per player, plugged in on first use. Windows numbers pads in
+# the order they appear, so every lower-numbered pad is created first: player 2's
+# input always lands on controller 2.
+$pads = @{}
+function New-Pad {
+  $t = [ViGEm]::vigem_target_x360_alloc()
+  if ([ViGEm]::vigem_target_add($client, $t) -ne 0) { return $null }
+  return @{ target = $t; buttons = 0; lt = 0; rt = 0; lx = 0; ly = 0; rx = 0; ry = 0 }
+}
+function Get-Pad([int]$i) {
+  if ($i -lt 0 -or $i -gt 3) { $i = 0 }
+  for ($k = 0; $k -le $i; $k++) {
+    if (-not $pads.ContainsKey($k)) {
+      $n = New-Pad
+      if ($null -eq $n) { return $pads[0] }      # no room for another pad: share player 1's
+      $pads[$k] = $n
+    }
+  }
+  return $pads[$i]
+}
+$first = New-Pad
+if ($null -eq $first) { Write-Error 'vigem_target_add failed'; exit 1 }
+$pads[0] = $first
+
+function Send-State($s) {
   $r = New-Object ViGEm+XUSB_REPORT
-  $r.wButtons = [uint16]$buttons
-  $r.bLeftTrigger = [byte]$lt
-  $r.bRightTrigger = [byte]$rt
-  $r.sThumbLX = [int16]$lx
-  $r.sThumbLY = [int16]$ly
-  $r.sThumbRX = 0; $r.sThumbRY = 0
-  [ViGEm]::vigem_target_x360_update($client, $pad, $r) | Out-Null
+  $r.wButtons = [uint16]$s.buttons
+  $r.bLeftTrigger = [byte]$s.lt
+  $r.bRightTrigger = [byte]$s.rt
+  $r.sThumbLX = [int16]$s.lx
+  $r.sThumbLY = [int16]$s.ly
+  $r.sThumbRX = [int16]$s.rx
+  $r.sThumbRY = [int16]$s.ry
+  [ViGEm]::vigem_target_x360_update($client, $s.target, $r) | Out-Null
+}
+# numbers always arrive with a "." decimal point, whatever the Windows region is
+$INV = [Globalization.CultureInfo]::InvariantCulture
+function Read-Num([string]$t, [double]$lo, [double]$hi) {
+  $v = 0.0
+  [void][double]::TryParse($t, [Globalization.NumberStyles]::Float, $INV, [ref]$v)
+  if ($v -gt $hi) { $v = $hi } elseif ($v -lt $lo) { $v = $lo }
+  return $v
 }
 
 while ($true) {
@@ -81,26 +114,35 @@ while ($true) {
   if ($null -eq $line) { break }
   $p = $line.Trim().Split(' ')
   if ($p.Length -lt 3) { continue }
+  $who = 0
+  if ($p.Length -ge 4) { [void][int]::TryParse($p[3], [ref]$who) }
+  $s = Get-Pad $who
+  if ($null -eq $s) { continue }
   switch ($p[0]) {
     'b' {
       $name = $p[1]; $on = $p[2] -eq '1'
-      if ($name -eq 'l2') { $lt = $(if ($on) { 255 } else { 0 }) }
-      elseif ($name -eq 'r2') { $rt = $(if ($on) { 255 } else { 0 }) }
+      if ($name -eq 'l2') { $s.lt = $(if ($on) { 255 } else { 0 }) }
+      elseif ($name -eq 'r2') { $s.rt = $(if ($on) { 255 } else { 0 }) }
       elseif ($BTN.ContainsKey($name)) {
-        if ($on) { $buttons = $buttons -bor $BTN[$name] }
-        else { $buttons = $buttons -band (-bnot $BTN[$name]) }
+        if ($on) { $s.buttons = $s.buttons -bor $BTN[$name] }
+        else { $s.buttons = $s.buttons -band (-bnot $BTN[$name]) }
       } else { continue }
-      Send-State
+      Send-State $s
     }
     'a' {
-      $fx = 0.0; $fy = 0.0
-      [void][double]::TryParse($p[1], [ref]$fx)
-      [void][double]::TryParse($p[2], [ref]$fy)
-      if ($fx -gt 1) { $fx = 1 } elseif ($fx -lt -1) { $fx = -1 }
-      if ($fy -gt 1) { $fy = 1 } elseif ($fy -lt -1) { $fy = -1 }
-      $lx = [int][math]::Round($fx * 32767)
-      $ly = [int][math]::Round(-$fy * 32767)   # phone y+ = down -> XInput y+ = up
-      Send-State
+      $s.lx = [int][math]::Round((Read-Num $p[1] -1 1) * 32767)
+      $s.ly = [int][math]::Round(-(Read-Num $p[2] -1 1) * 32767)   # y+ = down -> XInput y+ = up
+      Send-State $s
+    }
+    'r' {
+      $s.rx = [int][math]::Round((Read-Num $p[1] -1 1) * 32767)
+      $s.ry = [int][math]::Round(-(Read-Num $p[2] -1 1) * 32767)
+      Send-State $s
+    }
+    't' {
+      $s.lt = [int][math]::Round((Read-Num $p[1] 0 1) * 255)
+      $s.rt = [int][math]::Round((Read-Num $p[2] 0 1) * 255)
+      Send-State $s
     }
   }
 }

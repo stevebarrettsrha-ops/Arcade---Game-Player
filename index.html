@@ -296,6 +296,21 @@
   .sjob pre{margin:9px 0 0;font-size:11.5px;line-height:1.55;color:var(--muted);white-space:pre-wrap;
     word-break:break-word;max-height:190px;overflow:auto;font-family:ui-monospace,Menlo,Consolas,monospace}
 
+  .setnote{font-size:13.5px;color:var(--muted);line-height:1.55;padding:12px 2px 10px}
+  .setnote b{color:var(--ink)}
+  .frow .mini.dl{flex:none;padding:6px 12px;font-size:12.5px}
+  .emuform{margin-top:14px;background:#0f1220;border:1px solid var(--line);border-radius:12px;padding:16px;
+    display:grid;grid-template-columns:minmax(150px,200px) 1fr;gap:6px 14px;align-items:center}
+  .emuform .eft{grid-column:1/-1;font-size:15.5px;font-weight:700;margin-bottom:6px}
+  .emuform label{font-size:14px;font-weight:600;grid-column:1}
+  .emuform input{grid-column:2;min-width:0;background:#0a0c18;border:1px solid var(--line);border-radius:8px;color:var(--ink);
+    font-family:inherit;font-size:14.5px;padding:9px 11px}
+  .emuform input:focus-visible{outline:2px solid var(--ui);outline-offset:1px}
+  .emuform small{grid-column:2;font-size:12.5px;color:var(--faint);line-height:1.45;margin-bottom:8px}
+  .emuform .eferr{grid-column:1/-1;color:#f0a59f;font-size:13.5px;min-height:18px}
+  .emuform .btn{grid-column:2;justify-self:start}
+  @media(max-width:600px){.emuform{grid-template-columns:1fr} .emuform label,.emuform input,.emuform small,.emuform .btn{grid-column:1}}
+
   /* ---- home shelves: Continue playing + Favorites, one swipeable row each ---- */
   .shelfsec{margin:0 0 20px}
   .shelfsec h2{margin:0 0 6px;font-size:16px;font-weight:700;display:flex;gap:10px;align-items:baseline}
@@ -1541,18 +1556,66 @@
       f.querySelector('.fn').textContent = n + (n===1?' game':' games');
       li.appendChild(f);
     });
+    body.appendChild(li);
+
+    /* host emulators: what's linked, plus a form to add your own */
+    const he = setSection('Host emulators — your own emulators and game folders');
+    const intro = document.createElement('div'); intro.className = 'setnote';
+    intro.innerHTML = 'Any emulator installed on the host computer can be added here with its own games folder. Its games then appear in the library and are streamed to every screen.'+
+      (LIB.stream ? '' : ' <b>Streaming mode is off</b> — start the server with <code>start-*-stream</code> for host emulators to show up and play.');
+    he.appendChild(intro);
     (LIB.emulators||[]).forEach(e => {
       const f = document.createElement('div'); f.className = 'frow';
       f.innerHTML = '<span class="fs"></span><span class="fp"></span><span class="fn"></span>';
-      f.querySelector('.fs').textContent = 'Host · '+(e.system||'HOST');
+      f.querySelector('.fs').textContent = e.system||'HOST';
       f.querySelector('.fp').innerHTML = esc(e.name)+(e.bin ? ' · <code>'+esc(e.bin)+'</code>' : '')+
         (e.found===false
           ? ' · <b style="color:#e0584f">program not found</b> — install it, or fix the path in <code>emulators/'+esc(e.id)+'/emulator.json</code> (the <code>fix-emulator-paths</code> script can do it for you)'
           : e.found===true ? ' · installed ✓' : '');
       f.querySelector('.fn').textContent = (e.games||[]).length + ' games';
-      li.appendChild(f);
+      if(e.custom && LIB.admin){
+        const rm = document.createElement('button'); rm.className = 'mini dl'; rm.textContent = 'Remove';
+        rm.setAttribute('aria-label', 'Remove ' + e.name);
+        rm.onclick = async () => {
+          if(rm.dataset.sure !== '1'){ rm.dataset.sure = '1'; rm.textContent = 'Really remove?'; return; }   // second press confirms
+          const r = await postJson('/api/emulators/remove', { id:e.id });
+          if(r && r.ok){ toast(e.name + ' removed — its game files are untouched'); await loadLibrary(); renderSettings(); }
+          else toast((r && r.error) || 'Could not remove it', true);
+        };
+        f.appendChild(rm);
+      }
+      he.appendChild(f);
     });
-    body.appendChild(li);
+    if(LIB.admin){
+      const form = document.createElement('form'); form.className = 'emuform'; form.autocomplete = 'off';
+      const fld = (id, label, ph, hint) => '<label for="ef_'+id+'">'+label+'</label><input id="ef_'+id+'" name="'+id+'" placeholder="'+ph+'" spellcheck="false">'+
+        (hint ? '<small>'+hint+'</small>' : '');
+      form.innerHTML = '<div class="eft">Add an emulator</div>'+
+        fld('name', 'Name', 'e.g. Dolphin', 'What the library calls it.')+
+        fld('system', 'System label', 'e.g. WII', 'Short tag shown on its game cards.')+
+        fld('program', 'Emulator program', LIB.win ? 'C:\\Emulators\\Dolphin\\Dolphin.exe' : '/usr/bin/dolphin-emu', 'Full path to the program on this computer.')+
+        fld('args', 'Launch options (optional)', 'e.g. --fullscreen {rom}', 'Extra options. <code>{rom}</code> is where the chosen game goes — added at the end if you leave it out.')+
+        fld('roms', 'Games folder', LIB.win ? 'D:\\Games\\Wii' : '/home/you/roms/wii', 'Full path to any folder on this computer. Leave empty for an emulator you browse yourself.')+
+        fld('exts', 'Game file types', '.iso .wbfs .rvz', 'Which files in that folder are games. Empty lists every file.')+
+        fld('window', 'Window title (optional)', 'e.g. Dolphin', 'Part of the emulator’s window title — lets ARCADE stream just that window.')+
+        '<div class="eferr" role="alert"></div>'+
+        '<button class="btn primary" type="submit">Add emulator</button>';
+      form.onsubmit = async ev => {
+        ev.preventDefault();
+        const data = {}; form.querySelectorAll('input').forEach(i => data[i.name] = i.value);
+        const err = form.querySelector('.eferr'); err.textContent = '';
+        const r = await postJson('/api/emulators/add', data);
+        if(!r || !r.ok){ err.textContent = (r && r.error) || 'Could not reach the server.'; return; }
+        toast(data.name + ' added' + (r.stream ? '' : ' — it shows up once streaming mode is on'));
+        await loadLibrary(); renderSettings();
+      };
+      he.appendChild(form);
+    } else {
+      const lock = document.createElement('div'); lock.className = 'setnote';
+      lock.innerHTML = 'To add or remove an emulator, open this page <b>on the host computer itself</b> (<code>http://localhost:'+esc(location.port||'8080')+'</code>). It is locked from other devices because it tells the host which program to run.';
+      he.appendChild(lock);
+    }
+    body.appendChild(he);
 
     const st = setSection('System status');
     st.appendChild(statusRow(!!LIB.ejsLocal, 'Offline emulator engine',
@@ -2191,6 +2254,7 @@
     if(m.t==='mp'){ if((m.p|0)===0) setFourPlayer(m.on); return; }
     if(m.t==='hk'){ emuHotkey(m.a); return; }
     if(m.t==='axis'){ axis(m.x, m.y, m.p); return; }
+    if(m.t==='axis2' || m.t==='trig') return;          // right stick / analog triggers: host-streamed games only
     if(curGame && curGame.system==='j2me' && j2meForward(m.t, m.b)) return;
     inject(m.t, m.b, m.p);
   }
@@ -2398,7 +2462,7 @@
        we only add "hold SELECT+START to quit".
      Java handset and host-streamed games have no gamepad path of their own, so
        the pad is translated into the same messages a phone controller sends.   */
-  const GP = { prev:{}, rep:{}, hold:{}, axisT:{}, on:false, seen:0 };
+  const GP = { prev:{}, rep:{}, hold:{}, sent:{}, on:false, seen:0 };
   function gpPads(){
     try{ return [...(navigator.getGamepads ? navigator.getGamepads() : [])].filter(p => p && p.connected); }catch(e){ return []; }
   }
@@ -2406,7 +2470,9 @@
     const b = i => !!(p.buttons[i] && (p.buttons[i].pressed || p.buttons[i].value > 0.5));
     const dz = v => Math.abs(v) < 0.18 ? 0 : v;
     const s = { a:b(0), b:b(1), x:b(2), y:b(3), l:b(4), r:b(5), l2:b(6), r2:b(7), select:b(8), start:b(9),
-      up:b(12), down:b(13), left:b(14), right:b(15), ax:dz(p.axes[0]||0), ay:dz(p.axes[1]||0) };
+      up:b(12), down:b(13), left:b(14), right:b(15), ax:dz(p.axes[0]||0), ay:dz(p.axes[1]||0),
+      rx:dz(p.axes[2]||0), ry:dz(p.axes[3]||0),                              // right stick
+      lt:(p.buttons[6] && p.buttons[6].value) || 0, rt:(p.buttons[7] && p.buttons[7].value) || 0 };   // triggers 0..1
     if(p.mapping !== 'standard' && p.axes.length >= 8){      // unmapped pads often report the D-pad as a hat on axes 6/7
       s.left = s.left || p.axes[6] < -0.5; s.right = s.right || p.axes[6] > 0.5;
       s.up = s.up || p.axes[7] < -0.5;     s.down = s.down || p.axes[7] > 0.5;
@@ -2483,16 +2549,28 @@
     const d = { up: s.up || (j2me && s.ay < -0.5), down: s.down || (j2me && s.ay > 0.5), left: s.left || (j2me && s.ax < -0.5), right: s.right || (j2me && s.ax > 0.5) };
     const cur = Object.assign({}, s, d), was = GP.prev[id + ':g'] || {};
     for(const k in GP_NAMES){
+      if(host && (k === 'l2' || k === 'r2')) continue;  // the host gets the triggers as analog values below
       if(!!cur[k] === !!was[k]) continue;
       const t = cur[k] ? 'down' : 'up', name = GP_NAMES[k];
       if(j2me) j2meForward(t, name); else gpSendHost({ t, b:name, p:slot });
     }
     GP.prev[id + ':g'] = cur;
-    if(host && (s.ax !== (prev.ax||0) || s.ay !== (prev.ay||0))){
-      const rest = s.ax === 0 && s.ay === 0;
-      if(rest || now - (GP.axisT[id]||0) > 45){ GP.axisT[id] = now; gpSendHost({ t:'axis', x:+s.ax.toFixed(3), y:+s.ay.toFixed(3), p:slot }); }
-      else { s.ax = prev.ax||0; s.ay = prev.ay||0; }    // throttled — compare against the last value actually sent
+    if(host){
+      // each controller is its own player (slot) on the host: both sticks + analog triggers
+      const f = v => +v.toFixed(3);
+      gpAnalog(id + ':l', [s.ax, s.ay], now, () => gpSendHost({ t:'axis',  x:f(s.ax), y:f(s.ay), p:slot }));
+      gpAnalog(id + ':r', [s.rx, s.ry], now, () => gpSendHost({ t:'axis2', x:f(s.rx), y:f(s.ry), p:slot }));
+      const tq = v => Math.round(v * 20) / 20;          // 5% steps: plenty for a trigger, far fewer messages
+      gpAnalog(id + ':t', [tq(s.lt), tq(s.rt)], now, () => gpSendHost({ t:'trig', l:tq(s.lt), r:tq(s.rt), p:slot }));
     }
+  }
+  // send an analog reading when it changed — at most every 45 ms, but a return to rest always goes out
+  function gpAnalog(key, vals, now, send){
+    const last = GP.sent[key] || { v:vals.map(() => 0), t:0 };
+    if(vals.every((v,i) => v === last.v[i])) return;
+    if(!vals.every(v => v === 0) && now - last.t < 45) return;
+    GP.sent[key] = { v:vals.slice(), t:now };
+    send();
   }
   function gpTick(){
     requestAnimationFrame(gpTick);

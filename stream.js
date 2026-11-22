@@ -240,11 +240,14 @@ function scanEmulators(dir, root) {
     const mf = path.join(dir, name, 'emulator.json');
     let m; try { m = JSON.parse(fs.readFileSync(mf, 'utf8')); } catch (e) { continue; }
     if (!m || !m.cmd) continue;
-    // optional roms folder: must stay inside the ARCADE folder
+    // optional roms folder: a relative path must stay inside the ARCADE folder;
+    // an absolute path (any drive / folder on the host) is taken as written —
+    // the manifest lives on the host's own disk, so it is the host owner's choice.
     let romDir = null, games = [];
     if (m.roms) {
-      const cand = path.normalize(path.join(root, String(m.roms)));
-      if (cand.startsWith(root + path.sep)) {
+      const raw = String(m.roms), abs = path.isAbsolute(raw);
+      const cand = path.normalize(abs ? raw : path.join(root, raw));
+      if (abs || cand.startsWith(root + path.sep)) {
         romDir = cand;
         const exts = Array.isArray(m.exts) ? m.exts.map(x => String(x).toLowerCase()) : [];
         games = listRoms(romDir, exts);
@@ -258,6 +261,7 @@ function scanEmulators(dir, root) {
       window: m.window || '',
       needsRom: !!m.needsRom,
       system: m.system ? String(m.system) : '',
+      custom: m.addedBy === 'settings',          // created from the Settings page (and removable there)
       romDir, games,
       icon: fs.existsSync(path.join(dir, name, 'icon.png')) ? '/emulators/' + encodeURIComponent(name) + '/icon.png' : null,
     });
@@ -711,7 +715,9 @@ class StreamSession {
     const t = resolveInputTool(this.cfg.inputTool);
     return (t === 'gamepad' && gamepadDead()) ? 'powershell' : t;
   }
-  inject(action, down, forceKbd) {
+  // p = player 0-3. The virtual-gamepad path gives each player their own Xbox
+  // pad; the keyboard paths have one key set, so every player shares it.
+  inject(action, down, forceKbd, p) {
     let tool = this._tool();
     if (tool === 'none') return;
     if (tool === 'gamepad') {
@@ -719,7 +725,7 @@ class StreamSession {
         // hotkeys + real pad buttons drive the controller; J2ME phone keys are
         // sent with forceKbd so they TYPE (KEmulator reads the keyboard) instead.
         if (action in VKHOT) { psSend(VKHOT[action], down); return; }
-        if (gpSend('b ' + action + ' ' + (down ? 1 : 0))) return;
+        if (gpSend('b ' + action + ' ' + (down ? 1 : 0) + ' ' + (p | 0))) return;
       }
       tool = 'powershell';   // forced keyboard, or the pad write failed -> keyboard
     }
@@ -752,20 +758,32 @@ class StreamSession {
   }
   // left analog stick. Gamepad path = true analog; keyboard paths = held U/N/H/M
   // keys (its own set, so the stick is independent of the D-pad arrows).
-  injectAxis(x, y) {
+  // right = true is the RIGHT stick: gamepad path only (the keyboard paths have no keys for it).
+  injectAxis(x, y, p, right) {
     let tool = this._tool();
     if (tool === 'none') return;
     if (tool === 'gamepad') {
       const cl = v => Math.max(-1, Math.min(1, +v || 0));
-      if (gpSend('a ' + cl(x).toFixed(3) + ' ' + cl(y).toFixed(3))) return;
+      if (gpSend((right ? 'r ' : 'a ') + cl(x).toFixed(3) + ' ' + cl(y).toFixed(3) + ' ' + (p | 0))) return;
       tool = 'powershell';   // pad helper just died -> fall back to U/N/H/M keys
     }
+    if (right) return;
     x = +x || 0; y = +y || 0;
     const want = { up: y < -ATHRESH, down: y > ATHRESH, left: x < -ATHRESH, right: x > ATHRESH };
     const st = this._analog || (this._analog = { up: false, down: false, left: false, right: false });
     for (const d of ['up', 'down', 'left', 'right']) {
       if (want[d] !== st[d]) { st[d] = want[d]; this._analogKey(d, want[d]); }
     }
+  }
+  // analog triggers, 0..1 each. Gamepad path = true analog; keyboard paths press
+  // the L2 / R2 keys once a trigger is pulled past half-way.
+  injectTrig(l, r, p) {
+    const cl = v => Math.max(0, Math.min(1, +v || 0));
+    l = cl(l); r = cl(r);
+    if (this._tool() === 'gamepad' && gpSend('t ' + l.toFixed(3) + ' ' + r.toFixed(3) + ' ' + (p | 0))) return;
+    const st = this._trig || (this._trig = { l2: false, r2: false });
+    const want = { l2: l > 0.5, r2: r > 0.5 };
+    for (const k of ['l2', 'r2']) if (want[k] !== st[k]) { st[k] = want[k]; this.inject(k, want[k], false, p); }
   }
 }
 
@@ -782,19 +800,24 @@ function listEmulators() {
     const exe = (args && args[0]) ? args[0] : '';
     return {
       id: e.id, name: e.name, icon: e.icon, needsRom: e.needsRom,
-      system: e.system, games: e.games,
+      system: e.system, games: e.games, custom: !!e.custom,
       bin: exe ? path.basename(exe) : '',
       found: exe && path.isAbsolute(exe) ? fileExists(exe) : null,
     };
   });
 }
+// games folders of every emulator (the server watches them so new files show up live)
+function romDirs() { return scanEmulators().map(e => e.romDir).filter(Boolean); }
 function active() { return !!(session && session.active); }
 
 // translate a relayed phone-pad message into a host key press
 function injectInput(msg) {
   if (!session || !session.active || !msg) return;
-  if (msg.t === 'down' || msg.t === 'up') { session.inject(msg.b, msg.t === 'down', msg.k); return; }
-  if (msg.t === 'axis') { session.injectAxis(msg.x, msg.y); return; }
+  const p = Math.max(0, Math.min(3, msg.p | 0));       // player 1-4 -> its own virtual pad (gamepad path)
+  if (msg.t === 'down' || msg.t === 'up') { session.inject(msg.b, msg.t === 'down', msg.k, p); return; }
+  if (msg.t === 'axis') { session.injectAxis(msg.x, msg.y, p); return; }
+  if (msg.t === 'axis2') { session.injectAxis(msg.x, msg.y, p, true); return; }   // right stick
+  if (msg.t === 'trig') { session.injectTrig(msg.l, msg.r, p); return; }          // analog triggers 0..1
   if (msg.t === 'hk') {
     if (msg.a === 'ff_on')  return session.inject('ff_on', true);
     if (msg.a === 'ff_off') return session.inject('ff_off', false);
@@ -862,7 +885,7 @@ function handle(req, res, urlPath, q) {
 }
 
 module.exports = {
-  handle, injectInput, active, listEmulators,
+  handle, injectInput, active, listEmulators, romDirs,
   shutdown() { if (session) session.stop(); stopInjectors(); },
   _internals: { config, scanEmulators, listRoms, captureArgs, tokenize, launchArgs, inputArgs, osaLine,
     defaultCapture, defaultInputTool, resolveCapture, resolveInputTool, resolveWindowTitle,
@@ -1030,6 +1053,14 @@ if (require.main === module && process.argv.includes('--selftest')) {
   ok('scanEmulators parses capture/window/needsRom', px.capture === 'x11' && px.window === 'PCSX2' && px.needsRom === true);
   ok('scanEmulators lists roms folder games', px.games.length === 1 && px.games[0].file === 'My Game.iso' && px.system === 'PS2');
   ok('scanEmulators blocks roms outside ARCADE', emus.find(e => e.id === 'escape').romDir === null);
+  // an ABSOLUTE roms folder anywhere on the host is allowed (added from Settings)
+  const ext = fs.mkdtempSync(path.join(os.tmpdir(), 'roms-'));
+  fs.writeFileSync(path.join(ext, 'Far Game.iso'), 'x');
+  fs.mkdirSync(path.join(tmp, 'emulators', 'mine'));
+  fs.writeFileSync(path.join(tmp, 'emulators', 'mine', 'emulator.json'),
+    JSON.stringify({ name: 'Mine', cmd: 'x {rom}', roms: ext, exts: ['.iso'], addedBy: 'settings' }));
+  const mine = scanEmulators(path.join(tmp, 'emulators'), tmp).find(e => e.id === 'mine');
+  ok('scanEmulators accepts an absolute roms folder', !!mine && mine.romDir === path.normalize(ext) && mine.games.length === 1 && mine.custom === true);
 
   // JPEG splitter across chunk boundaries
   const frames = []; const sp = new JpegSplitter(f => frames.push(f));
